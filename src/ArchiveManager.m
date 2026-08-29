@@ -222,6 +222,7 @@ static NSString *IP1UniquePath(NSString *candidate) {
     }
 
     BOOL ok = YES;
+    NSError *retainedExtractionError = nil;
 
     while (rc == UNZ_OK && ok) {
         NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
@@ -236,6 +237,7 @@ static NSString *IP1UniquePath(NSString *candidate) {
                                   NULL, 0, NULL, 0) != UNZ_OK) {
             if (error) *error = IP1ArchiveError(3015, @"ZIP entry bilgisi okunamadı.");
             ok = NO;
+            if (error && *error) retainedExtractionError = [*error retain];
             [pool drain];
             break;
         }
@@ -246,6 +248,7 @@ static NSString *IP1UniquePath(NSString *candidate) {
         if (!output) {
             if (error) *error = IP1ArchiveError(3016, @"ZIP Slip/path traversal engellendi.");
             ok = NO;
+            if (error && *error) retainedExtractionError = [*error retain];
             [pool drain];
             break;
         }
@@ -254,6 +257,7 @@ static NSString *IP1UniquePath(NSString *candidate) {
         if ((mode & S_IFMT) == S_IFLNK) {
             if (error) *error = IP1ArchiveError(3017, @"Symbolic link entry reddedildi.");
             ok = NO;
+            if (error && *error) retainedExtractionError = [*error retain];
             [pool drain];
             break;
         }
@@ -322,6 +326,10 @@ static NSString *IP1UniquePath(NSString *candidate) {
             if (!ok) [fm removeItemAtPath:output error:nil];
         }
 
+        if (!ok && !retainedExtractionError && error && *error) {
+            retainedExtractionError = [*error retain];
+        }
+
         [pool drain];
         if (ok) rc = unzGoToNextFile(zip);
     }
@@ -330,7 +338,22 @@ static NSString *IP1UniquePath(NSString *candidate) {
     unzClose(zip);
 
     if (!ok || (rc != UNZ_END_OF_LIST_OF_FILE && rc != UNZ_OK)) {
+        [fm removeItemAtPath:root error:nil];
+
+        if (retainedExtractionError) {
+            if (error) {
+                *error = [retainedExtractionError autorelease];
+            } else {
+                [retainedExtractionError release];
+            }
+            retainedExtractionError = nil;
+        }
+
         return nil;
+    }
+
+    if (retainedExtractionError) {
+        [retainedExtractionError release];
     }
 
     return root;
