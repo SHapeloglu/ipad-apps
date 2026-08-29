@@ -39,16 +39,20 @@ make package FINALPACKAGE=1
 - [x] extract via Folder Picker
 - [x] multi-select ZIP creation
 - [x] created ZIP reopen/extract
+- [x] `../` traversal ZIP rejected; controlled error; no outside write
+- [x] absolute-path ZIP rejected; controlled error; no outside write
+- [x] CRC-corrupt ZIP rejected during extraction after `8ea31d7`
+- [x] CRC failure: no crash, no partial output file, no leftover extraction directory
 
-## ZIP Phase 1 — pending
+## ZIP Phase 1 — pending / failures
 
 - [ ] Turkish-character ZIP filename
 - [ ] Turkish-character entry name
-- [ ] empty ZIP
-- [ ] corrupt ZIP
+- [ ] empty ZIP — FAIL: valid empty ZIP shows `ZIP dosyası açılamadı.`
+- [x] CRC-corrupt ZIP
 - [ ] truncated ZIP
-- [ ] `../` ZIP Slip sample
-- [ ] absolute path sample
+- [x] `../` ZIP Slip sample
+- [x] absolute path sample
 - [ ] symlink sample
 - [ ] many small entries
 - [ ] large single entry

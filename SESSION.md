@@ -193,15 +193,17 @@ Verified on physical iPad 1:
 - multi-select ZIP creation
 - created ZIP reopen
 - created ZIP extraction
+- `../` traversal ZIP rejected with controlled error; no outside write
+- absolute-path ZIP rejected with controlled error; no outside write
+- CRC-corrupt ZIP rejected with controlled error after MRC crash fix (`8ea31d7`)
+- CRC failure leaves no partial output file or extraction directory
 - core file-manager regression after ZIP integration
 
-## Not yet proven
+## Not yet proven / known failures
 
 - Turkish ZIP filenames/paths
-- corrupt ZIP
+- empty ZIP: FAIL on physical iPad; valid empty ZIP currently shows `ZIP dosyası açılamadı.`
 - truncated ZIP
-- explicit malicious `../` ZIP
-- explicit absolute-path ZIP
 - explicit symlink ZIP
 - insufficient disk space
 - many small entries
