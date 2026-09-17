@@ -1,0 +1,9 @@
+Package: com.olap.ipad1vnc
+Name: iPad1 VNC
+Version: 0.1.0
+Architecture: iphoneos-arm
+Description: Lightweight VNC client for first-generation iPad / iOS 5.1.1.
+Maintainer: Local build
+Author: Local build
+Section: Utilities
+Depends: firmware (>= 5.0)
