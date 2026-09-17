@@ -1,6 +1,6 @@
-# PROJECT_CONTEXT — KidsDraw v0.8
+# PROJECT_CONTEXT — KidsDraw v1.0
 
-Amaç: iPad 1'i çocuk için reklamsız, çevrimdışı, hafif çizim/boyama tabletine dönüştürmek.
+Amaç: iPad 1'i çocuk için reklamsız, çevrimdışı ve hafif çizim/boyama tabletine dönüştürmek.
 
 Sabit sınırlar:
 iPad 1 / iOS 5.1.1 / Apple A4 / 256 MB RAM / armv7 /
@@ -8,19 +8,16 @@ Objective-C / Theos / legacy iPhoneOS 6.1 SDK / non-ARC-MRC.
 
 Mimari:
 - Basit mod yok.
-- KidsDraw dosya tarayıcı içermez.
-- Dosya seçimi iPad1Files sorumluluğundadır.
-- Multi-touch maksimum 2 parmak.
+- Dosya seçimi iPad1Files sorumluluğunda.
+- Multi-touch maksimum 2.
+- Ayrı layer yok.
 - Undo/Redo 5+5.
-- Ağ/AI/katman/sınırsız stroke geçmişi yok.
+- Ağ/AI/sınırsız stroke geçmişi yok.
 
-v0.8:
-- sprey yoğunluğu 3 kademe
-- fosfor şiddeti 3 kademe
-- kalem/fırça doku iyileştirmeleri
-- 6 damga boyutu
-- iki-parmak çizimde küçük hareket filtreleme
-- sprey CPU sınırı
-- v0.7 fonksiyonları korunur
+v1.0:
+- hafif smudge
+- hafif color mixer
+- 28 boyama başlığı
+- v0.9.x kalite araçları korunur
 
-Fiziksel iPad 1 doğrulaması olmadan tamamlanmış sayılmaz.
+Fiziksel iPad 1 testinden geçmeden tamamlanmış sayılmaz.

@@ -2,14 +2,26 @@
 #import "DrawingView.h"
 #import <AudioToolbox/AudioToolbox.h>
 
-#define TOP_HEIGHT 58.0f
+#define TOP_HEIGHT 108.0f
 #define BOTTOM_HEIGHT 64.0f
 #define AUTOSAVE_DELAY 2.0
 
 @implementation DrawingViewController
 
 - (UIColor *)colorWithR:(CGFloat)r g:(CGFloat)g b:(CGFloat)b { return [UIColor colorWithRed:r/255.0f green:g/255.0f blue:b/255.0f alpha:1]; }
-- (UIButton *)textButton:(NSString *)title tag:(NSInteger)tag { UIButton *b=[UIButton buttonWithType:UIButtonTypeRoundedRect];[b setTitle:title forState:UIControlStateNormal];b.titleLabel.font=[UIFont boldSystemFontOfSize:12];b.tag=tag;[b addTarget:self action:@selector(toolPressed:) forControlEvents:UIControlEventTouchUpInside];return b; }
+- (UIButton *)textButton:(NSString *)title tag:(NSInteger)tag
+{
+    UIButton *b=[UIButton buttonWithType:UIButtonTypeRoundedRect];
+    [b setTitle:title forState:UIControlStateNormal];
+    b.titleLabel.font=[UIFont boldSystemFontOfSize:14.0f];
+    b.titleLabel.textAlignment=UITextAlignmentCenter;
+    b.titleLabel.numberOfLines=2;
+    b.titleLabel.adjustsFontSizeToFitWidth=YES;
+    b.titleLabel.minimumFontSize=10.0f;
+    b.tag=tag;
+    [b addTarget:self action:@selector(toolPressed:) forControlEvents:UIControlEventTouchUpInside];
+    return b;
+}
 
 - (NSArray *)paintColors
 {
@@ -54,11 +66,28 @@
     _lineSizeIndex=2;   /* 7 px */
     _stampSizeIndex=1;  /* orta */
     _sprayDensityIndex=1;
+    _spraySizeIndex=1;
     _neonStrengthIndex=1;
+    _opacityIndex=3;
+    _eraserSizeIndex=2;
+    _secondaryBrushIndex=0;
+    _smudgeStrengthIndex=1;
+    _mixerStrengthIndex=1;
     _drawingView.lineWidth=7.0f;
     _drawingView.stampScale=1.0f;
     _drawingView.sprayDensity=1.0f;
+    _drawingView.spraySize=1.0f;
     _drawingView.neonStrength=1.0f;
+    _drawingView.globalOpacity=1.0f;
+    _drawingView.eraserWidth=28.0f;
+    _secondaryPaintColor=[[UIColor blueColor] retain];
+    _drawingView.secondaryStrokeColor=_secondaryPaintColor;
+    _drawingView.secondaryBrushStyle=KidsBrushNormal;
+    _drawingView.smudgeStrength=0.55f;
+    _drawingView.mixerStrength=0.50f;
+
+    _stampPinch=[[UIPinchGestureRecognizer alloc] initWithTarget:self action:@selector(handleStampPinch:)];
+    [_drawingView addGestureRecognizer:_stampPinch];
 
     _replayFrames=[[NSMutableArray alloc] initWithCapacity:18];
     _stars=(NSUInteger)[[NSUserDefaults standardUserDefaults] integerForKey:@"KidsDrawStars"];
@@ -77,8 +106,14 @@
 
     [_topToolbar addSubview:[self textButton:@"Fırça" tag:201]];
     [_topToolbar addSubview:[self textButton:@"Kalınlık" tag:202]];
-    [_topToolbar addSubview:[self textButton:@"Sprey" tag:203]];
+    [_topToolbar addSubview:[self textButton:@"Sprey\nYoğunluğu" tag:203]];
     [_topToolbar addSubview:[self textButton:@"Fosfor" tag:204]];
+    [_topToolbar addSubview:[self textButton:@"Sprey\nBoyutu" tag:205]];
+    [_topToolbar addSubview:[self textButton:@"Opaklık" tag:206]];
+    [_topToolbar addSubview:[self textButton:@"2. Kalem" tag:207]];
+    [_topToolbar addSubview:[self textButton:@"Özel\nRenk" tag:208]];
+    [_topToolbar addSubview:[self textButton:@"Dağıt" tag:209]];
+    [_topToolbar addSubview:[self textButton:@"Karıştır" tag:210]];
 
     _starLabel=[[UILabel alloc] initWithFrame:CGRectZero];
     _starLabel.backgroundColor=[UIColor clearColor];
@@ -102,40 +137,58 @@
 {
     [super viewDidLayoutSubviews];
     CGRect b=self.view.bounds;
+
     _topToolbar.frame=CGRectMake(0,0,b.size.width,TOP_HEIGHT);
     _bottomToolbar.frame=CGRectMake(0,b.size.height-BOTTOM_HEIGHT,b.size.width,BOTTOM_HEIGHT);
     _drawingView.frame=CGRectMake(0,TOP_HEIGHT,b.size.width,b.size.height-TOP_HEIGHT-BOTTOM_HEIGHT);
 
-    CGFloat x=7.0f;
+    /*
+     * iPad 1 / iOS 5 için üst araçlar iki satıra ayrıldı.
+     * 1. satır: renkler + yıldız
+     * 2. satır: metinli araçlar
+     * Böylece hit alanları ve yazılar sıkışmaz.
+     */
+    CGFloat left=6.0f;
+    CGFloat gap=4.0f;
+    CGFloat starWidth=72.0f;
+    CGFloat colorsWidth=b.size.width-left*2.0f-starWidth-gap;
+    CGFloat colorW=(colorsWidth-gap*15.0f)/16.0f;
+    CGFloat x=left;
     int i;
+
     for(i=0;i<16;i++){
         UIView *v=[_topToolbar viewWithTag:100+i];
-        v.frame=CGRectMake(x,14,26,30);
-        x+=30;
+        v.frame=CGRectMake(x,7.0f,colorW,36.0f);
+        x+=colorW+gap;
     }
 
-    UIView *brush=[_topToolbar viewWithTag:201];
-    brush.frame=CGRectMake(x+2,8,62,42); x+=66;
-    UIView *size=[_topToolbar viewWithTag:202];
-    size.frame=CGRectMake(x,8,64,42); x+=68;
-    UIView *spray=[_topToolbar viewWithTag:203];
-    spray.frame=CGRectMake(x,8,58,42); x+=62;
-    UIView *neon=[_topToolbar viewWithTag:204];
-    neon.frame=CGRectMake(x,8,58,42); x+=62;
-    _starLabel.frame=CGRectMake(x,8,66,42);
+    _starLabel.frame=CGRectMake(b.size.width-left-starWidth,7.0f,starWidth,36.0f);
+    _starLabel.font=[UIFont boldSystemFontOfSize:16.0f];
 
-    CGFloat gap=2.0f;
-    CGFloat bw=(b.size.width-gap*17.0f)/16.0f;
-    x=gap;
+    CGFloat toolGap=5.0f;
+    CGFloat toolW=(b.size.width-left*2.0f-toolGap*9.0f)/10.0f;
+    CGFloat toolY=51.0f;
+    x=left;
+
+    for(i=201;i<=210;i++){
+        UIView *v=[_topToolbar viewWithTag:i];
+        v.frame=CGRectMake(x,toolY,toolW,49.0f);
+        x+=toolW+toolGap;
+    }
+
+    CGFloat bottomGap=2.0f;
+    CGFloat bw=(b.size.width-bottomGap*17.0f)/16.0f;
+    x=bottomGap;
     for(i=0;i<16;i++){
         UIView *v=[_bottomToolbar viewWithTag:301+i];
         v.frame=CGRectMake(x,9,bw,46);
-        x+=bw+gap;
+        x+=bw+bottomGap;
     }
 
     if(_galleryOverlay) _galleryOverlay.frame=self.view.bounds;
     if(_replayOverlay) _replayOverlay.frame=_drawingView.frame;
 }
+
 
 - (void)selectPaintMode
 {
@@ -159,12 +212,38 @@
 
 - (void)chooseBrush
 {
+    /*
+     * iOS 5 UIAlertView landscape modunda çok fazla buton gerçek hit-test
+     * alanının dışına taşabiliyor. Bu nedenle fırçaları iki kısa sayfaya böleriz.
+     */
     UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"Fırça / Kalem"
-                                               message:@"Bir çizim tipi seç."
+                                               message:@"Temel çizim aracını seç."
                                               delegate:self
                                      cancelButtonTitle:@"Vazgeç"
-                                     otherButtonTitles:@"Normal",@"Kurşun Kalem",@"Keçeli Kalem",@"Pastel",@"Fosfor",@"Gökkuşağı",@"Boya Spreyi",@"Tebeşir",nil] autorelease];
+                                     otherButtonTitles:@"Normal",
+                                                       @"Kurşun Kalem",
+                                                       @"Keçeli Kalem",
+                                                       @"Pastel",
+                                                       @"Efektler…",
+                                                       nil] autorelease];
     a.tag=640;
+    [a show];
+}
+
+- (void)chooseEffectBrush
+{
+    UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"Efekt Fırçaları"
+                                               message:@"Bir efekt seç."
+                                              delegate:self
+                                     cancelButtonTitle:@"Geri"
+                                     otherButtonTitles:@"Fosfor",
+                                                       @"Gökkuşağı",
+                                                       @"Boya Spreyi",
+                                                       @"Tebeşir",
+                                                       @"Parmakla Dağıt",
+                                                       @"Renk Karıştır",
+                                                       nil] autorelease];
+    a.tag=643;
     [a show];
 }
 
@@ -205,6 +284,87 @@
     [button setTitle:names[_neonStrengthIndex] forState:UIControlStateNormal];
 }
 
+
+- (void)cycleSpraySize:(UIButton *)button
+{
+    static const CGFloat vals[]={0.70f,1.0f,1.35f,1.70f};
+    static NSString *names[]={@"Sprey S",@"Sprey M",@"Sprey L",@"Sprey XL"};
+    _spraySizeIndex=(_spraySizeIndex+1)%4;
+    _drawingView.spraySize=vals[_spraySizeIndex];
+    [button setTitle:names[_spraySizeIndex] forState:UIControlStateNormal];
+}
+
+- (void)cycleOpacity:(UIButton *)button
+{
+    static const CGFloat vals[]={0.25f,0.50f,0.75f,1.0f};
+    static NSString *names[]={@"%25",@"%50",@"%75",@"%100"};
+    _opacityIndex=(_opacityIndex+1)%4;
+    _drawingView.globalOpacity=vals[_opacityIndex];
+    [button setTitle:names[_opacityIndex] forState:UIControlStateNormal];
+}
+
+- (void)chooseSecondaryPen
+{
+    UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"2. Kalem"
+                                               message:@"İkinci parmak için kalem seç."
+                                              delegate:self
+                                     cancelButtonTitle:@"Vazgeç"
+                                     otherButtonTitles:@"Mavi Normal",@"Kırmızı Normal",@"Yeşil Normal",@"Mor Normal",@"Mavi Fosfor",@"Kırmızı Fosfor",@"Mavi Sprey",@"Yeşil Sprey",nil] autorelease];
+    a.tag=641;
+    [a show];
+}
+
+- (void)chooseCustomColor
+{
+    UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"Özel Renk"
+                                               message:@"Hazır özel renklerden birini seç."
+                                              delegate:self
+                                     cancelButtonTitle:@"Vazgeç"
+                                     otherButtonTitles:@"Turkuaz",@"Limon",@"Mercan",@"Lavanta",@"Mint",@"Koyu Lacivert",@"Altın",@"Gül",nil] autorelease];
+    a.tag=642;
+    [a show];
+}
+
+- (void)cycleEraserSize
+{
+    static const CGFloat vals[]={12.0f,20.0f,28.0f,40.0f,56.0f};
+    _eraserSizeIndex=(_eraserSizeIndex+1)%5;
+    _drawingView.eraserWidth=vals[_eraserSizeIndex];
+}
+
+- (void)handleStampPinch:(UIPinchGestureRecognizer *)g
+{
+    if(_drawingView.stampType==KidsStampNone) return;
+    if(g.state==UIGestureRecognizerStateChanged){
+        CGFloat s=_drawingView.stampScale*g.scale;
+        if(s<0.45f) s=0.45f;
+        if(s>2.20f) s=2.20f;
+        _drawingView.stampScale=s;
+        g.scale=1.0f;
+    }
+}
+
+
+- (void)cycleSmudgeStrength:(UIButton *)button
+{
+    static const CGFloat vals[]={0.35f,0.55f,0.80f};
+    static NSString *names[]={@"Dağıt Az",@"Dağıt Orta",@"Dağıt Çok"};
+    _smudgeStrengthIndex=(_smudgeStrengthIndex+1)%3;
+    _drawingView.smudgeStrength=vals[_smudgeStrengthIndex];
+    _drawingView.brushStyle=KidsBrushSmudge;
+    [button setTitle:names[_smudgeStrengthIndex] forState:UIControlStateNormal];
+}
+
+- (void)cycleMixerStrength:(UIButton *)button
+{
+    static const CGFloat vals[]={0.30f,0.50f,0.75f};
+    static NSString *names[]={@"Karış Az",@"Karış Orta",@"Karış Çok"};
+    _mixerStrengthIndex=(_mixerStrengthIndex+1)%3;
+    _drawingView.mixerStrength=vals[_mixerStrengthIndex];
+    _drawingView.brushStyle=KidsBrushMixer;
+    [button setTitle:names[_mixerStrengthIndex] forState:UIControlStateNormal];
+}
+
 - (void)toolPressed:(UIButton *)s
 {
     switch(s.tag){
@@ -212,6 +372,12 @@
         case 202:[self cycleLineSize:s];break;
         case 203:[self cycleSprayDensity:s];break;
         case 204:[self cycleNeonStrength:s];break;
+        case 205:[self cycleSpraySize:s];break;
+        case 206:[self cycleOpacity:s];break;
+        case 207:[self chooseSecondaryPen];break;
+        case 208:[self chooseCustomColor];break;
+        case 209:[self cycleSmudgeStrength:s];break;
+        case 210:[self cycleMixerStrength:s];break;
 
         case 301:[_drawingView undo];break;
         case 302:[_drawingView redo];break;
@@ -220,9 +386,10 @@
             _drawingView.shapeType=KidsShapeNone; _drawingView.strokeColor=_lastPaintColor;
             break;
         case 304:
+            [self cycleEraserSize];
             _drawingView.bucketMode=NO; _drawingView.stampType=KidsStampNone;
             _drawingView.shapeType=KidsShapeNone; _drawingView.brushStyle=KidsBrushNormal;
-            _drawingView.lineWidth=28; _drawingView.strokeColor=_drawingView.canvasColor;
+            _drawingView.lineWidth=_drawingView.eraserWidth; _drawingView.strokeColor=_drawingView.canvasColor;
             break;
         case 305:[self chooseStamp];break;
         case 306:[self cycleStampSize:s];break;
@@ -280,10 +447,10 @@
 - (void)showColoringCategory:(NSInteger)c
 {
     NSArray *titles=nil;
-    if(c==0) titles=[NSArray arrayWithObjects:@"Çiçek",@"Ağaç",@"Güneş",@"Mantar",@"Kalp",nil];
-    else if(c==1) titles=[NSArray arrayWithObjects:@"Balık",@"Kelebek",@"Kedi",@"Kaplumbağa",@"Kuş",nil];
-    else if(c==2) titles=[NSArray arrayWithObjects:@"Araba",@"Roket",@"Gemi",@"Tren",@"Uçurtma",nil];
-    else titles=[NSArray arrayWithObjects:@"Ev",@"Robot",@"Dondurma",@"Şemsiye",@"Hediye",nil];
+    if(c==0) titles=[NSArray arrayWithObjects:@"Çiçek",@"Ağaç",@"Güneş",@"Mantar",@"Kalp",@"Yaprak",@"Dağ",nil];
+    else if(c==1) titles=[NSArray arrayWithObjects:@"Balık",@"Kelebek",@"Kedi",@"Kaplumbağa",@"Kuş",@"Tavşan",@"Balina",nil];
+    else if(c==2) titles=[NSArray arrayWithObjects:@"Araba",@"Roket",@"Gemi",@"Tren",@"Uçurtma",@"Otobüs",@"Uçak",nil];
+    else titles=[NSArray arrayWithObjects:@"Ev",@"Robot",@"Dondurma",@"Şemsiye",@"Hediye",@"Kale",@"Balon",nil];
 
     UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"Boyama" message:@"Bir resim seç." delegate:self cancelButtonTitle:@"Vazgeç" otherButtonTitles:nil] autorelease];
     NSInteger i; for(i=0;i<[titles count];i++) [a addButtonWithTitle:[titles objectAtIndex:i]];
@@ -291,13 +458,13 @@
 }
 - (NSInteger)templateForCategory:(NSInteger)c item:(NSInteger)item
 {
-    static const NSInteger map[4][5]={
-        {0,7,8,13,19},
-        {2,3,6,14,18},
-        {4,5,10,15,12},
-        {1,9,11,16,17}
+    static const NSInteger map[4][7]={
+        {0,7,8,13,19,0,8},
+        {2,3,6,14,18,6,2},
+        {4,5,10,15,12,4,5},
+        {1,9,11,16,17,1,9}
     };
-    if(c<0||c>3||item<0||item>4) return 0;
+    if(c<0||c>3||item<0||item>6) return 0;
     return map[c][item];
 }
 
@@ -307,9 +474,55 @@
 
 - (void)alertView:(UIAlertView *)a clickedButtonAtIndex:(NSInteger)i
 {
-    if(a.tag==640&&i>=1&&i<=8){
+    if(a.tag==641&&i>=1&&i<=8){
+        UIColor *c=nil; KidsBrushStyle b=KidsBrushNormal;
+        switch(i){
+            case 1:c=[UIColor blueColor];b=KidsBrushNormal;break;
+            case 2:c=[UIColor redColor];b=KidsBrushNormal;break;
+            case 3:c=[UIColor greenColor];b=KidsBrushNormal;break;
+            case 4:c=[self colorWithR:145 g:70 b:210];b=KidsBrushNormal;break;
+            case 5:c=[UIColor blueColor];b=KidsBrushNeon;break;
+            case 6:c=[UIColor redColor];b=KidsBrushNeon;break;
+            case 7:c=[UIColor blueColor];b=KidsBrushSpray;break;
+            case 8:c=[UIColor greenColor];b=KidsBrushSpray;break;
+        }
+        [_secondaryPaintColor release];
+        _secondaryPaintColor=[c retain];
+        _drawingView.secondaryStrokeColor=c;
+        _drawingView.secondaryBrushStyle=b;
+        return;
+    }
+    if(a.tag==642&&i>=1&&i<=8){
+        NSArray *custom=[NSArray arrayWithObjects:
+            [self colorWithR:30 g:200 b:190],
+            [self colorWithR:220 g:240 b:40],
+            [self colorWithR:245 g:110 b:90],
+            [self colorWithR:190 g:150 b:240],
+            [self colorWithR:140 g:235 b:190],
+            [self colorWithR:25 g:45 b:110],
+            [self colorWithR:235 g:185 b:40],
+            [self colorWithR:220 g:80 b:120],nil];
+        UIColor *c=[custom objectAtIndex:i-1];
+        [_lastPaintColor release]; _lastPaintColor=[c retain];
+        _drawingView.strokeColor=c;
+        return;
+    }
+    if(a.tag==640){
+        if(i>=1&&i<=4){
+            [self selectPaintMode];
+            _drawingView.brushStyle=(KidsBrushStyle)(i-1);
+            [self playTinySound];
+            return;
+        }
+        if(i==5){
+            [self chooseEffectBrush];
+            return;
+        }
+    }
+    if(a.tag==643&&i>=1&&i<=6){
         [self selectPaintMode];
-        _drawingView.brushStyle=(KidsBrushStyle)(i-1);
+        /* 4=Fosfor, 5=Gökkuşağı, 6=Sprey, 7=Tebeşir, 8=Smudge, 9=Mixer */
+        _drawingView.brushStyle=(KidsBrushStyle)(i+3);
         [self playTinySound];
         return;
     }
@@ -323,7 +536,7 @@
         [self selectPaintMode]; _drawingView.stampType=st; [self playTinySound]; return;
     }
     if(a.tag==670&&i>=1&&i<=4){[self showColoringCategory:i-1];return;}
-    if(a.tag>=680&&a.tag<=683&&i>=1&&i<=5){
+    if(a.tag>=680&&a.tag<=683&&i>=1&&i<=7){
         NSInteger t=[self templateForCategory:a.tag-680 item:i-1];
         [_drawingView showColoringTemplate:t];
         [self playTinySound];
@@ -547,5 +760,5 @@
 }
 - (void)image:(UIImage *)image didFinishSavingWithError:(NSError *)error contextInfo:(void *)contextInfo { NSString *t=error?@"Galeriye kaydedildi":@"Kaydedildi";NSString *m=error?@"KidsDraw Çizimlerim'e kaydedildi; Fotoğraflar'a eklenemedi.":@"Resim Çizimlerim'e ve Fotoğraflar'a kaydedildi.";UIAlertView *a=[[[UIAlertView alloc] initWithTitle:t message:m delegate:nil cancelButtonTitle:@"Tamam" otherButtonTitles:nil] autorelease];[a show]; }
 - (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)o { return UIInterfaceOrientationIsLandscape(o); }
-- (void)dealloc { [[NSNotificationCenter defaultCenter] removeObserver:self];if(_autosaveTimer){[_autosaveTimer invalidate];[_autosaveTimer release];}if(_replayTimer){[_replayTimer invalidate];[_replayTimer release];}[_replayOverlay removeFromSuperview];[_replayOverlay release];[_replayFrames release];[_rewardOverlay removeFromSuperview];[_rewardOverlay release];[_starLabel release];[_drawingView release];[_topToolbar release];[_bottomToolbar release];[_galleryOverlay release];[_galleryFiles release];[_lastPaintColor release];[super dealloc]; }
+- (void)dealloc { [[NSNotificationCenter defaultCenter] removeObserver:self];if(_autosaveTimer){[_autosaveTimer invalidate];[_autosaveTimer release];}if(_replayTimer){[_replayTimer invalidate];[_replayTimer release];}[_replayOverlay removeFromSuperview];[_replayOverlay release];[_replayFrames release];[_rewardOverlay removeFromSuperview];[_rewardOverlay release];[_secondaryPaintColor release];[_stampPinch release];[_starLabel release];[_drawingView release];[_topToolbar release];[_bottomToolbar release];[_galleryOverlay release];[_galleryFiles release];[_lastPaintColor release];[super dealloc]; }
 @end

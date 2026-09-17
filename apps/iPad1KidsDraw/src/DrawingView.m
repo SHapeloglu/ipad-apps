@@ -14,7 +14,14 @@ typedef struct { int x; int y; } KidsPixelPoint;
 @synthesize lineWidth = _lineWidth;
 @synthesize stampScale = _stampScale;
 @synthesize sprayDensity = _sprayDensity;
+@synthesize spraySize = _spraySize;
 @synthesize neonStrength = _neonStrength;
+@synthesize globalOpacity = _globalOpacity;
+@synthesize eraserWidth = _eraserWidth;
+@synthesize secondaryStrokeColor = _secondaryStrokeColor;
+@synthesize secondaryBrushStyle = _secondaryBrushStyle;
+@synthesize smudgeStrength = _smudgeStrength;
+@synthesize mixerStrength = _mixerStrength;
 @synthesize brushStyle = _brushStyle;
 @synthesize stampType = _stampType;
 @synthesize shapeType = _shapeType;
@@ -34,7 +41,14 @@ typedef struct { int x; int y; } KidsPixelPoint;
         _strokeAlpha = 1.0f;
         _stampScale = 1.0f;
         _sprayDensity = 1.0f;
+        _spraySize = 1.0f;
         _neonStrength = 1.0f;
+        _globalOpacity = 1.0f;
+        _eraserWidth = 28.0f;
+        _secondaryStrokeColor = [[UIColor blueColor] retain];
+        _secondaryBrushStyle = KidsBrushNormal;
+        _smudgeStrength = 0.55f;
+        _mixerStrength = 0.50f;
         _brushStyle = KidsBrushNormal;
         _stampType = KidsStampNone;
         _shapeType = KidsShapeNone;
@@ -127,7 +141,7 @@ typedef struct { int x; int y; } KidsPixelPoint;
 - (void)strokeSimpleFrom:(CGPoint)a to:(CGPoint)b context:(CGContextRef)ctx width:(CGFloat)width alpha:(CGFloat)alpha
 {
     CGContextSetAlpha(ctx,1.0f);
-    [self setSelectedColorInContext:ctx alpha:alpha fill:NO];
+    [self setSelectedColorInContext:ctx alpha:alpha*_globalOpacity fill:NO];
     CGContextSetLineWidth(ctx,width);
     CGContextSetLineCap(ctx,kCGLineCapRound);
     CGContextSetLineJoin(ctx,kCGLineJoinRound);
@@ -140,8 +154,8 @@ typedef struct { int x; int y; } KidsPixelPoint;
 - (void)drawSprayAt:(CGPoint)p context:(CGContextRef)ctx
 {
     int count=(int)MIN(36.0f,MAX(8.0f,self.lineWidth*(0.8f+_sprayDensity)));
-    CGFloat radius=MAX(7.0f,self.lineWidth*(1.25f+0.75f*_sprayDensity));
-    [self setSelectedColorInContext:ctx alpha:0.58f fill:YES];
+    CGFloat radius=MAX(7.0f,self.lineWidth*(1.25f+0.75f*_sprayDensity)*_spraySize);
+    [self setSelectedColorInContext:ctx alpha:0.58f*_globalOpacity fill:YES];
     int i;
     for(i=0;i<count;i++){
         CGFloat rx=((CGFloat)(rand()%2001)/1000.0f-1.0f)*radius;
@@ -152,6 +166,69 @@ typedef struct { int x; int y; } KidsPixelPoint;
     }
 }
 
+
+- (UIColor *)colorForTouch:(UITouch *)touch
+{
+    if(touch==_touchB && _secondaryStrokeColor) return _secondaryStrokeColor;
+    return self.strokeColor;
+}
+
+- (KidsBrushStyle)brushForTouch:(UITouch *)touch
+{
+    if(touch==_touchB) return _secondaryBrushStyle;
+    return _brushStyle;
+}
+
+- (void)drawSegmentFrom:(CGPoint)fromPoint
+                     to:(CGPoint)toPoint
+                context:(CGContextRef)ctx
+                  touch:(UITouch *)touch
+{
+    UIColor *savedColor=[self.strokeColor retain];
+    KidsBrushStyle savedBrush=_brushStyle;
+    self.strokeColor=[self colorForTouch:touch];
+    _brushStyle=[self brushForTouch:touch];
+
+    [self drawSegmentFrom:fromPoint to:toPoint context:ctx];
+
+    self.strokeColor=savedColor;
+    _brushStyle=savedBrush;
+    [savedColor release];
+}
+
+
+- (void)drawSmudgeFrom:(CGPoint)a to:(CGPoint)b context:(CGContextRef)ctx
+{
+    /*
+     * iPad 1 için hafif smudge:
+     * Tam convolution yok. Önceki çizgiden küçük yarı saydam örnekler
+     * hareket yönüne doğru tekrar basılır.
+     */
+    CGFloat width=MAX(6.0f,self.lineWidth*1.8f);
+    CGFloat dx=b.x-a.x, dy=b.y-a.y;
+    int steps=4;
+    int i;
+    for(i=0;i<steps;i++){
+        CGFloat t=(CGFloat)i/(CGFloat)steps;
+        CGPoint p=CGPointMake(a.x+dx*t,a.y+dy*t);
+        CGContextSetRGBFillColor(ctx,1,1,1,0.03f*_smudgeStrength*_globalOpacity);
+        CGContextFillEllipseInRect(ctx,CGRectMake(p.x-width*0.5f,p.y-width*0.5f,width,width));
+    }
+    /* Renk taşıma hissi için mevcut seçili rengi çok düşük alfa ile sürükle. */
+    [self strokeSimpleFrom:a to:b context:ctx width:width alpha:0.08f*_smudgeStrength];
+}
+
+- (void)drawMixerFrom:(CGPoint)a to:(CGPoint)b context:(CGContextRef)ctx
+{
+    /*
+     * Gerçek pigment karışımı yerine düşük maliyetli overlay yaklaşımı.
+     * İPad 1 CPU/RAM sınırında daha güvenli.
+     */
+    CGFloat wide=MAX(8.0f,self.lineWidth*1.45f);
+    [self strokeSimpleFrom:a to:b context:ctx width:wide alpha:0.20f*_mixerStrength];
+    [self strokeSimpleFrom:a to:b context:ctx width:MAX(2.0f,wide*0.45f) alpha:0.35f*_mixerStrength];
+}
+
 - (void)drawSegmentFrom:(CGPoint)fromPoint to:(CGPoint)toPoint context:(CGContextRef)ctx
 {
     CGFloat width=self.lineWidth;
@@ -159,6 +236,14 @@ typedef struct { int x; int y; } KidsPixelPoint;
     if(_brushStyle==KidsBrushSpray){
         [self drawSprayAt:toPoint context:ctx];
         if(_mirrorMode) [self drawSprayAt:CGPointMake(self.bounds.size.width-toPoint.x,toPoint.y) context:ctx];
+        return;
+    }
+    if(_brushStyle==KidsBrushSmudge){
+        [self drawSmudgeFrom:fromPoint to:toPoint context:ctx];
+        return;
+    }
+    if(_brushStyle==KidsBrushMixer){
+        [self drawMixerFrom:fromPoint to:toPoint context:ctx];
         return;
     }
 
@@ -407,7 +492,7 @@ static int KidsColorDistance(unsigned char *a, unsigned char *b)
     free(visited);
     free(queue);
     CGImageRef out=CGBitmapContextCreateImage(ctx);
-    UIImage *newImage=[UIImage imageWithCGImage:out scale:1.0f orientation:UIImageOrientationDown];
+    UIImage *newImage=[UIImage imageWithCGImage:out];
     [_image release]; _image=[newImage retain]; [self setNeedsDisplay];
     CGImageRelease(out); CGContextRelease(ctx); CGColorSpaceRelease(cs); free(data);
 }
@@ -462,14 +547,14 @@ static int KidsColorDistance(unsigned char *a, unsigned char *b)
             CGPoint from=drawDots?p:_lastPointA;
             CGFloat dx=p.x-from.x, dy=p.y-from.y;
             if(drawDots || dx*dx+dy*dy>=1.0f){
-                [self drawSegmentFrom:from to:p context:ctx];
+                [self drawSegmentFrom:from to:p context:ctx touch:touch];
                 _lastPointA=p;
             }
         } else if(touch==_touchB){
             CGPoint from=drawDots?p:_lastPointB;
             CGFloat dx=p.x-from.x, dy=p.y-from.y;
             if(drawDots || dx*dx+dy*dy>=1.0f){
-                [self drawSegmentFrom:from to:p context:ctx];
+                [self drawSegmentFrom:from to:p context:ctx touch:touch];
                 _lastPointB=p;
             }
         }

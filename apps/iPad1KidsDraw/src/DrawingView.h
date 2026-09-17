@@ -8,7 +8,9 @@ typedef enum {
     KidsBrushNeon,
     KidsBrushRainbow,
     KidsBrushSpray,
-    KidsBrushChalk
+    KidsBrushChalk,
+    KidsBrushSmudge,
+    KidsBrushMixer
 } KidsBrushStyle;
 
 typedef enum {
@@ -56,7 +58,15 @@ typedef enum {
     CGFloat _strokeAlpha;
     CGFloat _stampScale;
     CGFloat _sprayDensity;
+    CGFloat _spraySize;
     CGFloat _neonStrength;
+    CGFloat _globalOpacity;
+    CGFloat _eraserWidth;
+
+    UIColor *_secondaryStrokeColor;
+    KidsBrushStyle _secondaryBrushStyle;
+    CGFloat _smudgeStrength;
+    CGFloat _mixerStrength;
 
     CGPoint _lastPoint;
     CGPoint _shapeStartPoint;
@@ -83,7 +93,14 @@ typedef enum {
 @property (nonatomic, assign) CGFloat lineWidth;
 @property (nonatomic, assign) CGFloat stampScale;
 @property (nonatomic, assign) CGFloat sprayDensity;
+@property (nonatomic, assign) CGFloat spraySize;
 @property (nonatomic, assign) CGFloat neonStrength;
+@property (nonatomic, assign) CGFloat globalOpacity;
+@property (nonatomic, assign) CGFloat eraserWidth;
+@property (nonatomic, retain) UIColor *secondaryStrokeColor;
+@property (nonatomic, assign) KidsBrushStyle secondaryBrushStyle;
+@property (nonatomic, assign) CGFloat smudgeStrength;
+@property (nonatomic, assign) CGFloat mixerStrength;
 @property (nonatomic, assign) KidsBrushStyle brushStyle;
 @property (nonatomic, assign) KidsStampType stampType;
 @property (nonatomic, assign) KidsShapeType shapeType;

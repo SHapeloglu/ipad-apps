@@ -25,7 +25,17 @@
     NSInteger _lineSizeIndex;
     NSInteger _stampSizeIndex;
     NSInteger _sprayDensityIndex;
+    NSInteger _spraySizeIndex;
     NSInteger _neonStrengthIndex;
+    NSInteger _opacityIndex;
+    NSInteger _eraserSizeIndex;
+
+    UIColor *_secondaryPaintColor;
+    NSInteger _secondaryBrushIndex;
+
+    UIPinchGestureRecognizer *_stampPinch;
+    NSInteger _smudgeStrengthIndex;
+    NSInteger _mixerStrengthIndex;
 }
 - (void)openExternalImageAtPath:(NSString *)path;
 @end
