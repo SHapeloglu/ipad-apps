@@ -1,4 +1,4 @@
-# iPad1VNC v2.1.0-rc1
+# iPad1VNC v2.1.0-rc2
 
 This release candidate folds the planned "finish the fundamentals" roadmap into one branch for iPad 1 / iOS 5.1.1.
 
@@ -117,3 +117,9 @@ sudo systemctl status ipad1vnc-fileserver --no-pager
 ```
 
 The existing token file remains valid.
+
+
+## rc2 compile fixes
+- Rewrites the Hextile decoder loop with explicit braces to satisfy `-Wmisleading-indentation` under the legacy iOS 5 Theos build.
+- Restores the required `terminalSessionEnded:` delegate method for `TerminalSessionDelegate`.
+- No v2.1 functionality was removed.

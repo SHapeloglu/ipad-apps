@@ -101,13 +101,60 @@ static uint8_t rev8(uint8_t b){b=(b&0xF0)>>4|(b&0x0F)<<4;b=(b&0xCC)>>2|(b&0x33)<
     for(uint16_t yy=0;yy<h;yy++){if(!recvAll(_sock,b,rb)){free(b);return NO;}_statsBytes+=rb;for(uint16_t xx=0;xx<w;xx++){uint8_t c[4];[self pixel:b+xx*_serverBytesPerPixel bgra:c];[self fillX:x+xx y:y+yy w:1 h:1 c:c];}}free(b);return YES;
 }
 - (BOOL)onePixel:(uint8_t*)c{uint8_t b[4]={0};if(!recvAll(_sock,b,_serverBytesPerPixel))return NO;_statsBytes+=_serverBytesPerPixel;[self pixel:b bgra:c];return YES;}
-- (BOOL)hextileX:(uint16_t)x y:(uint16_t)y w:(uint16_t)w h:(uint16_t)h{
-    uint8_t bg[4]={0},fg[4]={0};for(uint16_t ty=0;ty<h;ty+=16)for(uint16_t tx=0;tx<w;tx+=16){
-        uint16_t tw=MIN(16,w-tx),th=MIN(16,h-ty);uint8_t s;if(!recvAll(_sock,&s,1))return NO;_statsBytes++;
-        if(s&1){if(![self rawX:x+tx y:y+ty w:tw h:th])return NO;continue;}if(s&2)if(![self onePixel:bg])return NO;[self fillX:x+tx y:y+ty w:tw h:th c:bg];
-        if(s&4)if(![self onePixel:fg])return NO;if(s&8){uint8_t n;if(!recvAll(_sock,&n,1))return NO;_statsBytes++;
-            for(uint8_t i=0;i<n;i++){uint8_t c[4],a[2];uint8_t*use=fg;if(s&16){if(![self onePixel:c])return NO;use=c;}if(!recvAll(_sock,a,2))return NO;_statsBytes+=2;[self fillX:x+tx+(a[0]>>4) y:y+ty+(a[0]&15) w:(a[1]>>4)+1 h:(a[1]&15)+1 c:use];}}
-    }return YES;
+- (BOOL)hextileX:(uint16_t)x y:(uint16_t)y w:(uint16_t)w h:(uint16_t)h {
+    uint8_t bg[4]={0}, fg[4]={0};
+
+    for(uint16_t ty=0; ty<h; ty+=16) {
+        for(uint16_t tx=0; tx<w; tx+=16) {
+            uint16_t tw=MIN((uint16_t)16,(uint16_t)(w-tx));
+            uint16_t th=MIN((uint16_t)16,(uint16_t)(h-ty));
+            uint8_t s=0;
+
+            if(!recvAll(_sock,&s,1)) return NO;
+            _statsBytes++;
+
+            if(s & 1) {
+                if(![self rawX:x+tx y:y+ty w:tw h:th]) return NO;
+                continue;
+            }
+
+            if(s & 2) {
+                if(![self onePixel:bg]) return NO;
+            }
+            [self fillX:x+tx y:y+ty w:tw h:th c:bg];
+
+            if(s & 4) {
+                if(![self onePixel:fg]) return NO;
+            }
+
+            if(s & 8) {
+                uint8_t n=0;
+                if(!recvAll(_sock,&n,1)) return NO;
+                _statsBytes++;
+
+                for(uint8_t i=0; i<n; i++) {
+                    uint8_t c[4], a[2];
+                    uint8_t *use=fg;
+
+                    if(s & 16) {
+                        if(![self onePixel:c]) return NO;
+                        use=c;
+                    }
+
+                    if(!recvAll(_sock,a,2)) return NO;
+                    _statsBytes+=2;
+
+                    [self fillX:x+tx+(a[0]>>4)
+                              y:y+ty+(a[0]&15)
+                              w:(a[1]>>4)+1
+                              h:(a[1]&15)+1
+                              c:use];
+                }
+            }
+        }
+    }
+
+    return YES;
 }
 - (BOOL)compact:(uint32_t*)len{
     uint8_t b;if(!recvAll(_sock,&b,1))return NO;_statsBytes++;*len=b&0x7f;if(b&0x80){if(!recvAll(_sock,&b,1))return NO;_statsBytes++;*len|=(b&0x7f)<<7;if(b&0x80){if(!recvAll(_sock,&b,1))return NO;_statsBytes++;*len|=((uint32_t)b)<<14;}}return YES;

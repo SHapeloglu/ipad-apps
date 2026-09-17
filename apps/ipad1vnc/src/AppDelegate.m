@@ -61,6 +61,7 @@
 - (BOOL)sendWakePacketMAC:(NSString*)mac broadcast:(NSString*)broadcast;
 - (NSString*)currentProfileID;
 - (void)migrateSecretsToKeychain;
+- (void)terminalSessionEnded:(NSString*)reason;
 @end
 
 @implementation AppDelegate
@@ -172,6 +173,16 @@
     _terminalView.text=[_terminalBuffer renderString];
     NSRange r=NSMakeRange([_terminalView.text length],0);[_terminalView scrollRangeToVisible:r];
 }
+
+- (void)terminalSessionEnded:(NSString*)reason {
+    if(!_terminalBuffer)_terminalBuffer=[[LegacyTerminalBuffer alloc] initWithColumns:100 rows:32];
+    NSString *line=[NSString stringWithFormat:@"\n[%@]\n",(reason?:@"SSH session ended")];
+    [_terminalBuffer appendTerminalText:line];
+    _terminalView.text=[_terminalBuffer renderString];
+    NSRange r=NSMakeRange([_terminalView.text length],0);
+    [_terminalView scrollRangeToVisible:r];
+}
+
 - (void)profilesTapped {
     if(!_profiles){NSArray*s=[[NSUserDefaults standardUserDefaults]arrayForKey:@"profiles"];_profiles=[[NSMutableArray alloc]initWithArray:(s?s:[NSArray array])];}
     UIActionSheet *sheet=[[[UIActionSheet alloc]initWithTitle:@"Connection Profiles" delegate:self cancelButtonTitle:nil destructiveButtonTitle:nil otherButtonTitles:nil]autorelease];
