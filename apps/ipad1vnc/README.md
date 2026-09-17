@@ -1,42 +1,61 @@
-# iPad1 VNC
+# iPad1 VNC v0.2
 
-A minimal VNC/RFB client aimed at the original iPad (iPad1,1 / iOS 5.1.1) and a lightweight Linux desktop such as XFCE.
+Lightweight VNC client for first-generation iPad / iOS 5.1.1.
 
-## What v0.1 supports
-- iPad UI for host, port and VNC password
-- RFB 3.8 negotiation
-- Security type None (1) and classic VNC Authentication (2)
-- 32-bit true-colour framebuffer
-- RAW VNC encoding
-- Touch as left mouse button / drag
-- Long press as right mouse button
-- Basic on-screen keyboard (ASCII, Enter, Backspace)
+## v0.2 changes
+
+- Remembers VNC host, port, and password locally with `NSUserDefaults`.
+- Automatically collapses the connection panel after a successful connection.
+- `Setup` restores the connection panel; `Hide` collapses it manually.
+- Keyboard button now toggles the iOS keyboard open/closed.
+- Two-finger vertical swipe sends VNC mouse-wheel events for remote scrolling.
+- Pinch zoom from 1.0x to 2.5x.
+- Keeps the original single-finger mouse drag and long-press right-click behavior.
 
 ## Target
-- `ARCHS = armv7`
-- deployment target iOS 5.1
-- jailbreak-style Theos application package (`.deb`)
+
+- Architecture: `armv7`
+- SDK: iPhoneOS 6.1
+- Deployment target: iOS 5.1
+- Packaging: Theos `.deb`
+
+The Makefile expects `iPhoneOS6.1.sdk` under `$THEOS/sdks/`.
 
 ## Build
-This repository is source-ready, but building the actual `.deb` requires a Theos environment with an ARMv7-capable iOS toolchain and an iOS SDK usable for legacy builds.
 
 ```bash
-export THEOS=$HOME/theos
+cd ~/projects/ipad1vnc/iPad1VNC
+make clean
 make package FINALPACKAGE=1
 ```
 
-The package should appear under `packages/`.
+Expected output:
 
-## Install on a jailbroken iPad
-Copy the generated `.deb` to the iPad and run as root:
+```text
+packages/com.olap.ipad1vnc_0.2.0_iphoneos-arm.deb
+```
+
+## Upgrade on the iPad
+
+Copy the `.deb` to the iPad and run as root:
 
 ```bash
-dpkg -i com.olap.ipad1vnc_0.1.0_iphoneos-arm.deb
+dpkg -i /var/mobile/com.olap.ipad1vnc_0.2.0_iphoneos-arm.deb
 killall SpringBoard
 ```
 
-## Recommended server
-Use TigerVNC or another standard VNC server on the Ubuntu/XFCE host. Prefer binding VNC to localhost plus a secure tunnel, or firewall port 5901 to a trusted source IP. Do not leave unauthenticated VNC open to the Internet.
+## Gestures
 
-## Known limitations
-RAW encoding is intentionally simple but bandwidth-heavy. For Internet use, a next version should add Hextile/Tight encoding. Clipboard, wheel scrolling, modifier keys and reconnection UI are not implemented yet.
+- One finger: left mouse button / drag
+- Long press: right mouse button
+- Two-finger vertical swipe: remote mouse-wheel scroll
+- Pinch: local zoom (1.0x–2.5x)
+- Keyboard button: show/hide iOS keyboard
+
+## Server example
+
+TigerVNC display `:1` normally listens on TCP port `5901`:
+
+```bash
+vncserver :1 -geometry 1024x768 -depth 24 -localhost no
+```
