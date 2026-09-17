@@ -9,7 +9,9 @@ iPad1FTPDownloader_FILES = \
     src/main.m \
     src/AppDelegate.m \
     src/FTPDownloader.m \
-    src/FTPBrowser.m
+    src/FTPUploader.m \
+    src/FTPBrowser.m \
+    src/FTPCommandClient.m
 
 iPad1FTPDownloader_FRAMEWORKS = UIKit Foundation CFNetwork
 iPad1FTPDownloader_CFLAGS = -fno-objc-arc

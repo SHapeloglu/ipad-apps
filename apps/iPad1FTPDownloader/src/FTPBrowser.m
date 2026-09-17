@@ -23,9 +23,26 @@
 
     NSString *safePath = path;
     if ([safePath length] == 0) safePath = @"/";
-    if (![safePath hasPrefix:@"/"]) safePath = [@"/" stringByAppendingString:safePath];
+    if (![safePath hasPrefix:@"/"]) {
+        safePath = [@"/" stringByAppendingString:safePath];
+    }
+/*
+ * CFNetwork iOS 5'te FTP klasör listelemesi yaparken
+ * klasör URL'sinin sonunda / bekliyor.
+ *
+ * /public_html/css   -> hata verebilir
+ * /public_html/css/  -> doğru klasör listeleme
+ */
+    NSString *urlPath = safePath;
 
-    NSString *urlString = [NSString stringWithFormat:@"ftp://%@:%ld%@", host, (long)port, safePath];
+    if (![urlPath isEqualToString:@"/"] && ![urlPath hasSuffix:@"/"]) {
+        urlPath = [urlPath stringByAppendingString:@"/"];
+    }
+
+    NSString *urlString = [NSString stringWithFormat:@"ftp://%@:%ld%@",
+                       host,
+                       (long)port,
+                       urlPath];
     NSString *escaped = [urlString stringByAddingPercentEscapesUsingEncoding:NSUTF8StringEncoding];
     NSURL *url = [NSURL URLWithString:escaped];
 
