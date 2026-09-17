@@ -4,6 +4,7 @@
 #import <netdb.h>
 #import <sys/socket.h>
 #import <unistd.h>
+#import <netinet/tcp.h>
 
 static BOOL recvAll(int s, void *buf, size_t len) {
     uint8_t *p=(uint8_t *)buf;
@@ -45,7 +46,11 @@ static uint8_t reverseBits(uint8_t b){ b=(b&0xF0)>>4|(b&0x0F)<<4; b=(b&0xCC)>>2|
     struct addrinfo hints,*res=NULL,*it; memset(&hints,0,sizeof(hints)); hints.ai_family=AF_UNSPEC; hints.ai_socktype=SOCK_STREAM;
     char portbuf[16]; snprintf(portbuf,sizeof(portbuf),"%ld",(long)_port);
     if(getaddrinfo([_host UTF8String],portbuf,&hints,&res)!=0) return NO;
-    for(it=res;it;it=it->ai_next){ int s=socket(it->ai_family,it->ai_socktype,it->ai_protocol); if(s<0)continue; if(connect(s,it->ai_addr,it->ai_addrlen)==0){_sock=s;break;} close(s); }
+    for(it=res;it;it=it->ai_next){
+        int s=socket(it->ai_family,it->ai_socktype,it->ai_protocol); if(s<0)continue;
+        int yes=1; setsockopt(s,SOL_SOCKET,SO_KEEPALIVE,&yes,sizeof(yes)); setsockopt(s,IPPROTO_TCP,TCP_NODELAY,&yes,sizeof(yes));
+        if(connect(s,it->ai_addr,it->ai_addrlen)==0){_sock=s;break;} close(s);
+    }
     freeaddrinfo(res); return _sock>=0;
 }
 

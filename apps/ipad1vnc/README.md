@@ -1,61 +1,46 @@
-# iPad1 VNC v0.2
+# iPad1VNC v0.3
 
-Lightweight VNC client for first-generation iPad / iOS 5.1.1.
+A deliberately small VNC client for the first-generation iPad running iOS 5.1.1. It targets armv7 and is packaged as a jailbreak-friendly `.deb` with Theos.
 
-## v0.2 changes
+## v0.3 changes
 
-- Remembers VNC host, port, and password locally with `NSUserDefaults`.
-- Automatically collapses the connection panel after a successful connection.
-- `Setup` restores the connection panel; `Hide` collapses it manually.
-- Keyboard button now toggles the iOS keyboard open/closed.
-- Two-finger vertical swipe sends VNC mouse-wheel events for remote scrolling.
-- Pinch zoom from 1.0x to 2.5x.
-- Keeps the original single-finger mouse drag and long-press right-click behavior.
+- Automatic reconnect 3 seconds after a dropped VNC connection.
+- Full-screen desktop mode with a small `Menu` button to return to controls.
+- Pointer-speed control (0.5x to 1.5x), saved between launches.
+- TCP keepalive + TCP_NODELAY for lower-latency input and more resilient sessions.
+- Existing v0.2 features remain: saved host/port/password, collapsible setup bar, keyboard button, pinch zoom, two-finger wheel scrolling and long-press right click.
 
-## Target
+## Build target
 
-- Architecture: `armv7`
-- SDK: iPhoneOS 6.1
-- Deployment target: iOS 5.1
-- Packaging: Theos `.deb`
+```make
+ARCHS = armv7
+TARGET = iphone:clang:6.1:5.1
+```
 
-The Makefile expects `iPhoneOS6.1.sdk` under `$THEOS/sdks/`.
+Expected build environment: Theos on Linux/WSL, iOS cross-toolchain, and a complete iPhoneOS 6.1 SDK linked at `$THEOS/sdks/iPhoneOS6.1.sdk`.
 
-## Build
+Build:
 
 ```bash
-cd ~/projects/ipad1vnc/iPad1VNC
 make clean
 make package FINALPACKAGE=1
 ```
 
-Expected output:
+Expected package:
 
 ```text
-packages/com.olap.ipad1vnc_0.2.0_iphoneos-arm.deb
+packages/com.olap.ipad1vnc_0.3.0_iphoneos-arm.deb
 ```
 
-## Upgrade on the iPad
+## Install on jailbroken iPad
 
-Copy the `.deb` to the iPad and run as root:
+Copy the package to `/var/mobile/`, then from a root shell on the iPad:
 
 ```bash
-dpkg -i /var/mobile/com.olap.ipad1vnc_0.2.0_iphoneos-arm.deb
+dpkg -i /var/mobile/com.olap.ipad1vnc_0.3.0_iphoneos-arm.deb
 killall SpringBoard
 ```
 
-## Gestures
+## VNC server
 
-- One finger: left mouse button / drag
-- Long press: right mouse button
-- Two-finger vertical swipe: remote mouse-wheel scroll
-- Pinch: local zoom (1.0x–2.5x)
-- Keyboard button: show/hide iOS keyboard
-
-## Server example
-
-TigerVNC display `:1` normally listens on TCP port `5901`:
-
-```bash
-vncserver :1 -geometry 1024x768 -depth 24 -localhost no
-```
+The existing Ubuntu/TigerVNC setup can continue to use display `:1` / TCP port `5901` at 1024x768. Restrict the VNC port with the provider firewall whenever possible.

@@ -8,8 +8,10 @@
     CGFloat _zoomScale;
     CGFloat _pinchStartScale;
     CGFloat _scrollAccumulator;
+    CGFloat _pointerSensitivity;
 }
 @property (nonatomic, retain) UIImage *image;
 @property (nonatomic, assign) VNCClient *client;
+@property (nonatomic, assign) CGFloat pointerSensitivity;
 - (void)updateImage:(UIImage *)image;
 @end

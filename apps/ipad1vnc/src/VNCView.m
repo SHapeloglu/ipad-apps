@@ -4,6 +4,7 @@
 @implementation VNCView
 @synthesize image = _image;
 @synthesize client = _client;
+@synthesize pointerSensitivity = _pointerSensitivity;
 
 - (id)initWithFrame:(CGRect)frame {
     if ((self = [super initWithFrame:frame])) {
@@ -12,6 +13,7 @@
         _zoomScale = 1.0;
         _pinchStartScale = 1.0;
         _scrollAccumulator = 0.0;
+        _pointerSensitivity = 1.0;
 
         UILongPressGestureRecognizer *longPress = [[[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(longPress:)] autorelease];
         longPress.minimumPressDuration = 0.55;
@@ -77,7 +79,12 @@
 - (void)touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event {
     if ([[event allTouches] count] != 1) return;
     UITouch *t = [touches anyObject];
-    _lastPoint = [self remotePointForTouch:t];
+    CGPoint target = [self remotePointForTouch:t];
+    CGFloat speed = MIN(1.5, MAX(0.5, _pointerSensitivity));
+    _lastPoint = CGPointMake(_lastPoint.x + (target.x - _lastPoint.x) * speed,
+                             _lastPoint.y + (target.y - _lastPoint.y) * speed);
+    _lastPoint.x = MIN(MAX(_lastPoint.x, 0), MAX(1, _client.framebufferWidth-1));
+    _lastPoint.y = MIN(MAX(_lastPoint.y, 0), MAX(1, _client.framebufferHeight-1));
     [_client sendPointerX:(NSUInteger)_lastPoint.x y:(NSUInteger)_lastPoint.y buttons:1];
 }
 - (void)touchesEnded:(NSSet *)touches withEvent:(UIEvent *)event {
