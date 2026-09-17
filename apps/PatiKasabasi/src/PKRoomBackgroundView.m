@@ -9,11 +9,12 @@
 @synthesize placedItems = _placedItems;
 @synthesize dayPart = _dayPart;
 @synthesize season = _season;
+@synthesize highlightedItemIdentifier = _highlightedItemIdentifier;
 
 - (CGRect)itemFrameForIdentifier:(NSString *)identifier {
     CGFloat floorY = self.bounds.size.height * 0.68f;
     if ([identifier isEqualToString:@"rug"]) return CGRectMake(215.0f, floorY + 15.0f, 395.0f, 160.0f);
-    if ([identifier isEqualToString:@"bed"]) return CGRectMake(32.0f, floorY + 20.0f, 200.0f, 115.0f);
+    if ([identifier isEqualToString:@"bed"]) return CGRectMake(32.0f, floorY + 20.0f, 200.0f, 130.0f);
     if ([identifier isEqualToString:@"bowl"]) return CGRectMake(590.0f, floorY + 75.0f, 112.0f, 70.0f);
     if ([identifier isEqualToString:@"ball"]) return CGRectMake(684.0f, floorY + 62.0f, 86.0f, 86.0f);
     if ([identifier isEqualToString:@"plant"]) return CGRectMake(880.0f, floorY - 75.0f, 105.0f, 160.0f);
@@ -69,6 +70,14 @@
     }
 }
 
+- (void)setHighlightedItemIdentifier:(NSString *)highlightedItemIdentifier {
+    if (_highlightedItemIdentifier != highlightedItemIdentifier) {
+        [_highlightedItemIdentifier release];
+        _highlightedItemIdentifier = [highlightedItemIdentifier copy];
+        [self setNeedsDisplay];
+    }
+}
+
 - (void)drawRect:(CGRect)rect {
     CGContextRef context = UIGraphicsGetCurrentContext();
     CGFloat floorY = rect.size.height * 0.68f;
@@ -112,15 +121,44 @@
     CGContextSetFillColorWithColor(context, outside.CGColor);
     CGContextFillEllipseInRect(context, CGRectMake(80.0f, 145.0f, 180.0f, 50.0f));
 
+    if ([_highlightedItemIdentifier length] > 0) {
+        CGRect targetFrame = CGRectInset([self itemFrameForIdentifier:_highlightedItemIdentifier], -7.0f, -7.0f);
+        CGContextSetFillColorWithColor(context, [UIColor colorWithRed:1.0f green:0.87f blue:0.24f alpha:0.30f].CGColor);
+        CGContextFillEllipseInRect(context, targetFrame);
+        CGContextSetStrokeColorWithColor(context, [UIColor colorWithRed:1.0f green:0.80f blue:0.12f alpha:0.95f].CGColor);
+        CGContextSetLineWidth(context, 6.0f);
+        CGContextStrokeEllipseInRect(context, targetFrame);
+    }
+
     if ([_placedItems containsObject:@"rug"]) {
         CGContextSetFillColorWithColor(context, [UIColor colorWithRed:0.94f green:0.60f blue:0.48f alpha:0.82f].CGColor);
         CGContextFillEllipseInRect(context, CGRectMake(235.0f, floorY + 35.0f, 355.0f, 120.0f));
     }
     if ([_placedItems containsObject:@"bed"]) {
-        CGContextSetFillColorWithColor(context, [UIColor colorWithRed:0.46f green:0.72f blue:0.79f alpha:1.0f].CGColor);
-        CGContextFillRect(context, CGRectMake(42.0f, floorY + 36.0f, 180.0f, 82.0f));
-        CGContextSetFillColorWithColor(context, [UIColor whiteColor].CGColor);
-        CGContextFillEllipseInRect(context, CGRectMake(54.0f, floorY + 47.0f, 72.0f, 38.0f));
+        UIColor *bedOuter = [UIColor colorWithRed:0.28f green:0.60f blue:0.70f alpha:1.0f];
+        UIColor *bedRim = [UIColor colorWithRed:0.14f green:0.39f blue:0.50f alpha:1.0f];
+        UIColor *bedCushion = [UIColor colorWithRed:0.98f green:0.83f blue:0.75f alpha:1.0f];
+        CGContextSetFillColorWithColor(context, [UIColor colorWithWhite:0.0f alpha:0.15f].CGColor);
+        CGContextFillEllipseInRect(context, CGRectMake(34.0f, floorY + 105.0f, 204.0f, 28.0f));
+        CGContextSetFillColorWithColor(context, bedRim.CGColor);
+        CGContextFillEllipseInRect(context, CGRectMake(38.0f, floorY + 25.0f, 192.0f, 102.0f));
+        CGContextSetFillColorWithColor(context, bedCushion.CGColor);
+        CGContextFillEllipseInRect(context, CGRectMake(53.0f, floorY + 38.0f, 162.0f, 73.0f));
+
+        CGContextSetFillColorWithColor(context, bedOuter.CGColor);
+        CGContextMoveToPoint(context, 40.0f, floorY + 71.0f);
+        CGContextAddQuadCurveToPoint(context, 45.0f, floorY + 121.0f, 68.0f, floorY + 127.0f);
+        CGContextAddQuadCurveToPoint(context, 134.0f, floorY + 144.0f, 204.0f, floorY + 127.0f);
+        CGContextAddQuadCurveToPoint(context, 226.0f, floorY + 121.0f, 230.0f, floorY + 71.0f);
+        CGContextAddQuadCurveToPoint(context, 135.0f, floorY + 105.0f, 40.0f, floorY + 71.0f);
+        CGContextClosePath(context);
+        CGContextFillPath(context);
+
+        CGContextSetFillColorWithColor(context, [UIColor colorWithWhite:1.0f alpha:0.90f].CGColor);
+        CGContextFillEllipseInRect(context, CGRectMake(127.0f, floorY + 112.0f, 17.0f, 14.0f));
+        CGContextFillEllipseInRect(context, CGRectMake(115.0f, floorY + 106.0f, 9.0f, 10.0f));
+        CGContextFillEllipseInRect(context, CGRectMake(127.0f, floorY + 101.0f, 9.0f, 10.0f));
+        CGContextFillEllipseInRect(context, CGRectMake(140.0f, floorY + 106.0f, 9.0f, 10.0f));
     }
     if ([_placedItems containsObject:@"bowl"]) {
         UIColor *bowlBlue = [UIColor colorWithRed:0.27f green:0.58f blue:0.72f alpha:1.0f];
@@ -192,6 +230,7 @@
     [_placedItems release];
     [_dayPart release];
     [_season release];
+    [_highlightedItemIdentifier release];
     [super dealloc];
 }
 

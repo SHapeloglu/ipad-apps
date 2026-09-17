@@ -5,7 +5,7 @@
 - `ARCHS=armv7`, deployment target 5.1, iPhoneOS 6.1 SDK, ARC kapalı.
 - `./scripts/validate_project.sh` geçmeli.
 - Derleyici uyarıları incelenmeli; modern API veya sahiplik uyarısı kalmamalı.
-- Üretilen paketin mimarisi ve sürümü `iphoneos-arm / 0.4.0-alpha4` olmalı.
+- Üretilen paketin mimarisi ve sürümü `iphoneos-arm / 0.5.0-alpha5` olmalı.
 
 ## Sahiplenme ve kayıt geçişi
 
@@ -13,7 +13,7 @@
 2. Evde 500 pati, yatak ve mama kabını doğrula.
 3. Pet shop yolunda 300 pati, top sahipliği ve topun odada olduğunu doğrula.
 4. Uygulamayı kapat/aç; Devam Et ile tüm değerlerin korunduğunu doğrula.
-5. 0.1.0-alpha1, 0.2.0-alpha2 ve 0.3.0-alpha3 kayıtlarını ayrı ayrı 0.4'te aç; eski yavru, ekonomi, ihtiyaç, oda ve dolap verilerinin korunduğunu doğrula.
+5. 0.1.0-alpha1, 0.2.0-alpha2, 0.3.0-alpha3 ve 0.4.0-alpha4 kayıtlarını ayrı ayrı 0.5'te aç; eski yavru, ekonomi, ihtiyaç, oda ve dolap verilerinin korunduğunu doğrula.
 6. Kaydet, uygulamayı yeniden aç ve eşya yerleşimi ile takılan aksesuarların aynı kaldığını doğrula.
 7. Yeni Oyun seçeneğinde onaydan sonra eski kayıt ve fotoğraf klasörünün temizlendiğini doğrula.
 
@@ -26,6 +26,7 @@
 - Eylem simgeleri yaklaşık 0,4 saniyede temizlenmeli; ekran kapanınca gecikmiş çağrı çökmemeli.
 - Evdeki yavru önceki görünür boyutun dörtte biri olmalı; buna rağmen merkezdeki dokunma hedefi en az 54×54 çalışmalı.
 - Evdeki yavru yavaşça en fazla yaklaşık 5 punto hareket etmeli; başka ekrana geçildiğinde katman animasyonu kalmamalı.
+- Yavru beş bakım düğmesinin her birine sürüklenebilmeli; geçerli bırakma tek eylem çalıştırmalı, boş alana bırakma değer veya para değiştirmemeli.
 - Ses anahtarı anında çalışmalı ve yeniden açılışta korunmalı.
 - Her dört anlamlı eylemde gün +1 ve para +20 olmalı.
 - Her üçüncü eylemde seçilen kişiliğe uygun özgür irade metni görülebilmeli.
@@ -48,6 +49,8 @@
 - Odam ekranında yalnızca yerleştirilmiş eşyalara dokunulabilmeli; boş zemine dokunmak tur veya para harcamamalı.
 - Yatak Uyut, mama kabı Besle, top Oyna, halı Sev eylemini doğrudan başlatmalı.
 - Mama kabı gövde, koyu üst kenar, görünür mama taneleri ve ön pati işaretiyle ilk bakışta ayırt edilmeli.
+- Yatak oval dış çeper, iç minder, yükseltilmiş ön kenar ve pati motifiyle gerçek hayvan yatağı olarak ayırt edilmeli.
+- Yavru yatak, mama kabı, top, halı ve dört beceri mobilyasına sürüklenebilmeli; hedef sarı halka göstermeli ve geçerli bırakma yalnızca bir etkileşim çalıştırmalı.
 - Bitki, kitaplık, piyano ve sanat masası ilgili dersi doğrudan başlatmalı; 10 pati ve yerleşik eşya bonusu uygulanmalı.
 - Üst üste gelen halı/eşya dokunma alanlarında görünür küçük eşya halıdan önce seçilmeli.
 
@@ -68,7 +71,7 @@
 - Sürükleme sırasında hedef bölgenin beyaz çerçevesi kalınlaşıp hafif büyümeli; düğmeye tek dokunma aynı geçişi yapmaya devam etmeli.
 - Bayrak ve ağaç hafif sallanmalı, fener yavaşça parlamalı; haritadan çıkınca animasyon katmanları temizlenmeli.
 - Günlük isteğin bölgesinde sarı çerçeve ve `İstek burada!` metni olmalı; her bölge doğru ekrana gitmeli.
-- Dostluk Parkında aynı anda yalnızca dört komşu görünmeli ve tablo akıcı kaymalı.
+- Dostluk Parkında aynı anda yalnızca dört komşu büyük görsel kartlarda görünmeli; yavru her karta dokunma veya sürüklemeyle gidebilmeli.
 - Her ziyaret arkadaşlığı +8 ve komşunun becerisini +1 artırmalı.
 - Günün komşu isteği yanlış bölgede tamamlanamamalı ve ödül/tur ilerlemesi olmamalı.
 - Doğru bölgede yalnızca bir kez 20 pati, +12 arkadaşlık ve +1 ilgili beceri vermeli.
@@ -77,9 +80,14 @@
 - Arkadaşlık 40'a ulaştığında dostluk koleksiyonu eklenmeli.
 - Günün etkinliği yalnızca bir kez 25 pati ve rozet vermeli; ertesi gün yeniden katılım açılmalı.
 - Dört etkinlik ve dört koleksiyon adı sırayla doğrulanmalı.
+- Kasaba Meydanında yavru şenlik veya etkin günlük istek kartına sürüklenebilmeli; etkin olmayan istek bırakma hedefi olmamalı.
+- Park, Okul ve Meydanda yavru hedefe giderken kısa hareket etmeli, geri dönmeli ve ekran değişince tekrarlayan animasyon kalmamalı.
 
 ## Okul ve meslek
 
+- Üst menüdeki `Evimiz` düğmesi tek dokunuşla ana ev ekranına dönmeli.
+- Dersler/Meslekler bölümlü denetimi beş büyük kartın içeriğini doğru değiştirmeli; eski metin tablosu görünmemeli.
+- Yavru beş ders ve beş meslek kartının her birine sürüklenebilmeli; kart hedefken büyüyüp çerçevesi kalınlaşmalı.
 - Ders 10 pati harcamalı ve normalde +1 ilerlemeli.
 - İlgili mobilya odadaysa ders +2 ilerlemeli; beceri 10'u aşmamalı.
 - Yetişkinlikten önce meslek seçilememeli.

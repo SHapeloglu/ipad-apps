@@ -4,7 +4,7 @@ set -eu
 project_dir="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$project_dir"
 
-required_files="Makefile control Resources/Info.plist Resources/tap.wav Resources/success.wav main.m src/PKAppDelegate.m src/PKGameState.m src/PKCatalog.m src/PKHomeViewController.m src/PKTownMapView.m src/PKTownMapViewController.m src/PKAmbientObjectView.m src/PKTownViewController.m src/PKParkViewController.m src/PKRoomPlayViewController.m src/PKWardrobeViewController.m src/PKDecorViewController.m src/PKSkillsViewController.m src/PKMiniGamesViewController.m src/PKAlbumViewController.m src/PKSoundManager.m"
+required_files="Makefile control Resources/Info.plist Resources/tap.wav Resources/success.wav main.m src/PKAppDelegate.m src/PKGameState.m src/PKCatalog.m src/PKHomeViewController.m src/PKTownMapView.m src/PKTownMapViewController.m src/PKAmbientObjectView.m src/PKActivitySceneView.m src/PKTownViewController.m src/PKParkViewController.m src/PKRoomPlayViewController.m src/PKWardrobeViewController.m src/PKDecorViewController.m src/PKSkillsViewController.m src/PKMiniGamesViewController.m src/PKAlbumViewController.m src/PKSoundManager.m"
 for required_file in $required_files; do
     test -f "$required_file" || { echo "Eksik dosya: $required_file" >&2; exit 1; }
 done
@@ -14,7 +14,7 @@ grep -q '^TARGET = iphone:clang:6.1:5.1$' Makefile
 grep -q -- '-fno-objc-arc' Makefile
 grep -q 'PatiKasabasi_RESOURCE_DIRS = Resources' Makefile
 grep -q 'AudioToolbox' Makefile
-grep -q '^Version: 0.4.0-alpha4$' control
+grep -q '^Version: 0.5.0-alpha5$' control
 
 if grep -En '(__weak|\bweak\b|\bstrong\b|@autoreleasepool|UIAlertController|UICollectionView|NSURLSession|SpriteKit|SceneKit|Metal|NSTimer|CADisplayLink|UIGraphicsImageRenderer|firstObject|setAnimationAutoreverses|SVGKit|UIWebView|animatedImageWithImages|animationImages)' src/*.[hm] main.m; then
     echo "Legacy hedefle uyumsuz bir API veya sahiplik belirteci bulundu." >&2
@@ -28,8 +28,8 @@ with open("Resources/Info.plist", "rb") as handle:
 assert plist["CFBundleIdentifier"] == "com.olapteknoloji.patikasabasi"
 assert plist["UIDeviceFamily"] == [2]
 assert "armv7" in plist["UIRequiredDeviceCapabilities"]
-assert plist["CFBundleShortVersionString"] == "0.4.0"
-assert plist["CFBundleVersion"] == "4"
+assert plist["CFBundleShortVersionString"] == "0.5.0"
+assert plist["CFBundleVersion"] == "5"
 print("Info.plist: OK")
 PY
 
@@ -63,9 +63,18 @@ grep -q 'itemIdentifierAtPoint' src/PKRoomBackgroundView.m
 grep -q 'equippedAccessories' src/PKPetAvatarView.m
 grep -q '_visualScale = 0.25f' src/PKPetAvatarView.m
 grep -q 'UIPanGestureRecognizer' src/PKTownMapViewController.m
+grep -q 'UIPanGestureRecognizer' src/PKHomeViewController.m
+grep -q 'UIPanGestureRecognizer' src/PKRoomPlayViewController.m
+grep -q 'UIPanGestureRecognizer' src/PKSkillsViewController.m
+grep -q 'UIPanGestureRecognizer' src/PKParkViewController.m
+grep -q 'UIPanGestureRecognizer' src/PKTownViewController.m
 grep -q 'setAnimationRepeatAutoreverses' src/PKTownMapViewController.m
 grep -q 'removeAllAnimations' src/PKTownMapViewController.m
 grep -q '@implementation PKAmbientObjectView' src/PKAmbientObjectView.m
+grep -q '@implementation PKActivitySceneView' src/PKActivitySceneView.m
+grep -q 'UISegmentedControl' src/PKSkillsViewController.m
+grep -q 'homeTapped' src/PKSkillsViewController.m
+grep -q 'highlightedItemIdentifier' src/PKRoomBackgroundView.m
 grep -q 'completeNeighborRequestAtLocation' src/PKGameState.m
 
 python3 - <<'PY'
@@ -94,8 +103,8 @@ test "$implementations" = "$implementation_ends" || {
     echo "@implementation / @end sayısı uyuşmuyor." >&2
     exit 1
 }
-test "$implementations" = "27" || {
-    echo "Beklenen sınıf sayısı 27, bulunan: $implementations" >&2
+test "$implementations" = "28" || {
+    echo "Beklenen sınıf sayısı 28, bulunan: $implementations" >&2
     exit 1
 }
 

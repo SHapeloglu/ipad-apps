@@ -19,10 +19,14 @@
 @interface PKHomeViewController ()
 - (NSArray *)actionIdentifiers;
 - (void)refreshUI;
+- (void)performActionIdentifier:(NSString *)identifier;
 - (void)showReactionForIdentifier:(NSString *)identifier;
 - (void)resetAvatarReaction;
 - (void)startAvatarIdleAnimation;
 - (void)stopAvatarIdleAnimation;
+- (NSInteger)actionIndexAtPoint:(CGPoint)point;
+- (void)refreshActionHighlight;
+- (void)returnAvatarHome;
 - (void)cleanupUnreferencedPhotosInFolder:(NSString *)folder;
 @end
 
@@ -32,6 +36,7 @@
     self = [super init];
     if (self) {
         _gameState = [gameState retain];
+        _dragActionIndex = -1;
         self.title = @"Evimiz";
     }
     return self;
@@ -79,8 +84,11 @@
     _avatarView.userInteractionEnabled = YES;
     UITapGestureRecognizer *petTap = [[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(avatarTapped:)] autorelease];
     [_avatarView addGestureRecognizer:petTap];
+    UIPanGestureRecognizer *petPan = [[[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(avatarPanned:)] autorelease];
+    [_avatarView addGestureRecognizer:petPan];
     [_avatarMotionView addSubview:_avatarView];
     [self.view addSubview:_avatarMotionView];
+    _avatarHomeCenter = _avatarMotionView.center;
 
     UIView *needsPanel = [[[UIView alloc] initWithFrame:CGRectMake(650.0f, 25.0f, 350.0f, 365.0f)] autorelease];
     [PKTheme stylePanel:needsPanel];
@@ -100,7 +108,7 @@
     UIView *feedbackPanel = [[[UIView alloc] initWithFrame:CGRectMake(650.0f, 405.0f, 350.0f, 115.0f)] autorelease];
     [PKTheme stylePanel:feedbackPanel];
     [self.view addSubview:feedbackPanel];
-    NSString *welcomeMessage = _gameState.newHomeBadge ? @"Yeni Bir Yuva rozetini kazandın!" : @"Hediye oyuncağın hazır!";
+    NSString *welcomeMessage = _gameState.newHomeBadge ? @"Yeni Bir Yuva rozetini kazandın!\nYavrunu aşağıdaki eylemlere sürükleyebilirsin." : @"Hediye oyuncağın hazır!\nYavrunu aşağıdaki eylemlere sürükleyebilirsin.";
     _feedbackLabel = [[self labelWithFrame:CGRectMake(14.0f, 7.0f, 322.0f, 69.0f) text:welcomeMessage fontSize:16.0f bold:NO] retain];
     [feedbackPanel addSubview:_feedbackLabel];
     _questLabel = [[self labelWithFrame:CGRectMake(12.0f, 77.0f, 326.0f, 31.0f) text:@"" fontSize:14.0f bold:YES] retain];
@@ -124,12 +132,15 @@
     CGFloat actionWidth = 178.0f;
     CGFloat actionGap = 18.0f;
     CGFloat actionStartX = 31.0f;
+    NSMutableArray *actionButtons = [NSMutableArray array];
     for (index = 0; index < [titles count]; index++) {
         UIButton *button = index == 0 ? [self primaryButtonWithFrame:CGRectMake(actionStartX + ((actionWidth + actionGap) * index), 600.0f, actionWidth, 58.0f) title:[titles objectAtIndex:index]] : [self secondaryButtonWithFrame:CGRectMake(actionStartX + ((actionWidth + actionGap) * index), 600.0f, actionWidth, 58.0f) title:[titles objectAtIndex:index]];
         button.tag = index;
         [button addTarget:self action:@selector(actionTapped:) forControlEvents:UIControlEventTouchUpInside];
         [self.view addSubview:button];
+        [actionButtons addObject:button];
     }
+    _actionButtons = [[NSArray alloc] initWithArray:actionButtons];
     [self refreshUI];
 }
 
@@ -175,10 +186,77 @@
     NSArray *identifiers = [self actionIdentifiers];
     if (sender.tag < 0 || sender.tag >= (NSInteger)[identifiers count]) return;
     NSString *identifier = [identifiers objectAtIndex:(NSUInteger)sender.tag];
+    [self performActionIdentifier:identifier];
+}
+
+- (void)performActionIdentifier:(NSString *)identifier {
     _feedbackLabel.text = [_gameState performActionIdentifier:identifier];
     [PKSoundManager playEffectNamed:@"tap" enabled:_gameState.soundEnabled];
     [self refreshUI];
     [self showReactionForIdentifier:identifier];
+}
+
+- (NSInteger)actionIndexAtPoint:(CGPoint)point {
+    NSUInteger index = 0;
+    for (index = 0; index < [_actionButtons count]; index++) {
+        UIButton *button = [_actionButtons objectAtIndex:index];
+        if (CGRectContainsPoint(button.frame, point)) return (NSInteger)index;
+    }
+    return -1;
+}
+
+- (void)refreshActionHighlight {
+    NSUInteger index = 0;
+    for (index = 0; index < [_actionButtons count]; index++) {
+        UIButton *button = [_actionButtons objectAtIndex:index];
+        BOOL highlighted = ((NSInteger)index == _dragActionIndex);
+        button.transform = highlighted ? CGAffineTransformMakeScale(1.07f, 1.07f) : CGAffineTransformIdentity;
+        button.alpha = (_dragActionIndex < 0 || highlighted) ? 1.0f : 0.78f;
+    }
+}
+
+- (void)avatarPanned:(UIPanGestureRecognizer *)recognizer {
+    CGPoint point = [recognizer locationInView:self.view];
+    if (recognizer.state == UIGestureRecognizerStateBegan) {
+        [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(startAvatarIdleAnimation) object:nil];
+        [self stopAvatarIdleAnimation];
+        _avatarMotionView.transform = CGAffineTransformMakeScale(1.08f, 1.08f);
+    }
+    if (recognizer.state == UIGestureRecognizerStateBegan || recognizer.state == UIGestureRecognizerStateChanged) {
+        CGFloat x = MIN(MAX(point.x, 60.0f), self.view.bounds.size.width - 60.0f);
+        CGFloat y = MIN(MAX(point.y, 105.0f), 635.0f);
+        _avatarMotionView.center = CGPointMake(x, y);
+        NSInteger targetIndex = [self actionIndexAtPoint:point];
+        if (_dragActionIndex != targetIndex) {
+            _dragActionIndex = targetIndex;
+            [self refreshActionHighlight];
+        }
+        return;
+    }
+    if (recognizer.state == UIGestureRecognizerStateEnded || recognizer.state == UIGestureRecognizerStateCancelled || recognizer.state == UIGestureRecognizerStateFailed) {
+        NSInteger targetIndex = [self actionIndexAtPoint:point];
+        _dragActionIndex = -1;
+        [self refreshActionHighlight];
+        [self returnAvatarHome];
+        NSArray *identifiers = [self actionIdentifiers];
+        if (targetIndex >= 0 && targetIndex < (NSInteger)[identifiers count]) {
+            [self performActionIdentifier:[identifiers objectAtIndex:(NSUInteger)targetIndex]];
+        } else {
+            _feedbackLabel.text = @"Yavrunu Besle, Oyna, Uyut, Temizle veya Sev düğmesinin üzerine bırak.";
+        }
+    }
+}
+
+- (void)returnAvatarHome {
+    [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(startAvatarIdleAnimation) object:nil];
+    [UIView beginAnimations:@"homePetReturn" context:nil];
+    [UIView setAnimationDuration:0.24f];
+    [UIView setAnimationCurve:UIViewAnimationCurveEaseInOut];
+    _avatarMotionView.center = _avatarHomeCenter;
+    _avatarMotionView.transform = CGAffineTransformIdentity;
+    _avatarMotionView.alpha = 1.0f;
+    [UIView commitAnimations];
+    [self performSelector:@selector(startAvatarIdleAnimation) withObject:nil afterDelay:0.27f];
 }
 
 - (void)avatarTapped:(UITapGestureRecognizer *)recognizer {
@@ -280,19 +358,25 @@
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
+    _avatarMotionView.center = _avatarHomeCenter;
+    _avatarView.transform = CGAffineTransformIdentity;
+    _avatarView.reactionIdentifier = @"";
+    _dragActionIndex = -1;
+    [self refreshActionHighlight];
     [self refreshUI];
     [self startAvatarIdleAnimation];
 }
 
 - (void)viewWillDisappear:(BOOL)animated {
     [super viewWillDisappear:animated];
+    [NSObject cancelPreviousPerformRequestsWithTarget:self];
     [self stopAvatarIdleAnimation];
     [_gameState save];
 }
 
 - (void)dealloc {
     [NSObject cancelPreviousPerformRequestsWithTarget:self];
-    [_gameState release]; [_roomView release]; [_avatarMotionView release]; [_avatarView release]; [_nameLabel release]; [_profileLabel release];
+    [_gameState release]; [_roomView release]; [_avatarMotionView release]; [_avatarView release]; [_actionButtons release]; [_nameLabel release]; [_profileLabel release];
     [_statusLabel release]; [_moodLabel release]; [_feedbackLabel release]; [_questLabel release]; [_soundButton release];
     [_satietyBar release]; [_energyBar release]; [_hygieneBar release]; [_funBar release]; [_socialBar release]; [_affectionBar release];
     [super dealloc];

@@ -34,9 +34,10 @@ Barınak 500 pati ve `Yeni Bir Yuva` rozeti verir. Pet shop 300 pati ve renkli t
 
 - Envanter: yatak, mama kabı, top, bitki, kitaplık, piyano, sanat masası ve pati halısı.
 - Odada en fazla altı eşya, önceden belirlenmiş güvenli yuvalara yerleşir.
-- Ayrı oda görünümünde yatağa, mama kabına, topa, halıya veya beceri mobilyasına dokunmak ilgili eylemi doğrudan başlatır.
+- Ayrı oda görünümünde yatağa, mama kabına, topa, halıya veya beceri mobilyasına dokunmak ya da yavruyu eşyanın üzerine bırakmak ilgili eylemi doğrudan başlatır.
 - Hayvan çizimleri önceki görünür boyutun dörtte biri ölçeğindedir; dokunma hedefi görselden bağımsız olarak en az 54×54 kalır.
 - Mama kabı gövde, belirgin üst kenar, görünür mama taneleri ve ön yüzde pati işaretiyle diğer oda nesnelerinden ayrılır.
+- Yatak, gerçek bir hayvan yatağı gibi oval dış çeper, yumuşak iç minder, yükseltilmiş ön kenar ve pati motifi taşır.
 - Dolapta Baş, Gözlük, Boyun ve Kostüm yuvaları vardır; her yuvada aynı anda yalnızca bir parça takılır.
 - Sekiz parçanın ikisi başlangıç hediyesidir; diğerleri yalnızca oyun içi pati parasıyla alınır ve gerçek ödeme yoktur.
 - Müzik, Sanat, Doğa, Mantık ve Sosyal becerileri 0–10 aralığındadır.
@@ -55,11 +56,14 @@ Barınak 500 pati ve `Yeni Bir Yuva` rozeti verir. Pet shop 300 pati ve renkli t
 - Etkinlikler kaybolmaz; döngü halinde yeniden gelir.
 - Kişiliğe bağlı küçük bağımsız davranışlar her üçüncü eylemde metin olayı olarak görünür.
 - Haritadaki yavru bir bölgeye sürüklenebilir; bölge düğmelerine dokunma her zaman eşdeğer alternatif olarak kalır.
+- Park, Okul ve Meydan metin listeleri yerine görsel bir sahne kullanır; yavru komşuya, ders/meslek kartına, şenliğe veya günlük isteğe sürüklenebilir.
+- Pati Okulu üst menüde `Evimiz` dönüşünü her zaman gösterir; Dersler ve Meslekler aynı sahnede büyük kartlarla değiştirilir.
 
 ## Hareket bütçesi
 
 - Bayrak, ağaç ve fener Core Graphics ile bir kez çizilir; hareket sırasında yalnızca küçük görünüm katmanlarının dönüşümü veya şeffaflığı değişir.
-- Ev, oda, dolap ve haritadaki tek yavruda en fazla 5 punto yavaş boşta bekleme hareketi kullanılır.
+- Ev, oda, dolap, harita, okul, park ve meydandaki tek yavruda en fazla 5 punto yavaş boşta bekleme hareketi kullanılır.
+- Dokunulan kartta yavru kısa süre hedefe gider ve geri döner; sürüklemede parmağı doğrudan izler. Bu, sürekli yapay zekâ döngüsü olmadan Sims benzeri canlılık verir.
 - Ekran görünmez olunca animasyonlar kaldırılır. GIF, kare dizisi, SVG yorumlayıcı, sürekli oyun döngüsü veya zamanlayıcı kullanılmaz.
 - Parktaki dört komşu aynı anda sürekli canlandırılmaz; iPad 1 bellek ve işlemci bütçesi önceliklidir.
 

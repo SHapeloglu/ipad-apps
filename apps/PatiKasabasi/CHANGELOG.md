@@ -1,5 +1,16 @@
 # Değişiklik Günlüğü
 
+## 0.5.0-alpha5
+
+- Dostluk Parkı, Pati Okulu ve Kasaba Meydanındaki metin ağırlıklı tablolar, Core Graphics ile çizilen hafif sahneler ve büyük görsel etkinlik kartlarıyla değiştirildi.
+- Yavru üç kasaba ekranında da görünür hale getirildi; karta dokunulduğunda hedefe gidip dönüyor ve yavru doğrudan hedefe sürüklenebiliyor.
+- Evde Besle, Oyna, Uyut, Temizle ve Sev düğmelerine; odada yerleştirilmiş eşyalara yavru sürükleme eklendi.
+- Pati Okulu Dersler/Meslekler bölümlü denetime geçirildi ve açık `Evimiz` üst menü düğmesi eklendi.
+- Oda yatağı gölge, dış çeper, iç minder, yükseltilmiş ön kenar ve pati motifiyle gerçek hayvan yatağı görünümünde yeniden çizildi.
+- Sürükleme hedefleri büyüme, kalın çerçeve veya sarı zemin halkasıyla görünür geri bildirim veriyor.
+- Tek yavru ve birkaç katmanla çalışan olay tabanlı “Sims hissi” korundu; yeni zamanlayıcı, GIF, SVG yorumlayıcı veya bitmap kare dizisi eklenmedi.
+- Kayıt biçimi sürüm 3 olarak korundu; alpha5 yeni kalıcı alan gerektirmiyor.
+
 ## 0.4.0-alpha4
 
 - Bütün Core Graphics hayvan çizimleri ortak `visualScale=0.25` ile önceki görünür boyutun dörtte birine indirildi; en az 54×54 dokunma hedefi korundu.

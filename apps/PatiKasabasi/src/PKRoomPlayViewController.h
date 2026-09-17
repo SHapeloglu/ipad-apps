@@ -9,6 +9,8 @@
     PKRoomBackgroundView *_roomView;
     UIView *_avatarMotionView;
     PKPetAvatarView *_avatarView;
+    CGPoint _avatarHomeCenter;
+    NSString *_dragItemIdentifier;
     UILabel *_statusLabel;
     UILabel *_feedbackLabel;
 }

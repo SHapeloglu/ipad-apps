@@ -10,6 +10,9 @@
     PKRoomBackgroundView *_roomView;
     UIView *_avatarMotionView;
     PKPetAvatarView *_avatarView;
+    NSArray *_actionButtons;
+    CGPoint _avatarHomeCenter;
+    NSInteger _dragActionIndex;
     UILabel *_nameLabel;
     UILabel *_profileLabel;
     UILabel *_statusLabel;

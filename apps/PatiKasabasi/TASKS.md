@@ -50,6 +50,20 @@
 - [ ] Alpha4'ü legacy iPhoneOS 6.1 SDK ile armv7 derle
 - [ ] Fiziksel iPad 1'de ölçek, sürükleme, mama kabı, akıcılık ve bellek testi
 
+## 0.5.0-alpha5 — görsel kasaba ve Sims hissi
+
+- [x] Park, Okul ve Meydan tablolarını hafif Core Graphics sahnelerine dönüştür
+- [x] Üç kasaba ekranında yavruyu görünür tut ve büyük görsel etkinlik kartları kullan
+- [x] Ev bakım eylemlerine ve oda eşyalarına yavru sürükleme ekle
+- [x] Ders/meslek kartlarına, komşulara, şenliğe ve günlük isteğe yavru sürükleme ekle
+- [x] Dokunulan hedefe kısa yavru yolculuğu ve geri dönüş hareketi ekle
+- [x] Okula `Evimiz` üst menü düğmesi ve Dersler/Meslekler geçişi ekle
+- [x] Yatağı gerçek hayvan yatağı biçiminde yeniden çiz
+- [x] Hedef vurgularını ve ekran kapanışındaki animasyon temizliğini ekle
+- [x] Alpha5 statik legacy doğrulamasını 28 sınıfla geçir
+- [ ] Alpha5'i legacy iPhoneOS 6.1 SDK ile armv7 derle
+- [ ] Fiziksel iPad 1'de sürükleme, görsel yerleşim, akıcılık ve bellek testi
+
 ## Sonraki güvenli adaylar
 
 - [ ] Cihaz testinden sonra metin ve dokunma alanı düzeltmeleri

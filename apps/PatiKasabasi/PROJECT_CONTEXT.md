@@ -26,8 +26,8 @@ Pati Kasabası; ihtiyaç, kişilik, ilişki, beceri, meslek ve ev kurma sistemle
 
 ## Güncel kilometre taşı
 
-`0.4.0-alpha4`: hayvan çizimleri ortak olarak dörtte bir ölçeğe indirildi, mama kabı yeniden çizildi, harita bölgelerine yavru sürükleme eklendi ve ana ekranlardaki durağanlık düşük maliyetli Core Graphics/katman animasyonlarıyla azaltıldı. Büyük harita düğmeleri dokunma alternatifi olarak korundu; kayıt sürümü 3 ve eski kayıt anahtarı değişmedi.
+`0.5.0-alpha5`: Park, Okul ve Meydan metin tabloları hafif Core Graphics sahnelerine ve büyük etkinlik kartlarına dönüştürüldü. Yavru ev eylemlerine, oda eşyalarına, ders/meslek kartlarına, komşulara ve meydan etkinliklerine sürüklenebiliyor. Okula `Evimiz` üst menüsü eklendi; yatak gerçek hayvan yatağı biçiminde yeniden çizildi. Sürekli ağır simülasyon yerine olay tabanlı kısa yolculuk/tepki ve tek katmanlı boşta hareket kullanılıyor. Kayıt sürümü 3 ve eski kayıt anahtarı değişmedi.
 
 ## Immediate next action
 
-Projeyi legacy Theos ortamında derle. Fiziksel iPad 1'e yükleyip özellikle dörtte bir hayvan ölçeğinin okunaklılığını, mama kabını, harita sürüklemesini/dokunma alternatifini, hareketlerin ekran geçişinde durmasını ve `TESTING.md` içindeki 15 dakikalık bellek testini uygula.
+Projeyi legacy Theos ortamında derle. Fiziksel iPad 1'e yükleyip özellikle Ev/oda/okul/park/meydan sürüklemelerini, görsel kartların kırpılmamasını, okulun `Evimiz` düğmesini, hayvan yatağını, hareketlerin ekran geçişinde durmasını ve `TESTING.md` içindeki 15 dakikalık bellek testini uygula.

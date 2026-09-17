@@ -10,9 +10,10 @@
 ## Görsel ve ses bileşenleri
 
 - `PKPetAvatarView`: dört türü, üç büyüme ölçeğini, dört aksesuar katmanını ve kısa tepki sembollerini Core Graphics ile çizer. Ortak `visualScale=0.25` çizimi küçültür; görünüm çerçevesi büyütülmeden en az 54×54 dokunma alanı korunur.
-- `PKRoomBackgroundView`: gün/mevsim renklerini ve sabit yuvalardaki mobilyaları çizer; aynı yuvalar için hafif dokunma testi yapar. Mama kabı tek bir elips yerine gövde, üst kenar, mama ve pati işaretinden oluşur.
+- `PKRoomBackgroundView`: gün/mevsim renklerini ve sabit yuvalardaki mobilyaları çizer; aynı yuvalar için hafif dokunma testi yapar. Mama kabı gövde, üst kenar, mama ve pati işaretinden; hayvan yatağı dış çeper, iç minder, yükseltilmiş ön kenar ve pati motifinden oluşur. Sürükleme sırasında hedef eşyayı tek sarı halka ile vurgular.
 - `PKTownMapView`: dört bölge arasındaki yol ve nehri Core Graphics ile çizer; ayrı sahneleri önbelleğe almaz.
 - `PKAmbientObjectView`: haritadaki bayrak, ağaç ve feneri bir kez Core Graphics ile çizer; hareket sırasında yalnızca görünüm katmanının dönüşümü/şeffaflığı değişir.
+- `PKActivitySceneView`: Park, Okul ve Meydan arka planlarını bitmap yüklemeden Core Graphics şekilleriyle çizer. Etkileşimli kartlar ve yavru ayrı UIKit görünümleridir; sahne dokunma almaz.
 - `PKNeedBarView`, `PKPetCardControl`, `PKTheme`: ihtiyaç, seçim ve ortak stil.
 - `PKSoundManager`: iki küçük mono WAV dosyasını `AudioServicesPlaySystemSound` ile istek üzerine oynatır.
 
@@ -35,7 +36,7 @@ flowchart TD
 
 Ev ekranı merkezdir. Alt ekranlar aynı `PKGameState` örneğini kullanır; görünüm kaybolurken kayıt alınır ve eve dönünce arayüz yenilenir. Görev tamamlaması okul, park veya meydan denetleyicisinde konum kimliğiyle doğrulanır.
 
-Haritadaki küçük yavru `UIPanGestureRecognizer` ile bölge düğmelerine bırakılabilir. Geçerli bırakmada ilgili ekran açılır, geçersiz bırakmada yavru başlangıç noktasına döner. Aynı dört büyük düğme motor becerisi veya sürükleme güçlüğü yaşayan çocuklar için dokunma alternatifi olarak kalır.
+Haritadaki küçük yavru `UIPanGestureRecognizer` ile bölge düğmelerine bırakılabilir. Aynı etkileşim modeli evde bakım düğmelerine, odada mobilyalara, okulda ders/meslek kartlarına, parkta komşulara ve meydanda etkinlik/görev hedeflerine uygulanır. Geçerli bırakmada eylem çalışır, geçersiz bırakmada yavru başlangıç noktasına döner. Büyük kartlara dokunmak motor becerisi veya sürükleme güçlüğü yaşayan çocuklar için eşdeğer alternatif olarak kalır.
 
 ## Zaman ve simülasyon
 
@@ -44,13 +45,14 @@ Haritadaki küçük yavru `UIPanGestureRecognizer` ile bölge düğmelerine bır
 - Her dört eylem bir günü ilerletir ve 20 pati harçlığı verir.
 - Günün bölümü eylem sayısından, mevsim gün sayısından türetilir.
 - Kişiliğe bağlı özgür irade metni her üçüncü eylemde olay olarak üretilir; arka plan yapay zekâsı yoktur.
+- “Sürekli simülasyon” hissi bir arka plan oyun döngüsünden değil; oyuncu eylemi → hedefe yolculuk → kısa tepki → ihtiyaç/ilişki değişimi → boşta hareket zincirinden oluşur.
 
 ## Bellek stratejisi
 
 - Açık dünya veya sahne önbelleği yok; navigasyon denetleyicisi yalnızca mevcut yolun ekranlarını tutar.
 - Büyük doku atlası yok; ana görseller vektör şekillerinden oluşur.
 - Kasaba görünümünde en fazla dört hayvan vardır.
-- Tepki animasyonları kısa `UIView` geçişleridir. Ortam ve boşta bekleme hareketleri en fazla birkaç küçük görünümün transform/alpha değerini değiştirir; ekran kaybolunca `removeAllAnimations` ile durur. `NSTimer`, `CADisplayLink`, GIF kare dizisi, SVG yorumlayıcı veya doku atlası yoktur.
+- Tepki ve hedefe yolculuk animasyonları kısa `UIView` geçişleridir. Ortam ve boşta bekleme hareketleri en fazla birkaç küçük görünümün transform/alpha değerini değiştirir; ekran kaybolunca `removeAllAnimations` ile durur. `NSTimer`, `CADisplayLink`, GIF kare dizisi, SVG yorumlayıcı veya doku atlası yoktur.
 - Fotoğraflar 512×352 JPEG olarak saklanır, albüm 12 kayıtla sınırlanır ve artık başvurulmayan JPEG'ler silinir.
 - Sesler mono 22.05 kHz ve toplamda küçüktür.
 

@@ -76,7 +76,7 @@
     [panel addSubview:safe];
 
     UILabel *version = [self labelWithFrame:CGRectMake(790.0f, 670.0f, 210.0f, 25.0f)
-                                       text:@"0.4.0-alpha4"
+                                       text:@"0.5.0-alpha5"
                                    fontSize:13.0f
                                        bold:NO];
     version.textAlignment = UITextAlignmentRight;

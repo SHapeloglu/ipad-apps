@@ -12,10 +12,12 @@
 
 @interface PKRoomPlayViewController ()
 - (void)refreshUI;
+- (void)performRoomInteractionIdentifier:(NSString *)identifier;
 - (void)showReaction:(NSString *)identifier;
 - (void)resetReaction;
 - (void)startAvatarIdleAnimation;
 - (void)stopAvatarIdleAnimation;
+- (void)returnAvatarHome;
 @end
 
 @implementation PKRoomPlayViewController
@@ -48,7 +50,7 @@
     _statusLabel.clipsToBounds = YES;
     [self.view addSubview:_statusLabel];
 
-    _feedbackLabel = [[self labelWithFrame:CGRectMake(30.0f, 14.0f, 560.0f, 66.0f) text:@"Odadaki bir eşyaya dokun; yavrun onu doğrudan kullansın." fontSize:17.0f bold:YES] retain];
+    _feedbackLabel = [[self labelWithFrame:CGRectMake(30.0f, 14.0f, 560.0f, 66.0f) text:@"Eşyaya dokun veya yavrunu yatağa, mama kabına ya da oyuncağa sürükle." fontSize:17.0f bold:YES] retain];
     _feedbackLabel.backgroundColor = [UIColor colorWithWhite:1.0f alpha:0.90f];
     _feedbackLabel.layer.cornerRadius = 14.0f;
     _feedbackLabel.clipsToBounds = YES;
@@ -60,8 +62,11 @@
     _avatarView.userInteractionEnabled = YES;
     UITapGestureRecognizer *petTap = [[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(avatarTapped:)] autorelease];
     [_avatarView addGestureRecognizer:petTap];
+    UIPanGestureRecognizer *petPan = [[[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(avatarPanned:)] autorelease];
+    [_avatarView addGestureRecognizer:petPan];
     [_avatarMotionView addSubview:_avatarView];
     [self.view addSubview:_avatarMotionView];
+    _avatarHomeCenter = _avatarMotionView.center;
     [self refreshUI];
 }
 
@@ -78,9 +83,13 @@
     CGPoint point = [recognizer locationInView:_roomView];
     NSString *identifier = [_roomView itemIdentifierAtPoint:point];
     if (!identifier) {
-        _feedbackLabel.text = @"Bir eşyaya dokunmayı dene. Ortadaki yavruya dokunursan onu seversin.";
+        _feedbackLabel.text = @"Bir eşyaya dokun veya yavrunu görünür eşyanın üzerine bırak.";
         return;
     }
+    [self performRoomInteractionIdentifier:identifier];
+}
+
+- (void)performRoomInteractionIdentifier:(NSString *)identifier {
     NSDictionary *item = [PKCatalog itemForIdentifier:identifier];
     _feedbackLabel.text = [_gameState interactWithPlacedItemIdentifier:identifier];
     NSString *reaction = [item objectForKey:@"action"];
@@ -88,6 +97,49 @@
     [self showReaction:reaction];
     [PKSoundManager playEffectNamed:@"tap" enabled:_gameState.soundEnabled];
     [self refreshUI];
+}
+
+- (void)avatarPanned:(UIPanGestureRecognizer *)recognizer {
+    CGPoint point = [recognizer locationInView:self.view];
+    CGPoint roomPoint = [_roomView convertPoint:point fromView:self.view];
+    if (recognizer.state == UIGestureRecognizerStateBegan) {
+        [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(startAvatarIdleAnimation) object:nil];
+        [self stopAvatarIdleAnimation];
+        _avatarMotionView.transform = CGAffineTransformMakeScale(1.08f, 1.08f);
+    }
+    if (recognizer.state == UIGestureRecognizerStateBegan || recognizer.state == UIGestureRecognizerStateChanged) {
+        CGFloat x = MIN(MAX(point.x, 65.0f), self.view.bounds.size.width - 65.0f);
+        CGFloat y = MIN(MAX(point.y, 110.0f), 650.0f);
+        _avatarMotionView.center = CGPointMake(x, y);
+        NSString *identifier = [_roomView itemIdentifierAtPoint:roomPoint];
+        if ((_dragItemIdentifier != identifier) && ![_dragItemIdentifier isEqualToString:identifier]) {
+            [_dragItemIdentifier release];
+            _dragItemIdentifier = [identifier copy];
+            _roomView.highlightedItemIdentifier = identifier;
+        }
+        return;
+    }
+    if (recognizer.state == UIGestureRecognizerStateEnded || recognizer.state == UIGestureRecognizerStateCancelled || recognizer.state == UIGestureRecognizerStateFailed) {
+        NSString *identifier = [[_roomView itemIdentifierAtPoint:roomPoint] retain];
+        [_dragItemIdentifier release];
+        _dragItemIdentifier = nil;
+        _roomView.highlightedItemIdentifier = nil;
+        [self returnAvatarHome];
+        if ([identifier length] > 0) [self performRoomInteractionIdentifier:identifier];
+        else _feedbackLabel.text = @"Yavrunu yatağın, mama kabının, topun veya başka bir eşyanın üzerine bırak.";
+        [identifier release];
+    }
+}
+
+- (void)returnAvatarHome {
+    [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(startAvatarIdleAnimation) object:nil];
+    [UIView beginAnimations:@"roomPetReturn" context:nil];
+    [UIView setAnimationDuration:0.24f];
+    [UIView setAnimationCurve:UIViewAnimationCurveEaseInOut];
+    _avatarMotionView.center = _avatarHomeCenter;
+    _avatarMotionView.transform = CGAffineTransformIdentity;
+    [UIView commitAnimations];
+    [self performSelector:@selector(startAvatarIdleAnimation) withObject:nil afterDelay:0.27f];
 }
 
 - (void)avatarTapped:(UITapGestureRecognizer *)recognizer {
@@ -139,12 +191,17 @@
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
+    _avatarMotionView.center = _avatarHomeCenter;
+    _avatarView.transform = CGAffineTransformIdentity;
+    _avatarView.reactionIdentifier = @"";
+    _roomView.highlightedItemIdentifier = nil;
     [self refreshUI];
     [self startAvatarIdleAnimation];
 }
 
 - (void)viewWillDisappear:(BOOL)animated {
     [super viewWillDisappear:animated];
+    [NSObject cancelPreviousPerformRequestsWithTarget:self];
     [self stopAvatarIdleAnimation];
     [_gameState save];
 }
@@ -155,6 +212,7 @@
     [_roomView release];
     [_avatarMotionView release];
     [_avatarView release];
+    [_dragItemIdentifier release];
     [_statusLabel release];
     [_feedbackLabel release];
     [super dealloc];
