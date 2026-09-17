@@ -6,8 +6,12 @@ APPLICATION_NAME = iPad1TalkingPet
 iPad1TalkingPet_FILES = main.m \
     src/AppDelegate.m \
     src/HomeViewController.m \
-    src/PetNeedsManager.m
-iPad1TalkingPet_FRAMEWORKS = UIKit Foundation QuartzCore CoreGraphics
+    src/PetNeedsManager.m \
+    src/PetProgressManager.m \
+    src/PetAudioManager.m \
+    src/WardrobeViewController.m \
+    src/MiniGameViewController.m
+iPad1TalkingPet_FRAMEWORKS = UIKit Foundation QuartzCore CoreGraphics AVFoundation AudioToolbox
 iPad1TalkingPet_CFLAGS = -fno-objc-arc
 
 include $(THEOS_MAKE_PATH)/application.mk

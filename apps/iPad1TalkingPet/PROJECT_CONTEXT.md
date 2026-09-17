@@ -1,6 +1,6 @@
 # PROJECT_CONTEXT
 
-## Platform
+## Platform constraints
 - iPad 1
 - Apple A4
 - 256 MB RAM
@@ -10,31 +10,32 @@
 - Theos
 - legacy iPhoneOS 6.1 SDK
 - non-ARC / MRC
+- Offline-first
+- Ağır 3D engine yok
 
-## Product Goal
-Talking-pet tarzı, tamamen offline çalışan, özgün beyaz kedi karakterli sanal evcil hayvan oyunu.
+## Product goal
+My Talking Tom benzeri temel sanal evcil hayvan döngüsünü, özgün beyaz kedi karakteri ve özgün görsellerle iPad 1'de akıcı biçimde sunmak.
 
-## Visual Direction
-Ana karakter:
-- Beyaz tüylü
-- Büyük mavi gözlü
-- Pembe tişört
-- Sarı kalp
-- Açık mavi kot şort
+## Current implemented gameplay
+- Needs: hunger, happiness, hygiene, energy
+- Offline decay
+- Touch reactions
+- Talking/repeat audio
+- XP / levels
+- Coins
+- Daily reward
+- Wardrobe ownership/select state
+- Mini game
+- Persistent save
 
-## v0.1 Architecture
-Tek ana ekran, statik optimize edilmiş arka plan ve UIKit overlay.
-Ağır 3D engine yok.
-Video tabanlı sürekli animasyon yok.
-OpenGL zorunlu değil.
+## Known visual limitation
+Character is still baked into the current room image.
+Wardrobe state is functional but cannot visually alter the baked-in character yet.
 
 ## Immediate next action
-Fiziksel iPad 1 üzerinde v0.1'i derle, kur ve şu 6 alanı doğrula:
-1. Food
-2. Bath
-3. Sleep
-4. Play
-5. Wardrobe
-6. Character touch
-
-Ardından karakteri arka plandan ayırıp hafif sprite animasyon sistemine geç.
+1. Build and install v0.2 on real iPad 1.
+2. Verify microphone record/repeat.
+3. Verify mini-game.
+4. Verify wardrobe purchase persistence.
+5. Verify RAM/stability.
+6. Then split character from background into lightweight sprites.
