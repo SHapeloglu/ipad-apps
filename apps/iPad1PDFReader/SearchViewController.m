@@ -1,10 +1,40 @@
 #import "SearchViewController.h"
-#import "SimplePDFSearch.h"
+#import "PDFTextExtractor.h"
 @implementation SearchViewController
-- (id)initWithPDFPath:(NSString*)p{if((self=[super initWithStyle:UITableViewStylePlain])){_pdfPath=[p copy];self.title=@"PDF Ara";}return self;}
-- (void)viewDidLoad{[super viewDidLoad];_bar=[[UISearchBar alloc]initWithFrame:CGRectMake(0,0,self.view.bounds.size.width,44)];_bar.delegate=self;self.tableView.tableHeaderView=_bar;}
-- (void)searchBarSearchButtonClicked:(UISearchBar*)s{[_results release];_results=[[SimplePDFSearch searchTerm:s.text inPath:_pdfPath]retain];[self.tableView reloadData];[s resignFirstResponder];}
-- (NSInteger)tableView:(UITableView*)t numberOfRowsInSection:(NSInteger)s{return [_results count];}
-- (UITableViewCell*)tableView:(UITableView*)t cellForRowAtIndexPath:(NSIndexPath*)i{static NSString*cid=@"s";UITableViewCell*c=[t dequeueReusableCellWithIdentifier:cid];if(!c)c=[[[UITableViewCell alloc]initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:cid]autorelease];c.textLabel.text=[NSString stringWithFormat:@"Eşleşme %ld",(long)i.row+1];c.detailTextLabel.text=[_results objectAtIndex:i.row];return c;}
-- (void)dealloc{[_pdfPath release];[_results release];[_bar release];[super dealloc];}
+@synthesize delegate=_delegate;
+- (id)initWithPDFPath:(NSString *)path {
+    if((self=[super initWithStyle:UITableViewStylePlain])) {
+        _pdfPath=[path copy];
+        _document=CGPDFDocumentCreateWithURL((CFURLRef)[NSURL fileURLWithPath:path]);
+        self.title=@"PDF Ara";
+    }
+    return self;
+}
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    _searchBar=[[UISearchBar alloc] initWithFrame:CGRectMake(0,0,self.view.bounds.size.width,44)];
+    _searchBar.delegate=self; self.tableView.tableHeaderView=_searchBar;
+}
+- (void)searchBarSearchButtonClicked:(UISearchBar *)s {
+    [_results release];
+    _results=[[PDFTextExtractor searchTerm:s.text inDocument:_document maxResults:100] retain];
+    [self.tableView reloadData]; [s resignFirstResponder];
+}
+- (NSInteger)tableView:(UITableView *)t numberOfRowsInSection:(NSInteger)section { return [_results count]; }
+- (UITableViewCell *)tableView:(UITableView *)t cellForRowAtIndexPath:(NSIndexPath *)i {
+    static NSString *cid=@"search";
+    UITableViewCell *c=[t dequeueReusableCellWithIdentifier:cid];
+    if(!c)c=[[[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:cid] autorelease];
+    NSDictionary *r=[_results objectAtIndex:i.row];
+    c.textLabel.text=[NSString stringWithFormat:@"Sayfa %@",[r objectForKey:@"page"]];
+    c.detailTextLabel.text=[r objectForKey:@"snippet"];
+    c.detailTextLabel.numberOfLines=2;
+    return c;
+}
+- (void)tableView:(UITableView *)t didSelectRowAtIndexPath:(NSIndexPath *)i {
+    NSUInteger p=[[[_results objectAtIndex:i.row] objectForKey:@"page"] unsignedIntegerValue];
+    if([_delegate respondsToSelector:@selector(searchControllerSelectedPage:)]) [_delegate searchControllerSelectedPage:p];
+    [self.navigationController popViewControllerAnimated:YES];
+}
+- (void)dealloc { [_pdfPath release]; [_results release]; [_searchBar release]; if(_document)CGPDFDocumentRelease(_document); [super dealloc]; }
 @end

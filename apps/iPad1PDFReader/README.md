@@ -1,33 +1,24 @@
-# iPad 1 PDF Reader v2.0.0
+# iPad 1 PDF Reader v3.0.0
 
-Hedef: iPad 1 / iOS 5.1.1. Theos + iPhoneOS 6.1 legacy SDK.
+iPad 1 / iOS 5.1.1 için gelişmiş hafif PDF okuyucu.
 
-## Eklenenler
-- Swipe ile sayfa değiştirme
-- Tek dokunma ile toolbar/navigation gizleme
-- Thumbnail sayfa listesi
-- Sayfaya git
-- Normal / Sepia / Gece modu
-- Favori ve yeniden adlandırma
-- HTTP / FTP indirme
-- Open In ile PDF alma
-- PDF Outline başlıklarını listeleme
-- Basit ham PDF metin araması
-- Serbest çizim, highlight, not, yazılı imza
-- Annotation temizleme
-- Sayfa dışa aktarma altyapısı (PageManager)
+Eklenenler:
+- CGPDFScanner tabanlı içerik-akışı metin arama
+- Reflow okuma modu
+- WebDAV istemci altyapısı
+- HTTP/HTTPS/FTP ağ merkezi
+- SMB/SFTP connector yuvaları (harici libsmb2/libssh2 gerekir)
+- Sayfa silme, sıralama, döndürme ve yeni PDF üretme
+- PDF birleştirme API
+- Annotation'ları flatten ederek kalıcı PDF dışa aktarma
+- Thumbnail, bookmark, tema, Open In, File Sharing
 
-## Bilinçli sınırlamalar
-- Annotation'lar orijinal PDF içine gömülmez; yan veri olarak tutulur.
-- Arama, Core Graphics'in metin çıkarma API'si olmadığı için basit ham-PDF taramasıdır; sıkıştırılmış/font-encoded PDF'lerde sonuç vermeyebilir.
-- Outline başlıkları gösterilir; karmaşık destination çözümlemesi tam değildir.
-- AcroForm alanlarını gerçek PDF nesneleri olarak düzenleme yoktur.
-- Gece modu hafif render temasıdır; tam renk invert değildir.
+Sınırlar:
+- Search/Reflow bazı özel font encoding kullanan PDF'lerde eksik olabilir.
+- Annotation export görünür ve kalıcıdır ama Acrobat tarzı düzenlenebilir /Annots nesnesi değildir.
+- SMB/SFTP iOS 5'te yerleşik olmadığından harici kütüphane olmadan aktif değildir.
 
-## Derleme
-```bash
-cd ~/projects/ipad1pdfreader/iPad1PDFReader-v2.0.0
+Derleme:
 make clean
 rm -rf .theos
 make package FINALPACKAGE=1
-```
