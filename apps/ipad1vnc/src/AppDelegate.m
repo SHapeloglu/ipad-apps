@@ -27,6 +27,15 @@
 - (void)uploadLocalFile;
 - (void)performFileAPIPath:(NSString *)path method:(NSString *)method body:(NSData *)body contentType:(NSString *)contentType;
 
+- (void)keyboardTapped;
+- (void)filesTapped;
+- (NSString*)remotePathForEntry:(NSDictionary*)e;
+- (NSURL*)downloadURLForEntry:(NSDictionary*)e;
+@end
+
+@implementation AppDelegate
+@synthesize window = _window;
+
 
 - (void)tightChanged { [self saveConnectionSettings]; _statusLabel.text=@"Tight preference saved — reconnect to apply"; }
 - (void)vncClientStatsFPS:(CGFloat)fps kbps:(CGFloat)kbps encoding:(NSString*)encoding quality:(NSString*)quality {
@@ -70,8 +79,6 @@
 - (void)terminalSessionOutput:(NSString*)text {if(![text length])return;_terminalView.text=[_terminalView.text stringByAppendingString:text];NSRange r=NSMakeRange([_terminalView.text length],0);[_terminalView scrollRangeToVisible:r];}
 - (void)terminalSessionEnded:(NSString*)reason {if(_terminalView)_terminalView.text=[_terminalView.text stringByAppendingFormat:@"\n[%@]\n",reason];}
 
-- (void)keyboardTapped;
-- (void)filesTapped;
 - (void)settingsTapped {
     UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"SSH / Security" message:@"SSH user, port and key can be edited in the Terminal panel. Enable tunnel there before connecting. Tight can be toggled in Setup." delegate:nil cancelButtonTitle:@"OK" otherButtonTitles:nil] autorelease];
     [a show];
@@ -683,6 +690,4 @@
     [_exitFullScreenButton release];[_fullScreenButton release];[_settingsButton release];[_filesButton release];[_keyboardButton release];[_qualityControl release];[_inputModeControl release];[_tightSwitch release];[_statsLabel release];[_profilesButton release];[_profiles release];[_speedSlider release];[_speedLabel release];
     [_vncView release];[_keyboardField release];[_statusLabel release];[_connectButton release];[_passwordField release];[_portField release];[_hostField release];[_connectionPanel release];[_controller release];[_window release];[super dealloc];
 }
-- (NSString*)remotePathForEntry:(NSDictionary*)e;
-- (NSURL*)downloadURLForEntry:(NSDictionary*)e;
 @end

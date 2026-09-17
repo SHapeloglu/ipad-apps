@@ -1,4 +1,4 @@
-# iPad1VNC v2.0.0-beta1
+# iPad1VNC v2.0.0-beta2
 
 A feature-complete beta aimed at turning an iPad 1 / iOS 5.1.1 into a lightweight Linux thin client.
 
@@ -53,3 +53,11 @@ sudo cat /home/desktop/.ipad1vnc-files-token
 ```
 
 Do not expose port 8085 broadly until the app token field is tested. SSH tunneling is the preferred final security model for VNC.
+
+
+## beta2 compile fix
+- Closes the private `AppDelegate` class extension before the first method body.
+- Adds the missing `@implementation AppDelegate` and `@synthesize window = _window`.
+- Moves stray method prototypes (`keyboardTapped`, `filesTapped`, Files helpers) back into the private interface.
+- Fixes beta1's `expected ';' after method prototype` errors.
+- No v2 feature was removed.
