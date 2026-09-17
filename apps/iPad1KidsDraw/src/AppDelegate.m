@@ -18,6 +18,18 @@
     return YES;
 }
 
+- (BOOL)application:(UIApplication *)application handleOpenURL:(NSURL *)url
+{
+    if(!url) return NO;
+    NSString *path=nil;
+    if([[url scheme] caseInsensitiveCompare:@"kidsdraw"]==NSOrderedSame){
+        NSString *q=[url query];
+        if([q hasPrefix:@"path="]) path=[[q substringFromIndex:5] stringByReplacingPercentEscapesUsingEncoding:NSUTF8StringEncoding];
+    }
+    if(path && [self.viewController respondsToSelector:@selector(openExternalImageAtPath:)]){[self.viewController openExternalImageAtPath:path];return YES;}
+    return NO;
+}
+
 - (void)dealloc
 {
     [_viewController release];

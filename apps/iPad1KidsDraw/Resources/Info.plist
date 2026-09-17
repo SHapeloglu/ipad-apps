@@ -13,7 +13,14 @@
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleVersion</key>
-    <string>0.1.0</string>
+    <string>0.3.0</string>
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLName</key><string>com.olap.kidsdraw.open</string>
+            <key>CFBundleURLSchemes</key><array><string>kidsdraw</string></array>
+        </dict>
+    </array>
     <key>LSRequiresIPhoneOS</key>
     <true/>
     <key>UIDeviceFamily</key>

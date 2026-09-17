@@ -1,45 +1,37 @@
-# KidsDraw for iPad 1
+# KidsDraw v0.4 for iPad 1
 
-Çocuklar için hafif çizim uygulaması.
+Çocuklar için hafif, reklamsız ve çevrimdışı çizim/boyama uygulaması.
 
-## Hedef platform
-- iPad 1
-- iOS 5.1.1
-- armv7
-- 256 MB RAM
-- Objective-C
-- Theos
-- legacy iPhoneOS 6.1 SDK
+## Hedef
+- iPad 1 / iOS 5.1.1 / armv7
+- Apple A4 / 256 MB RAM
+- Objective-C / Theos / legacy iPhoneOS 6.1 SDK
 - non-ARC / MRC
 
-## v0.1 özellikleri
-- Parmakla çizim
-- 7 renk
-- 3 fırça kalınlığı
+## v0.4 özellikleri
+- Serbest çizim
+- 8 renk
+- İnce / Orta / Kalın fırça
+- Normal / Pastel / Fosforlu / Gökkuşağı fırçası
+- 5 Undo + 5 Redo
+- Dolgu kovası
 - Silgi
-- Tuvali temizleme
-- Fotoğraflar'a kaydetme
-- Yatay kullanım (büyük çocuk butonları için)
+- Dikey simetri modu
+- Şekiller: çizgi, dikdörtgen, daire/oval, üçgen
+- Metin ekleme
+- 24 damga
+- 20 boyama şablonu
+- Çizimlerim galerisi
+- Fotoğraflar'a ve uygulama galerisine kayıt
+- Otomatik taslak kayıt + açılışta geri yükleme
+- iPad1Files entegrasyonu için `kidsdraw://open?path=...` dış-görsel giriş noktası
+
+## Mimari sınır
+KidsDraw içinde Dosya Aç / dosya tarayıcı yoktur. Dosya seçimi iPad1Files uygulamasının sorumluluğudur. KidsDraw yalnızca kendisine dışarıdan gönderilen PNG/JPG/JPEG yolunu açar.
 
 ## Build
 ```bash
 make clean
+rm -rf packages
 FINALPACKAGE=1 make package
 ```
-
-## Kurulum örneği
-```bash
-scp -o HostKeyAlgorithms=+ssh-rsa \
-    -o PubkeyAcceptedAlgorithms=+ssh-rsa \
-    packages/com.olap.kidsdraw_0.1.0_iphoneos-arm.deb \
-    root@IPAD_IP:/var/mobile/
-
-ssh root@IPAD_IP
-dpkg -i /var/mobile/com.olap.kidsdraw_0.1.0_iphoneos-arm.deb
-uicache
-killall SpringBoard
-```
-
-## Not
-Bu ilk sürüm bilinçli olarak katmanlar, filtreler, undo geçmişi ve büyük bitmap işleme
-gibi RAM tüketen özellikleri içermez.
