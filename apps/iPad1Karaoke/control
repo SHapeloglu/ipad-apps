@@ -1,0 +1,9 @@
+Package: com.olap.ipad1karaoke
+Name: iPad1Karaoke
+Version: 0.1.0
+Architecture: iphoneos-arm
+Description: Lightweight offline karaoke player for iPad 1 / iOS 5.1.1.
+Maintainer: Olap Teknoloji
+Author: Olap Teknoloji
+Section: Multimedia
+Depends: firmware (>= 5.1)
