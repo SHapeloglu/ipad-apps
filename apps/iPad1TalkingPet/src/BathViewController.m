@@ -2,6 +2,8 @@
 #import "PetNeedsManager.h"
 #import "PetProgressManager.h"
 #import <QuartzCore/QuartzCore.h>
+#import "AchievementManager.h"
+#import "SoundManager.h"
 
 @implementation BathViewController
 
@@ -105,6 +107,11 @@
     }
     [_needs bathe];
     [_progress addXP:6];
+    [[SoundManager sharedManager] play:@"bath"];
+    [[AchievementManager sharedManager] increment:@"bath" amount:1];
+    NSUserDefaults *ud=[NSUserDefaults standardUserDefaults];
+    [ud setInteger:[ud integerForKey:@"daily.bath"]+1 forKey:@"daily.bath"];
+    [ud synchronize];
     _soapy = NO;
     _soapRubCount = 0;
     for (UIView *v in [[_catArea.subviews copy] autorelease]) {

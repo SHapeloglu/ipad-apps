@@ -6,6 +6,8 @@
 #import "FoodCatchViewController.h"
 #import "MazeGameViewController.h"
 #import "BasketGameViewController.h"
+#import "AchievementManager.h"
+#import "SoundManager.h"
 
 @implementation GameMenuViewController
 
@@ -50,7 +52,14 @@
     else if(i==3) vc=[[[FoodCatchViewController alloc] initWithProgressManager:_progress] autorelease];
     else if(i==4) vc=[[[MazeGameViewController alloc] initWithProgressManager:_progress] autorelease];
     else if(i==5) vc=[[[BasketGameViewController alloc] initWithProgressManager:_progress] autorelease];
-    if(vc) [self presentModalViewController:vc animated:YES];
+    if(vc) {
+        [[SoundManager sharedManager] play:@"game"];
+        [[AchievementManager sharedManager] increment:@"game" amount:1];
+        NSUserDefaults *ud=[NSUserDefaults standardUserDefaults];
+        [ud setInteger:[ud integerForKey:@"daily.game"]+1 forKey:@"daily.game"];
+        [ud synchronize];
+        [self presentModalViewController:vc animated:YES];
+    }
 }
 
 - (void)goBack{[self dismissModalViewControllerAnimated:YES];}

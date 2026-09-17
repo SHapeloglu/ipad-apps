@@ -2,6 +2,8 @@
 #import "PetNeedsManager.h"
 #import "PetProgressManager.h"
 #import <QuartzCore/QuartzCore.h>
+#import "AchievementManager.h"
+#import "SoundManager.h"
 
 @implementation FoodViewController
 
@@ -80,6 +82,11 @@
         if ([_progress spendCoins:costs[_selectedFood]]) {
             [_needs feed];
             [_progress addXP:xp[_selectedFood]];
+            [[SoundManager sharedManager] play:@"eat"];
+            [[AchievementManager sharedManager] increment:@"feed" amount:1];
+            NSUserDefaults *ud=[NSUserDefaults standardUserDefaults];
+            [ud setInteger:[ud integerForKey:@"daily.feed"]+1 forKey:@"daily.feed"];
+            [ud synchronize];
             _statusLabel.text=[NSString stringWithFormat:@"Afiyet olsun! +%ld XP",(long)xp[_selectedFood]];
         } else {
             _statusLabel.text=@"Yeterli coin yok.";

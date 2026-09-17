@@ -1,5 +1,7 @@
 #import "TravelViewController.h"
 #import "PetProgressManager.h"
+#import "AchievementManager.h"
+#import "SoundManager.h"
 
 @implementation TravelViewController
 
@@ -51,6 +53,8 @@
         return;
     }
     [_progress addXP:10+i*5];
+    [[SoundManager sharedManager] play:@"coin"];
+    [[AchievementManager sharedManager] increment:@"travel" amount:1];
     [[NSUserDefaults standardUserDefaults] setInteger:i forKey:@"travel.lastPlace"];
     [[NSUserDefaults standardUserDefaults] synchronize];
     _status.text=[NSString stringWithFormat:@"Gezi tamamlandı! +%ld XP",(long)(10+i*5)];

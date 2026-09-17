@@ -9,6 +9,9 @@ iPad1TalkingPet_FILES = main.m \
     src/PetNeedsManager.m \
     src/PetProgressManager.m \
     src/PetAudioManager.m \
+    src/PetSpriteAnimator.m \
+    src/SoundManager.m \
+    src/AchievementManager.m \
     src/RoomBackgroundView.m \
     src/PetCharacterView.m \
     src/WardrobeViewController.m \
@@ -24,7 +27,8 @@ iPad1TalkingPet_FILES = main.m \
     src/MazeGameViewController.m \
     src/BasketGameViewController.m \
     src/PhotoAlbumViewController.m \
-    src/TravelViewController.m
+    src/TravelViewController.m \
+    src/AchievementsViewController.m
 
 iPad1TalkingPet_FRAMEWORKS = UIKit Foundation QuartzCore CoreGraphics AVFoundation AudioToolbox
 iPad1TalkingPet_CFLAGS = -fno-objc-arc

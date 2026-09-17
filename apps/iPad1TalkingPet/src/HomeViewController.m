@@ -11,6 +11,9 @@
 #import "GameMenuViewController.h"
 #import "PhotoAlbumViewController.h"
 #import "TravelViewController.h"
+#import "AchievementsViewController.h"
+#import "AchievementManager.h"
+#import "SoundManager.h"
 #import <QuartzCore/QuartzCore.h>
 
 @implementation HomeViewController
@@ -41,6 +44,9 @@
                                                  name:@"WardrobeChanged" object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(roomChanged)
                                                  name:@"RoomThemeChanged" object:nil];
+
+    [[AchievementManager sharedManager] resetDailyIfNeeded];
+    [[SoundManager sharedManager] startMusic];
 
     if([_progress claimDailyRewardIfAvailable])
         [self showMessage:@"Günlük ödül: 50 coin + 10 XP!"];
@@ -107,6 +113,7 @@
     [self button:@"Kamera" frame:CGRectMake(570,145,165,45) selector:@selector(takePhoto)];
     [self button:@"Albüm" frame:CGRectMake(570,195,80,42) selector:@selector(openAlbum)];
     [self button:@"Seyahat" frame:CGRectMake(655,195,80,42) selector:@selector(openTravel)];
+    [self button:@"Görevler" frame:CGRectMake(570,242,165,42) selector:@selector(openAchievements)];
 }
 
 - (void)buildBottomMenu {
@@ -135,9 +142,9 @@
     [_roomView addSubview:feet];
 }
 
-- (void)touchHead { [_petView touchHead]; [_progress addXP:1]; [self speak:@"Başımı okşaman hoşuma gitti!"]; [self refreshUI]; }
-- (void)touchBody { [_petView touchBody]; [_progress addXP:1]; [self speak:@"Hihi, gıdıklanıyorum!"]; [self refreshUI]; }
-- (void)touchFeet { [_petView touchFeet]; [self speak:@"Ayaklarım hassas!"]; }
+- (void)touchHead { [[SoundManager sharedManager] play:@"tap"]; [_petView touchHead]; [_progress addXP:1]; [self speak:@"Başımı okşaman hoşuma gitti!"]; [self refreshUI]; }
+- (void)touchBody { [[SoundManager sharedManager] play:@"tap"]; [_petView touchBody]; [_progress addXP:1]; [self speak:@"Hihi, gıdıklanıyorum!"]; [self refreshUI]; }
+- (void)touchFeet { [[SoundManager sharedManager] play:@"tap"]; [_petView touchFeet]; [self speak:@"Ayaklarım hassas!"]; }
 
 - (void)toggleTalking {
     if(!_audio.recording) {
@@ -151,6 +158,7 @@
         [self speak:@"Şimdi seni taklit ediyorum!"];
         [_audio stopAndRepeat];
         [_progress addXP:3];
+        [[AchievementManager sharedManager] increment:@"talk" amount:1];
         [self refreshUI];
     }
 }
@@ -185,6 +193,11 @@
     PhotoAlbumViewController *v=[[[PhotoAlbumViewController alloc] init] autorelease];
     [self presentModalViewController:v animated:YES];
 }
+- (void)openAchievements {
+    AchievementsViewController *v=[[[AchievementsViewController alloc] init] autorelease];
+    [self presentModalViewController:v animated:YES];
+}
+
 - (void)openTravel {
     TravelViewController *v=[[[TravelViewController alloc] initWithProgressManager:_progress] autorelease];
     [self presentModalViewController:v animated:YES];
@@ -206,6 +219,9 @@
     NSData *data=UIImagePNGRepresentation(im);
     NSString *fn=[NSString stringWithFormat:@"pati_%0.f.png",[[NSDate date] timeIntervalSince1970]];
     [data writeToFile:[[self albumDirectory] stringByAppendingPathComponent:fn] atomically:YES];
+    [[SoundManager sharedManager] play:@"photo"];
+    [[NSUserDefaults standardUserDefaults] setInteger:[[NSUserDefaults standardUserDefaults] integerForKey:@"daily.photo"]+1 forKey:@"daily.photo"];
+    [[NSUserDefaults standardUserDefaults] synchronize];
     [_progress addXP:5];
     [self showMessage:@"Fotoğraf albüme kaydedildi. +5 XP"];
     [self refreshUI];
@@ -215,6 +231,13 @@
 - (void)roomChanged { [_roomView reloadTheme]; }
 
 - (void)refreshUI {
+    static NSInteger lastLevel = -1;
+    if(lastLevel < 0) lastLevel = _progress.level;
+    else if(_progress.level > lastLevel) {
+        [[SoundManager sharedManager] play:@"level"];
+        [self showMessage:[NSString stringWithFormat:@"Seviye %ld! Tebrikler!",(long)_progress.level]];
+        lastLevel = _progress.level;
+    }
     _hungerBar.progress=_needs.hunger/100.0f;
     _happinessBar.progress=_needs.happiness/100.0f;
     _hygieneBar.progress=_needs.hygiene/100.0f;

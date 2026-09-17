@@ -1,17 +1,14 @@
 #import <UIKit/UIKit.h>
+@class PetSpriteAnimator;
 
 @interface PetCharacterView : UIView {
     UIImageView *_body;
-    UIView *_blinkLeft;
-    UIView *_blinkRight;
-    UIView *_mouth;
+    PetSpriteAnimator *_sprite;
     UIView *_hatLayer;
     UIView *_faceLayer;
     UIView *_shirtLayer;
     UIView *_pantsLayer;
     UIView *_shoesLayer;
-    NSTimer *_idleTimer;
-    BOOL _talking;
 }
 - (void)startIdle;
 - (void)stop;
@@ -23,5 +20,6 @@
 - (void)touchFeet;
 - (void)setTalking:(BOOL)talking;
 - (void)chew;
+- (void)sleep;
 - (void)reloadOutfit;
 @end

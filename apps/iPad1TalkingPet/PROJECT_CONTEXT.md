@@ -4,52 +4,50 @@
 - iPad 1 / Apple A4 / 256 MB RAM
 - iOS 5.1.1
 - armv7
-- Objective-C
-- UIKit/Foundation/CoreGraphics/AVFoundation
-- Theos + legacy iPhoneOS 6.1 SDK
+- Objective-C / Theos / legacy iPhoneOS 6.1 SDK
 - non-ARC/MRC
 - offline-first
 - no heavy 3D engine
 
-## Current milestone
-v0.5 Character 2.0
+## Current version
+0.6.0
 
-## Major architecture change
-The pet is no longer baked into the room background.
+## Architecture
+RoomBackgroundView
+  -> programmatic room
+  -> real furniture PNG assets
 
-`RoomBackgroundView`
-    -> programmatic lightweight room
+PetCharacterView
+  -> transparent pet_base.png
+  -> PetSpriteAnimator
+  -> pre-rendered animation frame PNGs
+  -> lightweight outfit overlay slots
 
-`PetCharacterView`
-    -> transparent pet_base.png
-    -> face animation overlays
-    -> outfit layers
+SoundManager
+  -> short WAV SFX
+  -> looping room music
 
-This is the required architecture for future real sprite sheets.
+AchievementManager
+  -> persistent achievements
+  -> daily counters
 
-## Implemented
-- separated transparent pet layer
-- idle/blink/talk/happy/sad/touch animations
-- outfit slots
-- 4 room themes + furniture slot persistence
-- 6 food types
-- bath foam/shower
-- sleep room
-- six mini-games
-- talking/repeat audio
-- XP/levels/coins/daily reward/offline decay
-- local photo album
-- lightweight travel screen
-
-## Remaining important differences from modern Talking Tom
-- true multi-frame body animation art for eat/sleep/run
-- more polished clothing artwork instead of procedural overlay shapes
-- more furniture artwork
-- richer mini-game graphics
-- achievements UI
-- more destinations/content
-- sound effects/music pack
+## v0.6 implemented
+- real multi-frame sprite playback
+- idle/blink/talk/happy/sad/touch/chew/sleep animation sets
+- sound effects and room music
+- real furniture PNG swapping
+- achievements
+- daily tasks
+- level-up feedback
+- previous v0.5 gameplay retained
 
 ## Immediate next action
-Compile and physically test v0.5 on iPad 1.
-Do not assume it works until hardware validation.
+Compile and test on the physical iPad 1.
+
+Do not mark complete until:
+1. all animation sets render
+2. no memory warning/crash after repeated animations
+3. music/SFX do not block talking audio
+4. furniture switching works
+5. daily task counters increment
+6. level-up alert works
