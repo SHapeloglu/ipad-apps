@@ -1,4 +1,4 @@
-# iPad1VNC v2.0.0-beta3
+# iPad1VNC v2.0.0-beta4
 
 A feature-complete beta aimed at turning an iPad 1 / iOS 5.1.1 into a lightweight Linux thin client.
 
@@ -70,3 +70,10 @@ Do not expose port 8085 broadly until the app token field is tested. SSH tunneli
 - Restored missing `refreshFileList` implementation.
 - Added private declarations for Files/download helper methods so the iOS 5 compiler does not treat them as unknown selectors.
 - No v2 feature was removed.
+
+
+## beta4 connection fix
+- Fixes a regression where beta3 advertised experimental Tight encoding even when the Tight switch was OFF.
+- With Tight OFF, the client now advertises only Hextile + RAW + DesktopSize.
+- Tight is advertised only when explicitly enabled.
+- This restores the stable v1.1.x Hextile connection path by default.

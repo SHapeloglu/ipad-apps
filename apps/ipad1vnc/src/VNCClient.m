@@ -55,11 +55,22 @@ static uint8_t reverseBits(uint8_t b){b=(b&0xF0)>>4|(b&0x0F)<<4;b=(b&0xCC)>>2|(b
     [_writeLock lock];BOOL ok=sendAll(_sock,pf,sizeof(pf));[_writeLock unlock];return ok;
 }
 - (BOOL)sendEncodings{
-    // Tight (7), Hextile (5), Raw (0), DesktopSize (-223).
-    uint8_t enc[20]={2,0,0,4, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0xFF,0xFF,0xFF,0x21};
-    int32_t first=_preferTight?7:5, second=_preferTight?5:7;
-    putBE32(enc+4,(uint32_t)first);putBE32(enc+8,(uint32_t)second);putBE32(enc+12,0);
-    [_writeLock lock];BOOL ok=sendAll(_sock,enc,sizeof(enc));[_writeLock unlock];return ok;
+    // IMPORTANT: do not advertise Tight unless the user explicitly enables it.
+    // TigerVNC may choose any encoding advertised by the client. beta3 advertised
+    // Tight even with the switch OFF, so the experimental decoder could be selected
+    // and immediately disconnect an otherwise working Hextile session.
+    if(_preferTight){
+        uint8_t enc[20]={2,0,0,4, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0xFF,0xFF,0xFF,0x21};
+        putBE32(enc+4,7);       // Tight
+        putBE32(enc+8,5);       // Hextile
+        putBE32(enc+12,0);      // Raw
+        [_writeLock lock];BOOL ok=sendAll(_sock,enc,sizeof(enc));[_writeLock unlock];return ok;
+    } else {
+        uint8_t enc[16]={2,0,0,3, 0,0,0,0, 0,0,0,0, 0xFF,0xFF,0xFF,0x21};
+        putBE32(enc+4,5);       // Hextile
+        putBE32(enc+8,0);       // Raw
+        [_writeLock lock];BOOL ok=sendAll(_sock,enc,sizeof(enc));[_writeLock unlock];return ok;
+    }
 }
 - (BOOL)handshake{
     uint8_t ver[12];if(!recvAll(_sock,ver,12)||memcmp(ver,"RFB ",4)!=0)return NO;
