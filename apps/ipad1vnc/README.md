@@ -1,50 +1,55 @@
-# iPad1VNC v1.1.1
+# iPad1VNC v2.0.0-beta1
 
-Legacy VNC thin-client for first-generation iPad / iOS 5.1.1.
+A feature-complete beta aimed at turning an iPad 1 / iOS 5.1.1 into a lightweight Linux thin client.
 
-## v1.1.0 additions
-- **Direct / Trackpad mode**
-  - Direct: touch maps to the remote screen.
-  - Trackpad: the iPad surface behaves like a laptop touchpad; tap clicks and movement is relative.
-- **Auto quality**
-  - Quality selector is now `Auto / Fast / Balanced / Quality`.
-  - Auto starts at Balanced and can move down/up based on decode time.
-- **Hextile VNC encoding**
-  - Requests Hextile first and falls back to RAW.
-  - Reduces network traffic and CPU spent moving large RAW frames.
-- **Connection profiles**
-  - Save several host/port/password/quality/input/speed profiles.
-  - Load them from the Profiles button.
-- **Native remote Files browser**
-  - Compatible with `python3 -m http.server 8085`.
-  - Folder navigation, Up, tap-to-download.
-- Existing features preserved: rotation, fullscreen, reconnect, clipboard sync, Backspace, special keys, pinch zoom, two-finger scroll, pointer speed.
+## Included
+- VNC: RAW + Hextile + **experimental Tight** (copy/palette/JPEG; gradient filter intentionally falls back)
+- Auto quality + Fast/Balanced/Quality
+- Direct Touch + Trackpad
+- Connection stats: FPS, kbps, encoding, quality
+- Connection profiles + load/delete management
+- Fullscreen, reconnect, rotation, clipboard, special keys, Backspace, pinch zoom, two-finger scroll
+- SSH terminal using the jailbroken device's `/usr/bin/ssh`
+- Key-based SSH VNC tunnel
+- Native authenticated Files v2 client + Python API supporting:
+  - list/download
+  - upload
+  - rename
+  - delete
+  - new folder
+- Cleaner 1024x768 setup layout
+
+## Important beta constraints
+1. **SSH**
+   - `/usr/bin/ssh` must exist on the iPad (OpenSSH client).
+   - Tunnel mode intentionally requires an SSH key. Password automation is not embedded.
+2. **Tight**
+   - Tight is optional. Leave the switch OFF for Hextile if a server uses an unsupported Tight gradient filter.
+3. **Files v2**
+   - Replace plain `python3 -m http.server` with the bundled `scripts/ipad1vnc_fileserver.py`.
+   - The v2 API uses a token. The token is created in `/home/desktop/.ipad1vnc-files-token`.
+   - Upload/New Folder/Rename/Delete are wired to the authenticated API; validate them on device before exposing the API publicly.
+4. This is a jailbreak-targeted application, not an App Store build.
 
 ## Build
 ```bash
-cd ~/projects/ipad1vnc/iPad1VNC-v1.1.0
+cd ~/projects/ipad1vnc/iPad1VNC-v2.0.0-beta
 make clean
 make package FINALPACKAGE=1
 ```
 
 Expected package:
-`packages/com.olap.ipad1vnc_1.1.0_iphoneos-arm.deb`
+`packages/com.olap.ipad1vnc_2.0.0-beta1_iphoneos-arm.deb`
 
-## Server
-VNC:
+## Server: install Files v2 API
 ```bash
-vncserver :1 -geometry 1024x768 -depth 24 -localhost no
+sudo mkdir -p /opt/ipad1vnc
+sudo cp scripts/ipad1vnc_fileserver.py /opt/ipad1vnc/
+sudo chmod 755 /opt/ipad1vnc/ipad1vnc_fileserver.py
+sudo cp scripts/ipad1vnc-fileserver.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now ipad1vnc-fileserver
+sudo cat /home/desktop/.ipad1vnc-files-token
 ```
 
-Files:
-```bash
-python3 -m http.server 8085 --bind 0.0.0.0 --directory /home/desktop/Downloads
-```
-
-## Deliberately not bundled yet
-SSH tunneling and a native SSH terminal are **not** faked in this release. A secure implementation needs a maintained SSH crypto/library layer (for example libssh2) compiled for armv7/iOS 5 and should be tested separately before opening it to production credentials.
-
-
-## v1.1.1 build fix
-- Fixes the Objective-C compile error in v1.1.0 where connection-profile method implementations were accidentally emitted inside the private `@interface` block.
-- No feature was removed; Trackpad, Auto Quality, Hextile, Profiles and native Files remain enabled.
+Do not expose port 8085 broadly until the app token field is tested. SSH tunneling is the preferred final security model for VNC.

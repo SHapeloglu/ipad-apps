@@ -1,6 +1,7 @@
 #import "AppDelegate.h"
 #import "VNCClient.h"
 #import "VNCView.h"
+#import "TerminalSession.h"
 
 @interface RotationViewController : UIViewController
 @end
@@ -11,71 +12,131 @@
 - (NSUInteger)supportedInterfaceOrientations { return UIInterfaceOrientationMaskAll; }
 @end
 
-@interface AppDelegate () <VNCClientDelegate>
+@interface AppDelegate () <VNCClientDelegate, TerminalSessionDelegate>
 - (void)connectTapped;
+- (void)terminalTapped;
+- (void)closeTerminalTapped;
+- (void)terminalSendTapped;
+- (void)buildTerminalPanel;
+- (void)tightChanged;
+- (void)manageProfilesTapped;
+- (void)deleteProfileAtIndex:(NSInteger)index;
+- (void)renameRemoteEntry:(NSDictionary *)entry;
+- (void)deleteRemoteEntry:(NSDictionary *)entry;
+- (void)mkdirRemote;
+- (void)uploadLocalFile;
+- (void)performFileAPIPath:(NSString *)path method:(NSString *)method body:(NSData *)body contentType:(NSString *)contentType;
+
+
+- (void)tightChanged { [self saveConnectionSettings]; _statusLabel.text=@"Tight preference saved — reconnect to apply"; }
+- (void)vncClientStatsFPS:(CGFloat)fps kbps:(CGFloat)kbps encoding:(NSString*)encoding quality:(NSString*)quality {
+    _statsLabel.text=[NSString stringWithFormat:@"%.1f FPS | %.0f kbps | %@ | %@",fps,kbps,encoding,quality];
+}
+
+- (void)buildTerminalPanel {
+    if(_terminalPanel)return;
+    CGFloat w=_controller.view.bounds.size.width,h=_controller.view.bounds.size.height,pw=MIN(900.0,w-20),ph=MIN(680.0,h-20);
+    _terminalPanel=[[UIView alloc] initWithFrame:CGRectMake((w-pw)/2,(h-ph)/2,pw,ph)];
+    _terminalPanel.autoresizingMask=(UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight);_terminalPanel.backgroundColor=[UIColor colorWithWhite:0.06 alpha:0.98];_terminalPanel.hidden=YES;
+    UILabel *title=[[[UILabel alloc] initWithFrame:CGRectMake(14,8,180,30)] autorelease];title.backgroundColor=[UIColor clearColor];title.textColor=[UIColor whiteColor];title.text=@"SSH Terminal";title.font=[UIFont boldSystemFontOfSize:16];[_terminalPanel addSubview:title];
+    UIButton *close=[UIButton buttonWithType:UIButtonTypeRoundedRect];close.frame=CGRectMake(pw-90,6,76,32);[close setTitle:@"Close" forState:UIControlStateNormal];[close addTarget:self action:@selector(closeTerminalTapped) forControlEvents:UIControlEventTouchUpInside];[_terminalPanel addSubview:close];
+
+    _sshUserField=[[UITextField alloc] initWithFrame:CGRectMake(14,44,120,34)];_sshUserField.borderStyle=UITextBorderStyleRoundedRect;_sshUserField.placeholder=@"SSH user";_sshUserField.text=[[NSUserDefaults standardUserDefaults] stringForKey:@"sshUser"];[_terminalPanel addSubview:_sshUserField];
+    _sshPortField=[[UITextField alloc] initWithFrame:CGRectMake(140,44,70,34)];_sshPortField.borderStyle=UITextBorderStyleRoundedRect;_sshPortField.keyboardType=UIKeyboardTypeNumberPad;_sshPortField.placeholder=@"22";NSString*sp=[[NSUserDefaults standardUserDefaults]stringForKey:@"sshPort"];_sshPortField.text=([sp length]?sp:@"22");[_terminalPanel addSubview:_sshPortField];
+    _sshKeyField=[[UITextField alloc] initWithFrame:CGRectMake(216,44,pw-430,34)];_sshKeyField.borderStyle=UITextBorderStyleRoundedRect;_sshKeyField.placeholder=@"/var/mobile/.ssh/id_rsa";_sshKeyField.text=[[NSUserDefaults standardUserDefaults]stringForKey:@"sshKey"];[_terminalPanel addSubview:_sshKeyField];
+    UILabel *tl=[[[UILabel alloc]initWithFrame:CGRectMake(pw-205,46,90,30)]autorelease];tl.backgroundColor=[UIColor clearColor];tl.textColor=[UIColor whiteColor];tl.font=[UIFont systemFontOfSize:12];tl.text=@"VNC Tunnel";[_terminalPanel addSubview:tl];
+    _sshTunnelSwitch=[[UISwitch alloc]initWithFrame:CGRectMake(pw-105,44,90,30)];_sshTunnelSwitch.on=[[NSUserDefaults standardUserDefaults] boolForKey:@"sshTunnel"];[_terminalPanel addSubview:_sshTunnelSwitch];
+
+    _terminalView=[[UITextView alloc] initWithFrame:CGRectMake(14,84,pw-28,ph-150)];_terminalView.backgroundColor=[UIColor blackColor];_terminalView.textColor=[UIColor whiteColor];_terminalView.font=[UIFont fontWithName:@"Courier" size:13];_terminalView.editable=NO;[_terminalPanel addSubview:_terminalView];
+    _terminalInput=[[UITextField alloc] initWithFrame:CGRectMake(14,ph-58,pw-110,40)];_terminalInput.borderStyle=UITextBorderStyleRoundedRect;_terminalInput.placeholder=@"Command…";_terminalInput.delegate=self;[_terminalPanel addSubview:_terminalInput];
+    UIButton *send=[UIButton buttonWithType:UIButtonTypeRoundedRect];send.frame=CGRectMake(pw-90,ph-58,76,40);[send setTitle:@"Send" forState:UIControlStateNormal];[send addTarget:self action:@selector(terminalSendTapped) forControlEvents:UIControlEventTouchUpInside];[_terminalPanel addSubview:send];
+    [_controller.view addSubview:_terminalPanel];
+}
+- (void)terminalTapped {
+    [self buildTerminalPanel];_terminalPanel.hidden=NO;[_controller.view bringSubviewToFront:_terminalPanel];
+    if(!_terminalSession)_terminalSession=[[TerminalSession alloc] init];_terminalSession.delegate=self;
+    if(!_terminalSession.running && [_hostField.text length]){
+        NSInteger port=[_sshPortField.text integerValue];if(port<=0)port=22;
+        [[NSUserDefaults standardUserDefaults] setObject:_sshUserField.text forKey:@"sshUser"];
+        [[NSUserDefaults standardUserDefaults] setObject:_sshPortField.text forKey:@"sshPort"];
+        [[NSUserDefaults standardUserDefaults] setObject:_sshKeyField.text forKey:@"sshKey"];
+        [[NSUserDefaults standardUserDefaults] setBool:_sshTunnelSwitch.on forKey:@"sshTunnel"];
+        [[NSUserDefaults standardUserDefaults] synchronize];
+        [_terminalSession startSSHHost:_hostField.text port:port user:_sshUserField.text keyPath:_sshKeyField.text command:nil];
+    }
+}
+- (void)closeTerminalTapped {_terminalPanel.hidden=YES;}
+- (void)terminalSendTapped {NSString *s=_terminalInput.text;if(![s length])return;[_terminalSession sendText:[s stringByAppendingString:@"\n"]];_terminalInput.text=@"";}
+- (void)terminalSessionOutput:(NSString*)text {if(![text length])return;_terminalView.text=[_terminalView.text stringByAppendingString:text];NSRange r=NSMakeRange([_terminalView.text length],0);[_terminalView scrollRangeToVisible:r];}
+- (void)terminalSessionEnded:(NSString*)reason {if(_terminalView)_terminalView.text=[_terminalView.text stringByAppendingFormat:@"\n[%@]\n",reason];}
 
 - (void)keyboardTapped;
 - (void)filesTapped;
-- (void)settingsTapped;
-- (void)fullScreenTapped;
-- (void)exitFullScreenTapped;
-- (void)speedChanged;
-- (void)qualityChanged;
-- (void)inputModeChanged;
-- (void)profilesTapped;
-- (void)saveProfileNamed:(NSString *)name;
-- (void)loadProfileAtIndex:(NSInteger)index;
-- (void)setControlsCollapsed:(BOOL)collapsed animated:(BOOL)animated;
-- (void)setFullScreen:(BOOL)fullScreen animated:(BOOL)animated;
-- (void)saveConnectionSettings;
-- (void)startConnection;
-- (void)scheduleReconnect;
-- (void)reconnectTimerFired:(NSTimer *)timer;
-- (void)clipboardTimerFired:(NSTimer *)timer;
-- (void)startClipboardTimer;
-- (void)stopClipboardTimer;
-- (void)keyboardWillShow:(NSNotification *)note;
-- (void)keyboardWillHide:(NSNotification *)note;
-- (void)specialKeyTapped:(UIButton *)sender;
-- (void)sendKey:(uint32_t)keysym;
-- (void)sendChordKey:(uint32_t)keysym ctrl:(BOOL)ctrl alt:(BOOL)alt;
-- (void)refreshModifierButtons;
-- (void)buildFilesPanel;
-- (void)downloadTapped;
-- (void)cancelDownloadTapped;
-- (void)closeFilesTapped;
-- (void)browseFilesTapped;
-- (void)startDownloadFromURL:(NSURL *)url;
-- (void)parseDirectoryHTML:(NSData *)data baseURL:(NSURL *)baseURL;
-- (void)filesUpTapped;
-- (void)startBrowseURL:(NSURL *)url;
-- (void)refreshFileList;
-- (NSString *)downloadsDirectory;
-- (NSString *)uniqueDownloadPathForName:(NSString *)name;
-@end
-
-@implementation AppDelegate
-@synthesize window = _window;
-
-- (void)profilesTapped {
-    if(!_profiles){NSArray *saved=[[NSUserDefaults standardUserDefaults] arrayForKey:@"profiles"];_profiles=[[NSMutableArray alloc] initWithArray:(saved?saved:[NSArray array])];}
-    UIActionSheet *sheet=[[[UIActionSheet alloc] initWithTitle:@"Connection Profiles" delegate:self cancelButtonTitle:nil destructiveButtonTitle:nil otherButtonTitles:nil] autorelease];
-    for(NSDictionary *p in _profiles)[sheet addButtonWithTitle:[p objectForKey:@"name"]];
-    [sheet addButtonWithTitle:@"Save Current…"];
-    sheet.cancelButtonIndex=[sheet addButtonWithTitle:@"Cancel"];
-    [sheet showInView:_controller.view];
+- (void)settingsTapped {
+    UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"SSH / Security" message:@"SSH user, port and key can be edited in the Terminal panel. Enable tunnel there before connecting. Tight can be toggled in Setup." delegate:nil cancelButtonTitle:@"OK" otherButtonTitles:nil] autorelease];
+    [a show];
 }
 - (void)actionSheet:(UIActionSheet *)actionSheet clickedButtonAtIndex:(NSInteger)buttonIndex {
-    (void)actionSheet;
     if(buttonIndex<0)return;
+    if(actionSheet.tag==920){
+        if(_selectedRemoteIndex<0||_selectedRemoteIndex>=(NSInteger)[_remoteEntries count])return;
+        NSDictionary *e=[_remoteEntries objectAtIndex:_selectedRemoteIndex];
+        if(buttonIndex==0){[self deleteRemoteEntry:e];return;}
+        if(buttonIndex==1){[self startDownloadFromURL:[self downloadURLForEntry:e]];return;}
+        if(buttonIndex==2){[self renameRemoteEntry:e];return;}
+        return;
+    }
+    if(actionSheet.tag==921){
+        NSArray *files=[[NSFileManager defaultManager] contentsOfDirectoryAtPath:[self downloadsDirectory] error:nil];
+        if(buttonIndex>=0&&buttonIndex<(NSInteger)[files count]){
+            NSString *name=[files objectAtIndex:buttonIndex],*lp=[[self downloadsDirectory] stringByAppendingPathComponent:name];
+            NSData *body=[NSData dataWithContentsOfFile:lp];if(!body)return;
+            NSString *rp=([_remoteRelativePath length]?[_remoteRelativePath stringByAppendingPathComponent:name]:name);
+            NSString *esc=[rp stringByAddingPercentEscapesUsingEncoding:NSUTF8StringEncoding];
+            [self performFileAPIPath:[NSString stringWithFormat:@"/api/upload?path=%@",esc] method:@"POST" body:body contentType:@"application/octet-stream"];
+        }
+        return;
+    }
+    (void)actionSheet;
     if(buttonIndex<(NSInteger)[_profiles count]){[self loadProfileAtIndex:buttonIndex];return;}
+    if(_profileManageMode){
+        _profileManageMode=NO;
+        if(buttonIndex<(NSInteger)[_profiles count]){
+            _selectedProfileIndex=buttonIndex;
+            UIActionSheet *m=[[[UIActionSheet alloc] initWithTitle:[[ _profiles objectAtIndex:buttonIndex] objectForKey:@"name"] delegate:self cancelButtonTitle:@"Cancel" destructiveButtonTitle:@"Delete" otherButtonTitles:@"Load",nil] autorelease];
+            m.tag=901;[m showInView:_controller.view];
+        }
+        return;
+    }
+    if(actionSheet.tag==901){
+        if(buttonIndex==0){[self deleteProfileAtIndex:_selectedProfileIndex];return;}
+        if(buttonIndex==1){[self loadProfileAtIndex:_selectedProfileIndex];return;}
+        return;
+    }
     if(buttonIndex==(NSInteger)[_profiles count]){
         _savingProfilePrompt=YES;
         UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"Save Profile" message:@"Profile name" delegate:self cancelButtonTitle:@"Cancel" otherButtonTitles:@"Save",nil] autorelease];
         a.alertViewStyle=UIAlertViewStylePlainTextInput;[[a textFieldAtIndex:0] setText:_hostField.text];[a show];
+        return;
+    }
+    if(buttonIndex==(NSInteger)[_profiles count]+1){
+        _profileManageMode=YES;
+        UIActionSheet *s=[[[UIActionSheet alloc] initWithTitle:@"Choose profile to manage" delegate:self cancelButtonTitle:nil destructiveButtonTitle:nil otherButtonTitles:nil] autorelease];
+        for(NSDictionary *p in _profiles)[s addButtonWithTitle:[p objectForKey:@"name"]];
+        s.cancelButtonIndex=[s addButtonWithTitle:@"Cancel"];[s showInView:_controller.view];
     }
 }
 - (void)alertView:(UIAlertView *)alertView clickedButtonAtIndex:(NSInteger)buttonIndex {
+    if(alertView.tag==930){
+        if(buttonIndex==alertView.cancelButtonIndex)return;NSString *name=[[[alertView textFieldAtIndex:0] text] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];if(![name length])return;
+        NSString *rp=([_remoteRelativePath length]?[_remoteRelativePath stringByAppendingPathComponent:name]:name);NSData*b=[NSJSONSerialization dataWithJSONObject:[NSDictionary dictionaryWithObject:rp forKey:@"path"] options:0 error:nil];[self performFileAPIPath:@"/api/mkdir" method:@"POST" body:b contentType:@"application/json"];return;
+    }
+    if(alertView.tag==931){
+        if(buttonIndex==alertView.cancelButtonIndex||_selectedRemoteIndex<0||_selectedRemoteIndex>=(NSInteger)[_remoteEntries count])return;
+        NSDictionary *e=[_remoteEntries objectAtIndex:_selectedRemoteIndex];NSString *newName=[[[alertView textFieldAtIndex:0] text] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];if(![newName length])return;
+        NSString *from=[self remotePathForEntry:e];NSString *to=([_remoteRelativePath length]?[_remoteRelativePath stringByAppendingPathComponent:newName]:newName);
+        NSDictionary *o=[NSDictionary dictionaryWithObjectsAndKeys:from,@"from",to,@"to",nil];NSData*b=[NSJSONSerialization dataWithJSONObject:o options:0 error:nil];[self performFileAPIPath:@"/api/rename" method:@"POST" body:b contentType:@"application/json"];return;
+    }
     if(!_savingProfilePrompt)return;_savingProfilePrompt=NO;if(buttonIndex==alertView.cancelButtonIndex)return;
     NSString *name=[[[alertView textFieldAtIndex:0] text] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
     if(![name length])name=@"Server";[self saveProfileNamed:name];
@@ -94,6 +155,16 @@
     _vncView.inputMode=(VNCInputMode)_inputModeControl.selectedSegmentIndex;[self saveConnectionSettings];_statusLabel.text=[NSString stringWithFormat:@"Loaded %@",[p objectForKey:@"name"]];
 }
 
+- (void)deleteProfileAtIndex:(NSInteger)index {
+    if(index<0||index>=(NSInteger)[_profiles count])return;
+    NSString *name=[[_profiles objectAtIndex:index] objectForKey:@"name"];
+    [_profiles removeObjectAtIndex:index];
+    [[NSUserDefaults standardUserDefaults] setObject:_profiles forKey:@"profiles"];
+    [[NSUserDefaults standardUserDefaults] synchronize];
+    _statusLabel.text=[NSString stringWithFormat:@"Deleted %@",name];
+}
+
+
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
     (void)launchOptions;
@@ -104,7 +175,7 @@
     _controller.view.backgroundColor = [UIColor colorWithWhite:0.12 alpha:1.0];
 
     CGFloat w = _controller.view.bounds.size.width;
-    CGFloat panelExpandedHeight = 260.0;
+    CGFloat panelExpandedHeight = 292.0;
     _connectionPanel = [[UIView alloc] initWithFrame:CGRectMake(0, 0, w, panelExpandedHeight)];
     _connectionPanel.autoresizingMask = UIViewAutoresizingFlexibleWidth;
     _connectionPanel.backgroundColor = [UIColor colorWithWhite:0.12 alpha:1.0];
@@ -153,14 +224,14 @@
 
     CGFloat savedSpeed = [defaults floatForKey:@"pointerSpeed"];
     if (savedSpeed < 0.5 || savedSpeed > 1.5) savedSpeed = 1.0;
-    _speedLabel = [[UILabel alloc] initWithFrame:CGRectMake(20,108,120,28)];
+    _speedLabel = [[UILabel alloc] initWithFrame:CGRectMake(20,112,120,26)];
     _speedLabel.backgroundColor = [UIColor clearColor];
     _speedLabel.textColor = [UIColor whiteColor];
     _speedLabel.font = [UIFont systemFontOfSize:13];
     _speedLabel.text = [NSString stringWithFormat:@"Pointer %.1fx", savedSpeed];
     [_connectionPanel addSubview:_speedLabel];
 
-    _speedSlider = [[UISlider alloc] initWithFrame:CGRectMake(135,108,w-155,28)];
+    _speedSlider = [[UISlider alloc] initWithFrame:CGRectMake(135,112,w-155,26)];
     _speedSlider.autoresizingMask = UIViewAutoresizingFlexibleWidth;
     _speedSlider.minimumValue = 0.5f;
     _speedSlider.maximumValue = 1.5f;
@@ -168,7 +239,7 @@
     [_speedSlider addTarget:self action:@selector(speedChanged) forControlEvents:UIControlEventValueChanged];
     [_connectionPanel addSubview:_speedSlider];
 
-    UILabel *qualityLabel = [[[UILabel alloc] initWithFrame:CGRectMake(20,140,105,28)] autorelease];
+    UILabel *qualityLabel = [[[UILabel alloc] initWithFrame:CGRectMake(20,146,80,28)] autorelease];
     qualityLabel.backgroundColor = [UIColor clearColor];
     qualityLabel.textColor = [UIColor whiteColor];
     qualityLabel.font = [UIFont systemFontOfSize:13];
@@ -176,7 +247,7 @@
     [_connectionPanel addSubview:qualityLabel];
 
     _qualityControl = [[UISegmentedControl alloc] initWithItems:[NSArray arrayWithObjects:@"Auto",@"Fast",@"Balanced",@"Quality",nil]];
-    _qualityControl.frame = CGRectMake(105,140,w-125,30);
+    _qualityControl.frame = CGRectMake(105,146,w-125,30);
     _qualityControl.autoresizingMask = UIViewAutoresizingFlexibleWidth;
     NSInteger savedQuality;
     if ([defaults objectForKey:@"qualityMode"]) savedQuality=[defaults integerForKey:@"qualityMode"];
@@ -189,20 +260,30 @@
     [_qualityControl addTarget:self action:@selector(qualityChanged) forControlEvents:UIControlEventValueChanged];
     [_connectionPanel addSubview:_qualityControl];
 
-    UILabel *inputLabel = [[[UILabel alloc] initWithFrame:CGRectMake(20,176,105,28)] autorelease];
+    UILabel *inputLabel = [[[UILabel alloc] initWithFrame:CGRectMake(20,184,80,28)] autorelease];
     inputLabel.backgroundColor=[UIColor clearColor]; inputLabel.textColor=[UIColor whiteColor];
     inputLabel.font=[UIFont systemFontOfSize:13]; inputLabel.text=@"Pointer Mode"; inputLabel.tag=501;
     [_connectionPanel addSubview:inputLabel];
 
     _inputModeControl=[[UISegmentedControl alloc] initWithItems:[NSArray arrayWithObjects:@"Direct",@"Trackpad",nil]];
-    _inputModeControl.frame=CGRectMake(105,176,220,30);
+    _inputModeControl.frame=CGRectMake(105,184,220,30);
     NSInteger savedInput=[defaults objectForKey:@"inputMode"]?[defaults integerForKey:@"inputMode"]:0;
     if(savedInput<0||savedInput>1)savedInput=0;
     _inputModeControl.selectedSegmentIndex=savedInput;
     [_inputModeControl addTarget:self action:@selector(inputModeChanged) forControlEvents:UIControlEventValueChanged];
     [_connectionPanel addSubview:_inputModeControl];
 
-    _statusLabel = [[UILabel alloc] initWithFrame:CGRectMake(335,176,w-760,30)];
+    UILabel *tightLabel=[[[UILabel alloc] initWithFrame:CGRectMake(20,216,80,28)] autorelease];
+    tightLabel.backgroundColor=[UIColor clearColor];tightLabel.textColor=[UIColor whiteColor];tightLabel.font=[UIFont systemFontOfSize:13];tightLabel.text=@"Tight";tightLabel.tag=502;[_connectionPanel addSubview:tightLabel];
+    _tightSwitch=[[UISwitch alloc] initWithFrame:CGRectMake(105,216,80,28)];
+    _tightSwitch.on=[defaults objectForKey:@"preferTight"]?[defaults boolForKey:@"preferTight"]:NO;
+    [_tightSwitch addTarget:self action:@selector(tightChanged) forControlEvents:UIControlEventValueChanged];[_connectionPanel addSubview:_tightSwitch];
+
+    _statsLabel=[[UILabel alloc] initWithFrame:CGRectMake(190,216,w-210,28)];
+    _statsLabel.autoresizingMask=UIViewAutoresizingFlexibleWidth;_statsLabel.backgroundColor=[UIColor clearColor];
+    _statsLabel.textColor=[UIColor lightGrayColor];_statsLabel.font=[UIFont systemFontOfSize:12];_statsLabel.text=@"FPS -- | -- kbps | --";[_connectionPanel addSubview:_statsLabel];
+
+    _statusLabel = [[UILabel alloc] initWithFrame:CGRectMake(340,184,w-360,30)];
     _statusLabel.autoresizingMask = UIViewAutoresizingFlexibleWidth;
     _statusLabel.backgroundColor = [UIColor clearColor];
     _statusLabel.textColor = [UIColor whiteColor];
@@ -211,28 +292,32 @@
     [_connectionPanel addSubview:_statusLabel];
 
     _keyboardButton = [[UIButton buttonWithType:UIButtonTypeRoundedRect] retain];
-    _keyboardButton.frame = CGRectMake(w-425,218,80,32);
+    _keyboardButton.frame = CGRectMake(w-515,248,80,34);
     _keyboardButton.autoresizingMask = UIViewAutoresizingFlexibleLeftMargin;
     [_keyboardButton setTitle:@"Keyboard" forState:UIControlStateNormal];
     [_keyboardButton addTarget:self action:@selector(keyboardTapped) forControlEvents:UIControlEventTouchUpInside];
     [_connectionPanel addSubview:_keyboardButton];
 
     _filesButton = [[UIButton buttonWithType:UIButtonTypeRoundedRect] retain];
-    _filesButton.frame = CGRectMake(w-340,218,70,32);
+    _filesButton.frame = CGRectMake(w-425,248,80,34);
     _filesButton.autoresizingMask = UIViewAutoresizingFlexibleLeftMargin;
     [_filesButton setTitle:@"Files" forState:UIControlStateNormal];
     [_filesButton addTarget:self action:@selector(filesTapped) forControlEvents:UIControlEventTouchUpInside];
     [_connectionPanel addSubview:_filesButton];
 
+    _terminalButton=[[UIButton buttonWithType:UIButtonTypeRoundedRect] retain];
+    _terminalButton.frame=CGRectMake(w-605,248,80,34);_terminalButton.autoresizingMask=UIViewAutoresizingFlexibleLeftMargin;
+    [_terminalButton setTitle:@"Terminal" forState:UIControlStateNormal];[_terminalButton addTarget:self action:@selector(terminalTapped) forControlEvents:UIControlEventTouchUpInside];[_connectionPanel addSubview:_terminalButton];
+
     _fullScreenButton = [[UIButton buttonWithType:UIButtonTypeRoundedRect] retain];
-    _fullScreenButton.frame = CGRectMake(w-265,218,70,32);
+    _fullScreenButton.frame = CGRectMake(w-335,248,80,34);
     _fullScreenButton.autoresizingMask = UIViewAutoresizingFlexibleLeftMargin;
     [_fullScreenButton setTitle:@"Full" forState:UIControlStateNormal];
     [_fullScreenButton addTarget:self action:@selector(fullScreenTapped) forControlEvents:UIControlEventTouchUpInside];
     [_connectionPanel addSubview:_fullScreenButton];
 
     _settingsButton = [[UIButton buttonWithType:UIButtonTypeRoundedRect] retain];
-    _settingsButton.frame = CGRectMake(w-190,218,170,32);
+    _settingsButton.frame = CGRectMake(w-245,248,225,34);
     _settingsButton.autoresizingMask = UIViewAutoresizingFlexibleLeftMargin;
     [_settingsButton setTitle:@"Hide Setup" forState:UIControlStateNormal];
     [_settingsButton addTarget:self action:@selector(settingsTapped) forControlEvents:UIControlEventTouchUpInside];
@@ -273,6 +358,7 @@
     [_controller.view addSubview:_keyBar];
 
     [self buildFilesPanel];
+    [self buildTerminalPanel];
 
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(keyboardWillShow:) name:UIKeyboardWillShowNotification object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(keyboardWillHide:) name:UIKeyboardWillHideNotification object:nil];
@@ -301,6 +387,7 @@
     [defaults setFloat:_speedSlider.value forKey:@"pointerSpeed"];
     [defaults setInteger:_qualityControl.selectedSegmentIndex forKey:@"qualityMode"];
     [defaults setInteger:_inputModeControl.selectedSegmentIndex forKey:@"inputMode"];
+    [defaults setBool:_tightSwitch.on forKey:@"preferTight"];
     [defaults synchronize];
 }
 
@@ -316,17 +403,34 @@
 }
 
 - (void)startConnection {
-    if (_reconnectTimer) { [_reconnectTimer invalidate]; [_reconnectTimer release]; _reconnectTimer = nil; }
-    if (_client) { _client.delegate=nil; [_client disconnect]; [_client release]; _client=nil; _vncView.client=nil; }
+    [self saveConnectionSettings];
     NSString *host=[_hostField.text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
-    NSInteger port=[_portField.text integerValue]; if(port<=0)port=5901;
-    _statusLabel.text=@"Connecting…";
-    _client=[[VNCClient alloc] initWithHost:host port:port password:_passwordField.text ?: @""];
+    NSInteger port=[_portField.text integerValue];if(![host length]||port<=0){_statusLabel.text=@"Host/port required";return;}
+    [_client disconnect];[_client release];_client=nil;
+    NSString *connectHost=host;NSInteger connectPort=port;
+
+    if(_sshTunnelSwitch && _sshTunnelSwitch.on){
+        if(!_tunnelSession)_tunnelSession=[[TerminalSession alloc] init];
+        _tunnelSession.delegate=self;
+        _tunnelLocalPort=15901;
+        NSInteger sshPort=[_sshPortField.text integerValue];if(sshPort<=0)sshPort=22;
+        if(![_sshKeyField.text length]){_statusLabel.text=@"SSH tunnel needs key path";return;}
+        BOOL tunnelOK=[_tunnelSession startTunnelHost:host port:sshPort user:_sshUserField.text keyPath:_sshKeyField.text localPort:_tunnelLocalPort remoteHost:@"127.0.0.1" remotePort:port];
+        if(!tunnelOK){_statusLabel.text=@"SSH tunnel failed";return;}
+        connectHost=@"127.0.0.1";connectPort=_tunnelLocalPort;
+        _statusLabel.text=@"Opening SSH tunnel…";
+        [NSThread sleepForTimeInterval:0.8];
+    }
+
+    _client=[[VNCClient alloc] initWithHost:connectHost port:connectPort password:_passwordField.text ?: @""];
+    _client.delegate=self;
     NSInteger qm=_qualityControl.selectedSegmentIndex;
     _client.adaptiveQualityEnabled=(qm==0);
     _client.qualityProfile=(qm==0?VNCQualityBalanced:(VNCQualityProfile)(qm-1));
-    _vncView.inputMode=(VNCInputMode)_inputModeControl.selectedSegmentIndex;
-    _client.delegate=self; _vncView.client=_client; [_client connect];
+    _client.preferTight=_tightSwitch.on;
+    _vncView.client=_client;_vncView.inputMode=(VNCInputMode)_inputModeControl.selectedSegmentIndex;
+    _shouldAutoReconnect=YES;[_connectButton setTitle:@"Disconnect" forState:UIControlStateNormal];
+    [_client connect];
 }
 
 - (void)scheduleReconnect {
@@ -357,15 +461,16 @@
 }
 
 - (void)setControlsCollapsed:(BOOL)collapsed animated:(BOOL)animated {
-    _controlsCollapsed=collapsed; CGFloat panelHeight=collapsed?42.0:260.0; CGFloat w=_controller.view.bounds.size.width,h=_controller.view.bounds.size.height;
+    _controlsCollapsed=collapsed; CGFloat panelHeight=collapsed?42.0:292.0; CGFloat w=_controller.view.bounds.size.width,h=_controller.view.bounds.size.height;
     if(animated){[UIView beginAnimations:@"connectionPanel" context:NULL];[UIView setAnimationDuration:0.20];}
     CGRect pf=_connectionPanel.frame;pf.size.height=panelHeight;_connectionPanel.frame=pf;
-    _hostField.alpha=collapsed?0:1;_portField.alpha=collapsed?0:1;_passwordField.alpha=collapsed?0:1;_connectButton.alpha=collapsed?0:1;_speedLabel.alpha=collapsed?0:1;_speedSlider.alpha=collapsed?0:1;_qualityControl.alpha=collapsed?0:1;_inputModeControl.alpha=collapsed?0:1;_profilesButton.alpha=collapsed?0:1;[_connectionPanel viewWithTag:500].alpha=collapsed?0:1;[_connectionPanel viewWithTag:501].alpha=collapsed?0:1;
-    _statusLabel.frame=CGRectMake(12,collapsed?7:176,collapsed?w-445:w-360,28);
-    _keyboardButton.frame=CGRectMake(w-425,collapsed?5:218,80,32);
-    _filesButton.frame=CGRectMake(w-340,collapsed?5:218,70,32);
-    _fullScreenButton.frame=CGRectMake(w-265,collapsed?5:218,70,32);
-    _settingsButton.frame=CGRectMake(w-190,collapsed?5:218,170,32);
+    _hostField.alpha=collapsed?0:1;_portField.alpha=collapsed?0:1;_passwordField.alpha=collapsed?0:1;_connectButton.alpha=collapsed?0:1;_speedLabel.alpha=collapsed?0:1;_speedSlider.alpha=collapsed?0:1;_qualityControl.alpha=collapsed?0:1;_inputModeControl.alpha=collapsed?0:1;_profilesButton.alpha=collapsed?0:1;_tightSwitch.alpha=collapsed?0:1;_statsLabel.alpha=collapsed?0:1;[_connectionPanel viewWithTag:500].alpha=collapsed?0:1;[_connectionPanel viewWithTag:501].alpha=collapsed?0:1;[_connectionPanel viewWithTag:502].alpha=collapsed?0:1;
+    _statusLabel.frame=CGRectMake(12,collapsed?7:184,collapsed?w-620:w-360,28);
+    _keyboardButton.frame=CGRectMake(w-515,collapsed?5:248,80,34);
+    _terminalButton.frame=CGRectMake(w-605,collapsed?5:248,80,34);
+    _filesButton.frame=CGRectMake(w-425,collapsed?5:248,80,34);
+    _fullScreenButton.frame=CGRectMake(w-335,collapsed?5:248,80,34);
+    _settingsButton.frame=CGRectMake(w-245,collapsed?5:248,225,34);
     [_settingsButton setTitle:(collapsed?@"Setup":@"Hide Setup") forState:UIControlStateNormal];
     _vncView.frame=CGRectMake(0,panelHeight,w,h-panelHeight);
     if(animated)[UIView commitAnimations];
@@ -451,30 +556,78 @@
 - (void)buildFilesPanel {
     CGFloat w=_controller.view.bounds.size.width,h=_controller.view.bounds.size.height,pw=MIN(760.0,w-20),ph=MIN(620.0,h-20);
     _filesPanel=[[UIView alloc] initWithFrame:CGRectMake((w-pw)/2,(h-ph)/2,pw,ph)];_filesPanel.autoresizingMask=(UIViewAutoresizingFlexibleLeftMargin|UIViewAutoresizingFlexibleRightMargin|UIViewAutoresizingFlexibleTopMargin|UIViewAutoresizingFlexibleBottomMargin);_filesPanel.backgroundColor=[UIColor colorWithWhite:0.10 alpha:0.98];_filesPanel.hidden=YES;
-    UILabel *title=[[[UILabel alloc] initWithFrame:CGRectMake(15,8,pw-220,30)] autorelease];title.backgroundColor=[UIColor clearColor];title.textColor=[UIColor whiteColor];title.text=@"Remote Files";title.font=[UIFont boldSystemFontOfSize:16];[_filesPanel addSubview:title];
-    _filesUpButton=[[UIButton buttonWithType:UIButtonTypeRoundedRect] retain];_filesUpButton.frame=CGRectMake(pw-190,6,80,32);[_filesUpButton setTitle:@"Up" forState:UIControlStateNormal];[_filesUpButton addTarget:self action:@selector(filesUpTapped) forControlEvents:UIControlEventTouchUpInside];[_filesPanel addSubview:_filesUpButton];
-    UIButton *close=[UIButton buttonWithType:UIButtonTypeRoundedRect];close.frame=CGRectMake(pw-95,6,80,32);[close setTitle:@"Close" forState:UIControlStateNormal];[close addTarget:self action:@selector(closeFilesTapped) forControlEvents:UIControlEventTouchUpInside];[_filesPanel addSubview:close];
-    _downloadURLField=[[UITextField alloc] initWithFrame:CGRectMake(15,44,pw-115,36)];_downloadURLField.borderStyle=UITextBorderStyleRoundedRect;_downloadURLField.placeholder=@"http://server:8085/";_downloadURLField.autocorrectionType=UITextAutocorrectionTypeNo;_downloadURLField.autocapitalizationType=UITextAutocapitalizationTypeNone;NSString *saved=[[NSUserDefaults standardUserDefaults] stringForKey:@"filesBaseURL"];if([saved length])_downloadURLField.text=saved;[_filesPanel addSubview:_downloadURLField];
-    _browseFilesButton=[[UIButton buttonWithType:UIButtonTypeRoundedRect] retain];_browseFilesButton.frame=CGRectMake(pw-95,44,80,36);[_browseFilesButton setTitle:@"Browse" forState:UIControlStateNormal];[_browseFilesButton addTarget:self action:@selector(browseFilesTapped) forControlEvents:UIControlEventTouchUpInside];[_filesPanel addSubview:_browseFilesButton];
-    _remoteEntries=[[NSMutableArray alloc] init];_remoteFilesTable=[[UITableView alloc] initWithFrame:CGRectMake(15,88,pw-30,ph-250) style:UITableViewStylePlain];_remoteFilesTable.delegate=self;_remoteFilesTable.dataSource=self;[_filesPanel addSubview:_remoteFilesTable];
+    UILabel *title=[[[UILabel alloc] initWithFrame:CGRectMake(15,8,pw-300,30)] autorelease];title.backgroundColor=[UIColor clearColor];title.textColor=[UIColor whiteColor];title.text=@"Remote Files";title.font=[UIFont boldSystemFontOfSize:16];[_filesPanel addSubview:title];
+    _filesUpButton=[[UIButton buttonWithType:UIButtonTypeRoundedRect] retain];_filesUpButton.frame=CGRectMake(pw-280,6,60,32);[_filesUpButton setTitle:@"Up" forState:UIControlStateNormal];[_filesUpButton addTarget:self action:@selector(filesUpTapped) forControlEvents:UIControlEventTouchUpInside];[_filesPanel addSubview:_filesUpButton];
+    UIButton *mkdir=[UIButton buttonWithType:UIButtonTypeRoundedRect];mkdir.frame=CGRectMake(pw-215,6,60,32);[mkdir setTitle:@"New" forState:UIControlStateNormal];[mkdir addTarget:self action:@selector(mkdirRemote) forControlEvents:UIControlEventTouchUpInside];[_filesPanel addSubview:mkdir];
+    UIButton *upload=[UIButton buttonWithType:UIButtonTypeRoundedRect];upload.frame=CGRectMake(pw-150,6,60,32);[upload setTitle:@"Upload" forState:UIControlStateNormal];[upload addTarget:self action:@selector(uploadLocalFile) forControlEvents:UIControlEventTouchUpInside];[_filesPanel addSubview:upload];
+    UIButton *close=[UIButton buttonWithType:UIButtonTypeRoundedRect];close.frame=CGRectMake(pw-85,6,70,32);[close setTitle:@"Close" forState:UIControlStateNormal];[close addTarget:self action:@selector(closeFilesTapped) forControlEvents:UIControlEventTouchUpInside];[_filesPanel addSubview:close];
+
+    _downloadURLField=[[UITextField alloc] initWithFrame:CGRectMake(15,44,pw-230,34)];_downloadURLField.borderStyle=UITextBorderStyleRoundedRect;_downloadURLField.placeholder=@"http://server:8085";_downloadURLField.autocorrectionType=UITextAutocorrectionTypeNo;_downloadURLField.autocapitalizationType=UITextAutocapitalizationTypeNone;NSString *saved=[[NSUserDefaults standardUserDefaults] stringForKey:@"filesBaseURL"];if([saved length])_downloadURLField.text=saved;[_filesPanel addSubview:_downloadURLField];
+    _filesTokenField=[[UITextField alloc] initWithFrame:CGRectMake(pw-210,44,120,34)];_filesTokenField.borderStyle=UITextBorderStyleRoundedRect;_filesTokenField.placeholder=@"API token";_filesTokenField.secureTextEntry=YES;_filesTokenField.text=[[NSUserDefaults standardUserDefaults] stringForKey:@"filesToken"];[_filesPanel addSubview:_filesTokenField];
+    _browseFilesButton=[[UIButton buttonWithType:UIButtonTypeRoundedRect] retain];_browseFilesButton.frame=CGRectMake(pw-85,44,70,34);[_browseFilesButton setTitle:@"Browse" forState:UIControlStateNormal];[_browseFilesButton addTarget:self action:@selector(browseFilesTapped) forControlEvents:UIControlEventTouchUpInside];[_filesPanel addSubview:_browseFilesButton];
+
+    _remoteEntries=[[NSMutableArray alloc] init];_selectedRemoteIndex=-1;
+    _remoteFilesTable=[[UITableView alloc] initWithFrame:CGRectMake(15,86,pw-30,ph-248) style:UITableViewStylePlain];_remoteFilesTable.delegate=self;_remoteFilesTable.dataSource=self;[_filesPanel addSubview:_remoteFilesTable];
     _downloadProgress=[[UIProgressView alloc] initWithProgressViewStyle:UIProgressViewStyleDefault];_downloadProgress.frame=CGRectMake(15,ph-152,pw-120,18);[_filesPanel addSubview:_downloadProgress];
     UIButton *cancel=[UIButton buttonWithType:UIButtonTypeRoundedRect];cancel.frame=CGRectMake(pw-95,ph-163,80,34);[cancel setTitle:@"Cancel" forState:UIControlStateNormal];[cancel addTarget:self action:@selector(cancelDownloadTapped) forControlEvents:UIControlEventTouchUpInside];[_filesPanel addSubview:cancel];
-    _downloadStatusLabel=[[UILabel alloc] initWithFrame:CGRectMake(15,ph-132,pw-30,22)];_downloadStatusLabel.backgroundColor=[UIColor clearColor];_downloadStatusLabel.textColor=[UIColor whiteColor];_downloadStatusLabel.font=[UIFont systemFontOfSize:12];_downloadStatusLabel.text=@"Tap Browse to list remote files.";[_filesPanel addSubview:_downloadStatusLabel];
-    UILabel *local=[[[UILabel alloc] initWithFrame:CGRectMake(15,ph-108,pw-30,20)] autorelease];local.backgroundColor=[UIColor clearColor];local.textColor=[UIColor lightGrayColor];local.font=[UIFont boldSystemFontOfSize:12];local.text=@"Downloaded to /var/mobile/Documents/iPad1VNC";[_filesPanel addSubview:local];
+    _downloadStatusLabel=[[UILabel alloc] initWithFrame:CGRectMake(15,ph-132,pw-30,22)];_downloadStatusLabel.backgroundColor=[UIColor clearColor];_downloadStatusLabel.textColor=[UIColor whiteColor];_downloadStatusLabel.font=[UIFont systemFontOfSize:12];_downloadStatusLabel.text=@"Files v2: enter server and token.";[_filesPanel addSubview:_downloadStatusLabel];
+    UILabel *local=[[[UILabel alloc] initWithFrame:CGRectMake(15,ph-108,pw-30,20)] autorelease];local.backgroundColor=[UIColor clearColor];local.textColor=[UIColor lightGrayColor];local.font=[UIFont boldSystemFontOfSize:12];local.text=@"Local: /var/mobile/Documents/iPad1VNC";[_filesPanel addSubview:local];
     _fileListView=[[UITextView alloc] initWithFrame:CGRectMake(15,ph-86,pw-30,72)];_fileListView.editable=NO;_fileListView.font=[UIFont systemFontOfSize:11];[_filesPanel addSubview:_fileListView];[_controller.view addSubview:_filesPanel];
 }
-- (void)browseFilesTapped {NSString*u=[_downloadURLField.text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];if(![u length]&&[_hostField.text length])u=[NSString stringWithFormat:@"http://%@:8085/",_hostField.text];if(![u hasPrefix:@"http://"]&&![u hasPrefix:@"https://"])u=[@"http://" stringByAppendingString:u];if(![u hasSuffix:@"/"])u=[u stringByAppendingString:@"/"];NSURL*url=[NSURL URLWithString:u];if(!url){_downloadStatusLabel.text=@"Invalid server address";return;}_downloadURLField.text=u;[[NSUserDefaults standardUserDefaults] setObject:u forKey:@"filesBaseURL"];[[NSUserDefaults standardUserDefaults] synchronize];[_downloadURLField resignFirstResponder];[self startBrowseURL:url];}
-- (void)startBrowseURL:(NSURL*)url {if(_browseConnection){[_browseConnection cancel];[_browseConnection release];_browseConnection=nil;}[_browseData release];_browseData=[[NSMutableData alloc]init];[_remoteBaseURL release];_remoteBaseURL=[url retain];_downloadStatusLabel.text=@"Loading remote files…";NSURLRequest*req=[NSURLRequest requestWithURL:url cachePolicy:NSURLRequestReloadIgnoringLocalCacheData timeoutInterval:20.0];_browseConnection=[[NSURLConnection alloc]initWithRequest:req delegate:self startImmediately:YES];}
-- (void)filesUpTapped {if(!_remoteBaseURL)return;NSURL*up=[[NSURL URLWithString:@"../" relativeToURL:_remoteBaseURL] absoluteURL];[self startBrowseURL:up];}
-- (void)parseDirectoryHTML:(NSData*)data baseURL:(NSURL*)baseURL {NSString*html=[[[NSString alloc]initWithData:data encoding:NSUTF8StringEncoding]autorelease];if(!html)html=[[[NSString alloc]initWithData:data encoding:NSISOLatin1StringEncoding]autorelease];[_remoteEntries removeAllObjects];if(!html){_downloadStatusLabel.text=@"Could not read directory.";[_remoteFilesTable reloadData];return;}NSRange search=NSMakeRange(0,[html length]);while(search.location<[html length]){NSRange href=[html rangeOfString:@"href=\"" options:NSCaseInsensitiveSearch range:search];if(href.location==NSNotFound)break;NSUInteger s=href.location+href.length;NSRange q=[html rangeOfString:@"\"" options:0 range:NSMakeRange(s,[html length]-s)];if(q.location==NSNotFound)break;NSString*link=[html substringWithRange:NSMakeRange(s,q.location-s)];search=NSMakeRange(q.location+1,[html length]-(q.location+1));if(![link length]||[link hasPrefix:@"?"]||[link hasPrefix:@"#"]||[link isEqualToString:@"../"])continue;NSString*name=[link stringByReplacingPercentEscapesUsingEncoding:NSUTF8StringEncoding];if(!name)name=link;BOOL dir=[name hasSuffix:@"/"];if(dir&&[name length]>1)name=[name substringToIndex:[name length]-1];NSURL*item=[[NSURL URLWithString:link relativeToURL:baseURL] absoluteURL];if(item)[_remoteEntries addObject:[NSDictionary dictionaryWithObjectsAndKeys:name,@"name",item,@"url",[NSNumber numberWithBool:dir],@"dir",nil]];}[_remoteFilesTable reloadData];_downloadStatusLabel.text=([_remoteEntries count]?@"Tap folder to open or file to download.":@"Remote folder is empty.");}
+- (void)browseFilesTapped {
+    NSString*u=[_downloadURLField.text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    if(![u length]&&[_hostField.text length])u=[NSString stringWithFormat:@"http://%@:8085",_hostField.text];
+    if(![u hasPrefix:@"http://"]&&![u hasPrefix:@"https://"])u=[@"http://" stringByAppendingString:u];
+    while([u hasSuffix:@"/"])u=[u substringToIndex:[u length]-1];
+    NSURL*url=[NSURL URLWithString:u];if(!url){_downloadStatusLabel.text=@"Invalid server address";return;}
+    _downloadURLField.text=u;[_filesToken release];_filesToken=[_filesTokenField.text copy];
+    [[NSUserDefaults standardUserDefaults] setObject:u forKey:@"filesBaseURL"];[[NSUserDefaults standardUserDefaults] setObject:(_filesToken?:@"") forKey:@"filesToken"];[[NSUserDefaults standardUserDefaults] synchronize];
+    [_downloadURLField resignFirstResponder];[_filesTokenField resignFirstResponder];
+    [_remoteRelativePath release];_remoteRelativePath=[@"" copy];
+    [self startBrowseURL:url];
+}
+- (void)startBrowseURL:(NSURL*)url {
+    if(_browseConnection){[_browseConnection cancel];[_browseConnection release];_browseConnection=nil;}[_browseData release];_browseData=[[NSMutableData alloc]init];
+    [_remoteBaseURL release];_remoteBaseURL=[url retain];
+    NSString *pathEsc=[_remoteRelativePath stringByAddingPercentEscapesUsingEncoding:NSUTF8StringEncoding];
+    NSString *s=[NSString stringWithFormat:@"%@/api/list?path=%@",[url absoluteString],pathEsc?:@""];
+    NSMutableURLRequest *req=[NSMutableURLRequest requestWithURL:[NSURL URLWithString:s] cachePolicy:NSURLRequestReloadIgnoringLocalCacheData timeoutInterval:20.0];
+    if([_filesToken length])[req setValue:_filesToken forHTTPHeaderField:@"X-iPad1VNC-Token"];
+    _downloadStatusLabel.text=@"Loading remote files…";_browseConnection=[[NSURLConnection alloc]initWithRequest:req delegate:self startImmediately:YES];
+}
+- (void)filesUpTapped {
+    if(![_remoteRelativePath length])return;
+    NSString *p=[_remoteRelativePath stringByDeletingLastPathComponent];[_remoteRelativePath release];_remoteRelativePath=[p copy];[self startBrowseURL:_remoteBaseURL];
+}
+- (void)parseDirectoryHTML:(NSData*)data baseURL:(NSURL*)baseURL {
+    (void)baseURL;NSError *err=nil;NSDictionary *obj=[NSJSONSerialization JSONObjectWithData:data options:0 error:&err];
+    [_remoteEntries removeAllObjects];
+    if(![obj isKindOfClass:[NSDictionary class]]){_downloadStatusLabel.text=@"Files API error / invalid token";[_remoteFilesTable reloadData];return;}
+    NSArray *entries=[obj objectForKey:@"entries"];NSString *serverPath=[obj objectForKey:@"path"];
+    if([serverPath isKindOfClass:[NSString class]]){[_remoteRelativePath release];_remoteRelativePath=[serverPath copy];}
+    for(NSDictionary *e in entries)if([e isKindOfClass:[NSDictionary class]])[_remoteEntries addObject:e];
+    [_remoteFilesTable reloadData];_downloadStatusLabel.text=([_remoteEntries count]?@"Tap folder; tap file for actions.":@"Remote folder is empty.");
+}
+- (NSString*)remotePathForEntry:(NSDictionary*)e {
+    NSString *n=[e objectForKey:@"name"];return([_remoteRelativePath length]?[_remoteRelativePath stringByAppendingPathComponent:n]:n);
+}
+- (NSURL*)downloadURLForEntry:(NSDictionary*)e {
+    NSString *path=[[self remotePathForEntry:e] stringByAddingPercentEscapesUsingEncoding:NSUTF8StringEncoding];
+    NSString *tok=[_filesToken stringByAddingPercentEscapesUsingEncoding:NSUTF8StringEncoding];
+    return [NSURL URLWithString:[NSString stringWithFormat:@"%@/download?path=%@&token=%@",[_remoteBaseURL absoluteString],path?:@"",tok?:@""]];
+}
+
 - (NSInteger)tableView:(UITableView*)tableView numberOfRowsInSection:(NSInteger)section {(void)section;return(tableView==_remoteFilesTable?[_remoteEntries count]:0);}
 - (UITableViewCell*)tableView:(UITableView*)tableView cellForRowAtIndexPath:(NSIndexPath*)indexPath {static NSString*CID=@"RemoteFile";UITableViewCell*cell=[tableView dequeueReusableCellWithIdentifier:CID];if(!cell)cell=[[[UITableViewCell alloc]initWithStyle:UITableViewCellStyleDefault reuseIdentifier:CID]autorelease];NSDictionary*e=[_remoteEntries objectAtIndex:indexPath.row];BOOL dir=[[e objectForKey:@"dir"] boolValue];cell.textLabel.text=[NSString stringWithFormat:@"%@ %@",dir?@"[DIR]":@"↓",[e objectForKey:@"name"]];cell.accessoryType=dir?UITableViewCellAccessoryDisclosureIndicator:UITableViewCellAccessoryNone;return cell;}
-- (void)tableView:(UITableView*)tableView didSelectRowAtIndexPath:(NSIndexPath*)indexPath {if(tableView!=_remoteFilesTable)return;[tableView deselectRowAtIndexPath:indexPath animated:YES];NSDictionary*e=[_remoteEntries objectAtIndex:indexPath.row];if([[e objectForKey:@"dir"] boolValue])[self startBrowseURL:[e objectForKey:@"url"]];else[self startDownloadFromURL:[e objectForKey:@"url"]];}
-- (void)startDownloadFromURL:(NSURL*)url {if(_downloadConnection||!url)return;NSString*name=[[url path] lastPathComponent];if(![name length])name=@"download.bin";_downloadPath=[[self uniqueDownloadPathForName:name] retain];[[NSFileManager defaultManager] createFileAtPath:_downloadPath contents:nil attributes:nil];_downloadHandle=[[NSFileHandle fileHandleForWritingAtPath:_downloadPath] retain];NSURLRequest*req=[NSURLRequest requestWithURL:url cachePolicy:NSURLRequestReloadIgnoringLocalCacheData timeoutInterval:30.0];_downloadConnection=[[NSURLConnection alloc]initWithRequest:req delegate:self startImmediately:YES];_downloadExpected=0;_downloadReceived=0;_downloadProgress.progress=0;_downloadStatusLabel.text=[NSString stringWithFormat:@"Downloading %@…",name];}
-- (void)refreshFileList {
-    NSArray *items=[[NSFileManager defaultManager] contentsOfDirectoryAtPath:[self downloadsDirectory] error:nil]; NSMutableString *s=[NSMutableString string];
-    for(NSString *name in [items sortedArrayUsingSelector:@selector(caseInsensitiveCompare:)]){NSString *p=[[self downloadsDirectory] stringByAppendingPathComponent:name];NSDictionary *a=[[NSFileManager defaultManager] attributesOfItemAtPath:p error:nil];unsigned long long bytes=[[a objectForKey:NSFileSize] unsignedLongLongValue];[s appendFormat:@"%@   %.1f KB\n",name,(double)bytes/1024.0];}
-    if(![s length])[s appendString:@"No downloaded files yet."];_fileListView.text=s;
+- (void)tableView:(UITableView*)tableView didSelectRowAtIndexPath:(NSIndexPath*)indexPath {
+    if(tableView!=_remoteFilesTable)return;[tableView deselectRowAtIndexPath:indexPath animated:YES];NSDictionary*e=[_remoteEntries objectAtIndex:indexPath.row];
+    if([[e objectForKey:@"dir"] boolValue]){
+        NSString *p=[self remotePathForEntry:e];[_remoteRelativePath release];_remoteRelativePath=[p copy];[self startBrowseURL:_remoteBaseURL];
+    } else {
+        _selectedRemoteIndex=indexPath.row;
+        UIActionSheet *s=[[[UIActionSheet alloc] initWithTitle:[e objectForKey:@"name"] delegate:self cancelButtonTitle:@"Cancel" destructiveButtonTitle:@"Delete" otherButtonTitles:@"Download",@"Rename",nil] autorelease];
+        s.tag=920;[s showInView:_filesPanel];
+    }
 }
 - (void)downloadTapped {
     NSString *u=[_downloadURLField.text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
@@ -482,6 +635,36 @@
 }
 - (void)cancelDownloadTapped { if(_downloadConnection){[_downloadConnection cancel];[_downloadConnection release];_downloadConnection=nil;}if(_downloadHandle){[_downloadHandle closeFile];[_downloadHandle release];_downloadHandle=nil;}if(_downloadPath){[[NSFileManager defaultManager] removeItemAtPath:_downloadPath error:nil];[_downloadPath release];_downloadPath=nil;}_downloadStatusLabel.text=@"Cancelled";_downloadProgress.progress=0; }
 - (void)closeFilesTapped { [_downloadURLField resignFirstResponder]; _filesPanel.hidden=YES; }
+
+- (void)performFileAPIPath:(NSString*)path method:(NSString*)method body:(NSData*)body contentType:(NSString*)contentType {
+    if(!_remoteBaseURL)return;NSURL *u=[NSURL URLWithString:[NSString stringWithFormat:@"%@%@",[_remoteBaseURL absoluteString],path]];
+    NSMutableURLRequest *r=[NSMutableURLRequest requestWithURL:u cachePolicy:NSURLRequestReloadIgnoringLocalCacheData timeoutInterval:30.0];
+    [r setHTTPMethod:method];if([_filesToken length])[r setValue:_filesToken forHTTPHeaderField:@"X-iPad1VNC-Token"];
+    if(contentType)[r setValue:contentType forHTTPHeaderField:@"Content-Type"];if(body)[r setHTTPBody:body];
+    NSURLResponse *resp=nil;NSError *err=nil;NSData *d=[NSURLConnection sendSynchronousRequest:r returningResponse:&resp error:&err];
+    if(err){_downloadStatusLabel.text=[NSString stringWithFormat:@"API failed: %@",[err localizedDescription]];return;}
+    NSDictionary *o=(d?[NSJSONSerialization JSONObjectWithData:d options:0 error:nil]:nil);
+    if([[o objectForKey:@"ok"] boolValue]){_downloadStatusLabel.text=@"Done";[self startBrowseURL:_remoteBaseURL];}
+    else _downloadStatusLabel.text=[NSString stringWithFormat:@"API: %@",[o objectForKey:@"error"]?:@"failed"];
+}
+- (void)mkdirRemote {
+    if(!_remoteBaseURL){_downloadStatusLabel.text=@"Browse first";return;}
+    UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"New Folder" message:@"Folder name" delegate:self cancelButtonTitle:@"Cancel" otherButtonTitles:@"Create",nil] autorelease];a.tag=930;a.alertViewStyle=UIAlertViewStylePlainTextInput;[a show];
+}
+- (void)renameRemoteEntry:(NSDictionary*)entry {
+    _selectedRemoteIndex=[_remoteEntries indexOfObjectIdenticalTo:entry];
+    UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"Rename" message:@"New name" delegate:self cancelButtonTitle:@"Cancel" otherButtonTitles:@"Rename",nil] autorelease];a.tag=931;a.alertViewStyle=UIAlertViewStylePlainTextInput;[[a textFieldAtIndex:0] setText:[entry objectForKey:@"name"]];[a show];
+}
+- (void)deleteRemoteEntry:(NSDictionary*)entry {
+    NSString *rp=[self remotePathForEntry:entry];NSDictionary *o=[NSDictionary dictionaryWithObject:rp forKey:@"path"];NSData *b=[NSJSONSerialization dataWithJSONObject:o options:0 error:nil];[self performFileAPIPath:@"/api/delete" method:@"POST" body:b contentType:@"application/json"];
+}
+- (void)uploadLocalFile {
+    NSArray *files=[[NSFileManager defaultManager] contentsOfDirectoryAtPath:[self downloadsDirectory] error:nil];
+    if(![files count]){_downloadStatusLabel.text=@"No local downloaded files to upload";return;}
+    UIActionSheet *s=[[[UIActionSheet alloc] initWithTitle:@"Upload local file" delegate:self cancelButtonTitle:nil destructiveButtonTitle:nil otherButtonTitles:nil] autorelease];s.tag=921;
+    NSUInteger max=MIN((NSUInteger)12,[files count]);for(NSUInteger i=0;i<max;i++)[s addButtonWithTitle:[files objectAtIndex:i]];s.cancelButtonIndex=[s addButtonWithTitle:@"Cancel"];[s showInView:_filesPanel];
+}
+
 - (void)connection:(NSURLConnection*)connection didReceiveResponse:(NSURLResponse*)response {if(connection==_browseConnection){[_browseData setLength:0];return;}if(connection==_downloadConnection){_downloadExpected=[response expectedContentLength];_downloadStatusLabel.text=[NSString stringWithFormat:@"Downloading %@",[_downloadPath lastPathComponent]];}}
 - (void)connection:(NSURLConnection*)connection didReceiveData:(NSData*)data {if(connection==_browseConnection){[_browseData appendData:data];return;}if(connection==_downloadConnection){[_downloadHandle writeData:data];_downloadReceived+=[data length];if(_downloadExpected>0)_downloadProgress.progress=(float)((double)_downloadReceived/(double)_downloadExpected);_downloadStatusLabel.text=[NSString stringWithFormat:@"%.1f / %.1f MB",(double)_downloadReceived/1048576.0,(_downloadExpected>0?(double)_downloadExpected/1048576.0:0.0)];}}
 - (void)connectionDidFinishLoading:(NSURLConnection*)connection {if(connection==_browseConnection){[self parseDirectoryHTML:_browseData baseURL:_remoteBaseURL];[_browseConnection release];_browseConnection=nil;[_browseData release];_browseData=nil;return;}if(connection==_downloadConnection){[_downloadHandle closeFile];[_downloadHandle release];_downloadHandle=nil;[_downloadConnection release];_downloadConnection=nil;_downloadProgress.progress=1.0;_downloadStatusLabel.text=[NSString stringWithFormat:@"Saved: %@",[_downloadPath lastPathComponent]];[_downloadPath release];_downloadPath=nil;[self refreshFileList];}}
@@ -494,8 +677,12 @@
     if(_reconnectTimer){[_reconnectTimer invalidate];[_reconnectTimer release];}
     if(_downloadConnection){[_downloadConnection cancel];[_downloadConnection release];}if(_downloadHandle){[_downloadHandle closeFile];[_downloadHandle release];}[_downloadPath release];
     _client.delegate=nil;[_client disconnect];[_client release];
+    [_terminalSession stop];[_tunnelSession stop];[_terminalSession release];[_tunnelSession release];[_terminalPanel release];[_terminalView release];[_terminalInput release];[_sshUserField release];[_sshPortField release];[_sshKeyField release];[_sshTunnelSwitch release];[_terminalButton release];
+    [_filesToken release];[_filesTokenField release];[_remoteRelativePath release];
     [_filesPanel release];[_downloadURLField release];[_remoteFilesTable release];[_browseFilesButton release];[_filesUpButton release];[_remoteEntries release];[_remoteBaseURL release];[_browseData release];[_downloadStatusLabel release];[_downloadProgress release];[_fileListView release];[_keyBar release];
-    [_exitFullScreenButton release];[_fullScreenButton release];[_settingsButton release];[_filesButton release];[_keyboardButton release];[_qualityControl release];[_inputModeControl release];[_profilesButton release];[_profiles release];[_speedSlider release];[_speedLabel release];
+    [_exitFullScreenButton release];[_fullScreenButton release];[_settingsButton release];[_filesButton release];[_keyboardButton release];[_qualityControl release];[_inputModeControl release];[_tightSwitch release];[_statsLabel release];[_profilesButton release];[_profiles release];[_speedSlider release];[_speedLabel release];
     [_vncView release];[_keyboardField release];[_statusLabel release];[_connectButton release];[_passwordField release];[_portField release];[_hostField release];[_connectionPanel release];[_controller release];[_window release];[super dealloc];
 }
+- (NSString*)remotePathForEntry:(NSDictionary*)e;
+- (NSURL*)downloadURLForEntry:(NSDictionary*)e;
 @end

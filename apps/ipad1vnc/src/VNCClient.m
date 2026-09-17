@@ -5,6 +5,7 @@
 #import <sys/socket.h>
 #import <unistd.h>
 #import <netinet/tcp.h>
+#import <zlib.h>
 
 static BOOL recvAll(int s, void *buf, size_t len){uint8_t*p=(uint8_t*)buf;while(len){ssize_t n=recv(s,p,len,0);if(n<=0)return NO;p+=n;len-=n;}return YES;}
 static BOOL sendAll(int s,const void*buf,size_t len){const uint8_t*p=(const uint8_t*)buf;while(len){ssize_t n=send(s,p,len,0);if(n<=0)return NO;p+=n;len-=n;}return YES;}
@@ -15,15 +16,15 @@ static void putBE32(uint8_t*p,uint32_t v){p[0]=v>>24;p[1]=v>>16;p[2]=v>>8;p[3]=v
 static uint8_t reverseBits(uint8_t b){b=(b&0xF0)>>4|(b&0x0F)<<4;b=(b&0xCC)>>2|(b&0x33)<<2;return(b&0xAA)>>1|(b&0x55)<<1;}
 
 @implementation VNCClient
-@synthesize delegate=_delegate,qualityProfile=_qualityProfile,adaptiveQualityEnabled=_adaptiveQualityEnabled;
+@synthesize delegate=_delegate,qualityProfile=_qualityProfile,adaptiveQualityEnabled=_adaptiveQualityEnabled,preferTight=_preferTight;
 - (NSUInteger)framebufferWidth{return _fbWidth;}
 - (NSUInteger)framebufferHeight{return _fbHeight;}
 
 - (id)initWithHost:(NSString*)host port:(NSInteger)port password:(NSString*)password{
-    if((self=[super init])){_host=[host copy];_port=port;_password=[password copy];_sock=-1;_writeLock=[[NSLock alloc]init];_qualityProfile=VNCQualityBalanced;_serverBytesPerPixel=2;_adaptiveQualityEnabled=NO;_slowFrames=0;_fastFrames=0;_lastQualityChange=0;}
+    if((self=[super init])){_host=[host copy];_port=port;_password=[password copy];_sock=-1;_writeLock=[[NSLock alloc]init];_qualityProfile=VNCQualityBalanced;_serverBytesPerPixel=2;_adaptiveQualityEnabled=NO;_slowFrames=0;_fastFrames=0;_lastQualityChange=0;_preferTight=NO;_statsStart=[NSDate timeIntervalSinceReferenceDate];_statsFrames=0;_statsBytes=0;_lastEncoding=[@"RAW" retain];}
     return self;
 }
-- (void)dealloc{[self disconnect];[_host release];[_password release];[_framebuffer release];[_writeLock release];[super dealloc];}
+- (void)dealloc{[self disconnect];[_host release];[_password release];[_framebuffer release];[_writeLock release];[_lastEncoding release];[super dealloc];}
 - (void)notifyStatus:(NSString*)s{if([_delegate respondsToSelector:@selector(vncClientStatus:)])[_delegate vncClientStatus:s];}
 - (void)notifyDisconnected:(NSString*)s{if([_delegate respondsToSelector:@selector(vncClientDisconnected:)])[_delegate vncClientDisconnected:s];}
 - (void)statusOnMain:(NSString*)s{[self notifyStatus:s];}
@@ -54,8 +55,10 @@ static uint8_t reverseBits(uint8_t b){b=(b&0xF0)>>4|(b&0x0F)<<4;b=(b&0xCC)>>2|(b
     [_writeLock lock];BOOL ok=sendAll(_sock,pf,sizeof(pf));[_writeLock unlock];return ok;
 }
 - (BOOL)sendEncodings{
-    // Hextile (5), Raw (0), DesktopSize (-223)
-    uint8_t enc[16]={2,0,0,3, 0,0,0,5, 0,0,0,0, 0xFF,0xFF,0xFF,0x21};
+    // Tight (7), Hextile (5), Raw (0), DesktopSize (-223).
+    uint8_t enc[20]={2,0,0,4, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0xFF,0xFF,0xFF,0x21};
+    int32_t first=_preferTight?7:5, second=_preferTight?5:7;
+    putBE32(enc+4,(uint32_t)first);putBE32(enc+8,(uint32_t)second);putBE32(enc+12,0);
     [_writeLock lock];BOOL ok=sendAll(_sock,enc,sizeof(enc));[_writeLock unlock];return ok;
 }
 - (BOOL)handshake{
@@ -105,6 +108,95 @@ static uint8_t reverseBits(uint8_t b){b=(b&0xF0)>>4|(b&0x0F)<<4;b=(b&0xCC)>>2|(b
         if(sub&8){uint8_t count=0;if(!recvAll(_sock,&count,1))return NO;for(uint8_t i=0;i<count;i++){uint8_t color[4];const uint8_t*use=fg;if(sub&16){if(![self recvOnePixel:color])return NO;use=color;}uint8_t xywh[2];if(!recvAll(_sock,xywh,2))return NO;uint8_t sx=xywh[0]>>4,sy=xywh[0]&15,sw=(xywh[1]>>4)+1,sh=(xywh[1]&15)+1;[self fillRectX:x+tx+sx y:y+ty+sy w:sw h:sh color:use];}}
     }}return YES;
 }
+
+- (BOOL)readCompactLength:(uint32_t*)outLen bytes:(NSUInteger*)used {
+    uint8_t b=0;uint32_t len=0;NSUInteger n=0;
+    if(!recvAll(_sock,&b,1))return NO;n++;len=(b&0x7f);
+    if(b&0x80){if(!recvAll(_sock,&b,1))return NO;n++;len|=(uint32_t)(b&0x7f)<<7;
+        if(b&0x80){if(!recvAll(_sock,&b,1))return NO;n++;len|=(uint32_t)b<<14;}}
+    *outLen=len;if(used)*used=n;return YES;
+}
+- (BOOL)inflateData:(NSData*)src expected:(NSUInteger)expected output:(NSMutableData**)outData {
+    NSMutableData *out=[NSMutableData dataWithLength:MAX(expected,(NSUInteger)1)];
+    z_stream zs;memset(&zs,0,sizeof(zs));zs.next_in=(Bytef*)[src bytes];zs.avail_in=(uInt)[src length];
+    if(inflateInit(&zs)!=Z_OK)return NO;
+    zs.next_out=(Bytef*)[out mutableBytes];zs.avail_out=(uInt)[out length];
+    int r=inflate(&zs,Z_FINISH);inflateEnd(&zs);
+    if(r!=Z_STREAM_END&&r!=Z_OK)return NO;
+    [out setLength:zs.total_out];*outData=out;return YES;
+}
+- (void)blitUIImage:(UIImage*)img x:(NSUInteger)x y:(NSUInteger)y w:(NSUInteger)w h:(NSUInteger)h {
+    if(!img)return;
+    CGColorSpaceRef cs=CGColorSpaceCreateDeviceRGB();
+    NSMutableData *tmp=[NSMutableData dataWithLength:w*h*4];
+    CGContextRef ctx=CGBitmapContextCreate([tmp mutableBytes],w,h,8,w*4,cs,kCGBitmapByteOrder32Little|kCGImageAlphaNoneSkipFirst);
+    CGContextTranslateCTM(ctx,0,h);CGContextScaleCTM(ctx,1,-1);
+    CGContextDrawImage(ctx,CGRectMake(0,0,w,h),img.CGImage);
+    CGContextRelease(ctx);CGColorSpaceRelease(cs);
+    uint8_t *src=(uint8_t*)[tmp bytes],*fb=(uint8_t*)[_framebuffer mutableBytes];
+    for(NSUInteger yy=0;yy<h&&y+yy<_fbHeight;yy++)if(x+w<=_fbWidth)memcpy(fb+(((y+yy)*_fbWidth+x)*4),src+yy*w*4,w*4);
+}
+- (BOOL)decodeTightX:(uint16_t)x y:(uint16_t)y w:(uint16_t)w h:(uint16_t)h {
+    uint8_t ctl=0;if(!recvAll(_sock,&ctl,1))return NO;uint8_t sub=ctl>>4;
+    if(sub==8){uint8_t c[4];if(![self recvOnePixel:c])return NO;[self fillRectX:x y:y w:w h:h color:c];return YES;}
+    if(sub==9){
+        uint32_t len=0;NSUInteger lu=0;if(![self readCompactLength:&len bytes:&lu])return NO;
+        NSMutableData *jpeg=[NSMutableData dataWithLength:len];if(!recvAll(_sock,[jpeg mutableBytes],len))return NO;_statsBytes+=len+lu+1;
+        UIImage *img=[UIImage imageWithData:jpeg];if(!img)return NO;[self blitUIImage:img x:x y:y w:w h:h];return YES;
+    }
+
+    // Basic Tight. We support Copy and Palette filters. Gradient falls back to failure,
+    // allowing users to switch Tight off and use Hextile.
+    uint8_t streamId=sub&3; (void)streamId;
+    BOOL explicitFilter=(sub&4)?YES:NO;uint8_t filter=0;
+    NSUInteger rowSize=(NSUInteger)w*_serverBytesPerPixel;
+    NSUInteger expected=rowSize*h;
+    NSMutableData *palette=nil;NSUInteger colors=0;
+    if(explicitFilter){
+        if(!recvAll(_sock,&filter,1))return NO;
+        if(filter==1){
+            uint8_t n=0;if(!recvAll(_sock,&n,1))return NO;colors=(NSUInteger)n+1;
+            palette=[NSMutableData dataWithLength:colors*_serverBytesPerPixel];
+            if(!recvAll(_sock,[palette mutableBytes],[palette length]))return NO;
+            rowSize=(colors==2)?((w+7)/8):w;expected=rowSize*h;
+        } else if(filter==2) return NO;
+    }
+    NSData *raw=nil;
+    if(expected<12){
+        NSMutableData *d=[NSMutableData dataWithLength:expected];if(!recvAll(_sock,[d mutableBytes],expected))return NO;raw=d;_statsBytes+=expected+1;
+    } else {
+        uint32_t clen=0;NSUInteger lu=0;if(![self readCompactLength:&clen bytes:&lu])return NO;
+        NSMutableData *c=[NSMutableData dataWithLength:clen];if(!recvAll(_sock,[c mutableBytes],clen))return NO;_statsBytes+=clen+lu+1;
+        NSMutableData *out=nil;if(![self inflateData:c expected:expected output:&out])return NO;raw=out;
+    }
+    if(filter==1){
+        const uint8_t *rp=(const uint8_t*)[raw bytes],*pal=(const uint8_t*)[palette bytes];
+        for(NSUInteger yy=0;yy<h;yy++){for(NSUInteger xx=0;xx<w;xx++){
+            NSUInteger idx=(colors==2)?((rp[yy*rowSize+xx/8]>>(7-(xx&7)))&1):rp[yy*rowSize+xx];
+            if(idx>=colors)idx=0;uint8_t bgra[4];[self pixelBytes:pal+idx*_serverBytesPerPixel toBGRA:bgra];
+            [self fillRectX:x+xx y:y+yy w:1 h:1 color:bgra];
+        }}
+    } else {
+        const uint8_t *rp=(const uint8_t*)[raw bytes];
+        uint8_t *fb=(uint8_t*)[_framebuffer mutableBytes];
+        for(NSUInteger yy=0;yy<h;yy++){for(NSUInteger xx=0;xx<w;xx++){
+            uint8_t bgra[4];[self pixelBytes:rp+(yy*w+xx)*_serverBytesPerPixel toBGRA:bgra];
+            if(x+xx<_fbWidth&&y+yy<_fbHeight)memcpy(fb+(((y+yy)*_fbWidth+x+xx)*4),bgra,4);
+        }}
+    }
+    return YES;
+}
+- (void)publishStats {
+    NSTimeInterval now=[NSDate timeIntervalSinceReferenceDate],elapsed=now-_statsStart;
+    if(elapsed<1.0)return;
+    CGFloat fps=(CGFloat)_statsFrames/(CGFloat)elapsed;
+    CGFloat kbps=(CGFloat)(_statsBytes*8.0/1000.0/elapsed);
+    NSString *q=(_qualityProfile==VNCQualityFast?@"Fast":(_qualityProfile==VNCQualityBalanced?@"Balanced":@"Quality"));
+    if([_delegate respondsToSelector:@selector(vncClientStatsFPS:kbps:encoding:quality:)])
+        [_delegate vncClientStatsFPS:fps kbps:kbps encoding:_lastEncoding quality:q];
+    _statsStart=now;_statsFrames=0;_statsBytes=0;
+}
+
 - (UIImage*)currentImage{
     if(!_framebuffer||!_fbWidth||!_fbHeight)return nil;CGColorSpaceRef cs=CGColorSpaceCreateDeviceRGB();NSData*copy=[NSData dataWithData:_framebuffer];CGDataProviderRef provider=CGDataProviderCreateWithCFData((CFDataRef)copy);CGBitmapInfo bi=kCGBitmapByteOrder32Little|kCGImageAlphaNoneSkipFirst;CGImageRef cg=CGImageCreate(_fbWidth,_fbHeight,8,32,_fbWidth*4,cs,bi,provider,NULL,false,kCGRenderingIntentDefault);UIImage*img=[UIImage imageWithCGImage:cg];CGImageRelease(cg);CGDataProviderRelease(provider);CGColorSpaceRelease(cs);return img;
 }
@@ -119,12 +211,13 @@ static uint8_t reverseBits(uint8_t b){b=(b&0xF0)>>4|(b&0x0F)<<4;b=(b&0xCC)>>2|(b
 - (BOOL)handleFramebufferUpdate{
     NSTimeInterval started=[NSDate timeIntervalSinceReferenceDate];uint8_t hdr[3];if(!recvAll(_sock,hdr,3))return NO;uint16_t rects=readBE16(hdr+1);
     for(uint16_t r=0;r<rects;r++){uint8_t rh[12];if(!recvAll(_sock,rh,12))return NO;uint16_t x=readBE16(rh),y=readBE16(rh+2),w=readBE16(rh+4),h=readBE16(rh+6);int32_t enc=(int32_t)readBE32(rh+8);
-        if(enc==0){if(![self decodeRawX:x y:y w:w h:h])return NO;}
-        else if(enc==5){if(![self decodeHextileX:x y:y w:w h:h])return NO;}
+        if(enc==0){[_lastEncoding release];_lastEncoding=[@"RAW" retain];_statsBytes+=(unsigned long long)w*h*_serverBytesPerPixel;if(![self decodeRawX:x y:y w:w h:h])return NO;}
+        else if(enc==5){[_lastEncoding release];_lastEncoding=[@"Hextile" retain];if(![self decodeHextileX:x y:y w:w h:h])return NO;}
+        else if(enc==7){[_lastEncoding release];_lastEncoding=[@"Tight" retain];if(![self decodeTightX:x y:y w:w h:h])return NO;}
         else if(enc==-223){_fbWidth=w;_fbHeight=h;[_framebuffer release];_framebuffer=[[NSMutableData alloc]initWithLength:_fbWidth*_fbHeight*4];}
         else return NO;
     }
-    UIImage*img=[self currentImage];if(img)[self performSelectorOnMainThread:@selector(frameOnMain:) withObject:img waitUntilDone:NO];
+    UIImage*img=[self currentImage];if(img)[self performSelectorOnMainThread:@selector(frameOnMain:) withObject:img waitUntilDone:NO];_statsFrames++;[self publishStats];
     [self maybeAdapt:[NSDate timeIntervalSinceReferenceDate]-started];return YES;
 }
 - (void)networkThread{

@@ -13,6 +13,7 @@ typedef enum {
 - (void)vncClientDisconnected:(NSString *)reason;
 @optional
 - (void)vncClientClipboardText:(NSString *)text;
+- (void)vncClientStatsFPS:(CGFloat)fps kbps:(CGFloat)kbps encoding:(NSString *)encoding quality:(NSString *)quality;
 @end
 
 @interface VNCClient : NSObject {
@@ -32,12 +33,18 @@ typedef enum {
     NSUInteger _slowFrames;
     NSUInteger _fastFrames;
     NSTimeInterval _lastQualityChange;
+    BOOL _preferTight;
+    NSTimeInterval _statsStart;
+    NSUInteger _statsFrames;
+    unsigned long long _statsBytes;
+    NSString *_lastEncoding;
 }
 @property (nonatomic, assign) id<VNCClientDelegate> delegate;
 @property (nonatomic, readonly) NSUInteger framebufferWidth;
 @property (nonatomic, readonly) NSUInteger framebufferHeight;
 @property (nonatomic, assign) VNCQualityProfile qualityProfile;
 @property (nonatomic, assign) BOOL adaptiveQualityEnabled;
+@property (nonatomic, assign) BOOL preferTight;
 - (id)initWithHost:(NSString *)host port:(NSInteger)port password:(NSString *)password;
 - (void)connect;
 - (void)disconnect;

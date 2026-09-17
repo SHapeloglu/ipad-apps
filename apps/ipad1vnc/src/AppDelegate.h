@@ -1,6 +1,7 @@
 #import <UIKit/UIKit.h>
 @class VNCClient;
 @class VNCView;
+@class TerminalSession;
 
 @interface AppDelegate : NSObject <UIApplicationDelegate, UITextFieldDelegate, UITableViewDelegate, UITableViewDataSource, UIActionSheetDelegate, UIAlertViewDelegate> {
     UIWindow *_window;
@@ -19,6 +20,9 @@
     UIButton *_keyboardButton;
     UIButton *_filesButton;
     UIButton *_settingsButton;
+    UIButton *_terminalButton;
+    UILabel *_statsLabel;
+    UISwitch *_tightSwitch;
     UIButton *_fullScreenButton;
     UIButton *_exitFullScreenButton;
     UITextField *_keyboardField;
@@ -35,6 +39,8 @@
     BOOL _shouldAutoReconnect;
     BOOL _savingProfilePrompt;
     NSMutableArray *_profiles;
+    NSInteger _selectedProfileIndex;
+    BOOL _profileManageMode;
 
     UIView *_filesPanel;
     UITextField *_downloadURLField;
@@ -53,6 +59,22 @@
     NSString *_downloadPath;
     long long _downloadExpected;
     long long _downloadReceived;
+
+    UIView *_terminalPanel;
+    UITextView *_terminalView;
+    UITextField *_terminalInput;
+    UITextField *_sshUserField;
+    UITextField *_sshPortField;
+    UITextField *_sshKeyField;
+    UISwitch *_sshTunnelSwitch;
+    TerminalSession *_terminalSession;
+    TerminalSession *_tunnelSession;
+    NSInteger _tunnelLocalPort;
+
+    NSString *_filesToken;
+    UITextField *_filesTokenField;
+    NSString *_remoteRelativePath;
+    NSInteger _selectedRemoteIndex;
 }
 @property (nonatomic, retain) UIWindow *window;
 @end
