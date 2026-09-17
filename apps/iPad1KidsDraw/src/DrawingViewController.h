@@ -9,6 +9,16 @@
     UIColor *_lastPaintColor;
     NSArray *_galleryFiles;
     NSTimer *_autosaveTimer;
+
+    NSMutableArray *_replayFrames;
+    NSTimer *_replayTimer;
+    NSInteger _replayIndex;
+    UIImageView *_replayOverlay;
+
+    UILabel *_starLabel;
+    UIButton *_modeButton;
+    NSUInteger _stars;
+    BOOL _simpleMode;
 }
 - (void)openExternalImageAtPath:(NSString *)path;
 @end

@@ -16,20 +16,40 @@
     _topToolbar=[[UIView alloc] initWithFrame:CGRectZero]; _topToolbar.backgroundColor=[UIColor colorWithWhite:.94 alpha:1]; [self.view addSubview:_topToolbar];
     _bottomToolbar=[[UIView alloc] initWithFrame:CGRectZero]; _bottomToolbar.backgroundColor=[UIColor colorWithWhite:.94 alpha:1]; [self.view addSubview:_bottomToolbar];
     _drawingView=[[DrawingView alloc] initWithFrame:CGRectZero]; [self.view addSubview:_drawingView]; _lastPaintColor=[[UIColor blackColor] retain];
+
+    _replayFrames=[[NSMutableArray alloc] initWithCapacity:18];
+    _stars=(NSUInteger)[[NSUserDefaults standardUserDefaults] integerForKey:@"KidsDrawStars"];
+    _simpleMode=[[NSUserDefaults standardUserDefaults] boolForKey:@"KidsDrawSimpleMode"];
     NSArray *colors=[NSArray arrayWithObjects:[UIColor blackColor],[self colorWithR:245 g:70 b:75],[self colorWithR:255 g:145 b:55],[self colorWithR:255 g:220 b:70],[self colorWithR:70 g:200 b:110],[self colorWithR:60 g:150 b:240],[self colorWithR:145 g:95 b:220],[self colorWithR:245 g:95 b:180],nil];
     int i; for(i=0;i<8;i++){UIButton *b=[UIButton buttonWithType:UIButtonTypeCustom];b.backgroundColor=[colors objectAtIndex:i];b.tag=100+i;[b addTarget:self action:@selector(colorPressed:) forControlEvents:UIControlEventTouchUpInside];[_topToolbar addSubview:b];}
     NSArray *top=[NSArray arrayWithObjects:@"İnce",@"Orta",@"Kalın",@"Normal",@"Pastel",@"Fosfor",@"Gökkuşağı",nil]; for(i=0;i<7;i++)[_topToolbar addSubview:[self textButton:[top objectAtIndex:i] tag:201+i]];
-    NSArray *bottom=[NSArray arrayWithObjects:@"↶ Geri",@"İleri ↷",@"Dolgu",@"Silgi",@"Damga",@"Boyama",@"Şekil",@"Simetri",@"Yazı",@"Çizimlerim",@"Kaydet",nil]; for(i=0;i<11;i++)[_bottomToolbar addSubview:[self textButton:[bottom objectAtIndex:i] tag:301+i]];
+
+    _modeButton=[[self textButton:(_simpleMode?@"Basit":@"Gelişmiş") tag:208] retain];
+    [_topToolbar addSubview:_modeButton];
+
+    _starLabel=[[UILabel alloc] initWithFrame:CGRectZero];
+    _starLabel.backgroundColor=[UIColor clearColor];
+    _starLabel.textAlignment=UITextAlignmentCenter;
+    _starLabel.font=[UIFont boldSystemFontOfSize:15.0f];
+    [_topToolbar addSubview:_starLabel];
+    [self updateStarLabel];
+
+    NSArray *bottom=[NSArray arrayWithObjects:@"↶ Geri",@"İleri ↷",@"Dolgu",@"Silgi",@"Damga",@"Boyama",@"Şekil",@"Simetri",@"Yazı",@"Oynat",@"Çizimlerim",@"Kaydet",nil]; for(i=0;i<12;i++)[_bottomToolbar addSubview:[self textButton:[bottom objectAtIndex:i] tag:301+i]];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(canvasChanged:) name:@"KidsDrawCanvasChanged" object:_drawingView];
+    [self applyMode];
     [self performSelector:@selector(loadAutosaveDraft) withObject:nil afterDelay:0.1];
 }
 
 - (void)viewDidLayoutSubviews
 {
     [super viewDidLayoutSubviews]; CGRect b=self.view.bounds; _topToolbar.frame=CGRectMake(0,0,b.size.width,TOP_HEIGHT); _bottomToolbar.frame=CGRectMake(0,b.size.height-BOTTOM_HEIGHT,b.size.width,BOTTOM_HEIGHT); _drawingView.frame=CGRectMake(0,TOP_HEIGHT,b.size.width,b.size.height-TOP_HEIGHT-BOTTOM_HEIGHT);
-    CGFloat x=8; int i; for(i=0;i<8;i++){UIView *v=[_topToolbar viewWithTag:100+i];v.frame=CGRectMake(x,12,42,42);x+=48;} for(i=0;i<7;i++){UIView *v=[_topToolbar viewWithTag:201+i];v.frame=CGRectMake(x,10,62,46);x+=65;}
-    CGFloat gap=4,bw=(b.size.width-gap*12)/11.0f;x=gap; for(i=0;i<11;i++){UIView *v=[_bottomToolbar viewWithTag:301+i];v.frame=CGRectMake(x,8,bw,46);x+=bw+gap;}
+    CGFloat x=8; int i; for(i=0;i<8;i++){UIView *v=[_topToolbar viewWithTag:100+i];v.frame=CGRectMake(x,12,42,42);x+=48;} for(i=0;i<7;i++){UIView *v=[_topToolbar viewWithTag:201+i];v.frame=CGRectMake(x,10,58,46);x+=61;}
+    _modeButton.frame=CGRectMake(x,10,72,46); x+=76;
+    _starLabel.frame=CGRectMake(x,10,72,46);
+
+    CGFloat gap=3,bw=(b.size.width-gap*13)/12.0f;x=gap; for(i=0;i<12;i++){UIView *v=[_bottomToolbar viewWithTag:301+i];v.frame=CGRectMake(x,8,bw,46);x+=bw+gap;}
     if(_galleryOverlay) _galleryOverlay.frame=self.view.bounds;
+    if(_replayOverlay) _replayOverlay.frame=_drawingView.frame;
 }
 
 - (void)selectPaintMode { _drawingView.bucketMode=NO; _drawingView.stampType=KidsStampNone; _drawingView.shapeType=KidsShapeNone; _drawingView.strokeColor=_lastPaintColor; }
@@ -46,37 +66,175 @@
         case 301:[_drawingView undo];break; case 302:[_drawingView redo];break;
         case 303:_drawingView.bucketMode=YES;_drawingView.stampType=KidsStampNone;_drawingView.shapeType=KidsShapeNone;_drawingView.strokeColor=_lastPaintColor;break;
         case 304:_drawingView.bucketMode=NO;_drawingView.stampType=KidsStampNone;_drawingView.shapeType=KidsShapeNone;_drawingView.brushStyle=KidsBrushNormal;_drawingView.lineWidth=24;_drawingView.strokeColor=_drawingView.canvasColor;break;
-        case 305:[self chooseStamp];break; case 306:[self chooseColoringPage];break; case 307:[self chooseShape];break; case 308:_drawingView.mirrorMode=!_drawingView.mirrorMode;[s setTitle:(_drawingView.mirrorMode?@"Simetri ✓":@"Simetri") forState:UIControlStateNormal];break; case 309:[self promptText];break; case 310:[self showGallery];break; case 311:[self saveDrawing];break; default:break;
+        case 305:[self chooseStamp];break; case 306:[self chooseColoringPage];break; case 307:[self chooseShape];break; case 308:_drawingView.mirrorMode=!_drawingView.mirrorMode;[s setTitle:(_drawingView.mirrorMode?@"Simetri ✓":@"Simetri") forState:UIControlStateNormal];break; case 309:[self promptText];break;
+        case 310:[self playReplay];break; case 311:[self showGallery];break; case 312:[self saveDrawing];break;
+        case 208:[self toggleMode];break; default:break;
     }
 }
 
-- (void)chooseStamp { UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"Damga 1/4" message:@"Bir damga seç." delegate:self cancelButtonTitle:@"Vazgeç" otherButtonTitles:@"Yıldız",@"Kalp",@"Gülen",@"Daire",@"Kare",@"Daha...",nil] autorelease];a.tag=610;[a show]; }
-- (void)chooseStampPage2 { UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"Damga 2/4" message:@"Bir damga seç." delegate:self cancelButtonTitle:@"Vazgeç" otherButtonTitles:@"Üçgen",@"Çiçek",@"Güneş",@"Bulut",@"Araba",@"Daha...",nil] autorelease];a.tag=611;[a show]; }
-- (void)chooseStampPage3 { UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"Damga 3/4" message:@"Bir damga seç." delegate:self cancelButtonTitle:@"Vazgeç" otherButtonTitles:@"Balık",@"Kelebek",@"Ay",@"Elmas",@"Balon",@"Daha...",nil] autorelease];a.tag=612;[a show]; }
-- (void)chooseStampPage4 { UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"Damga 4/4" message:@"Bir damga seç." delegate:self cancelButtonTitle:@"Vazgeç" otherButtonTitles:@"Elma",@"Ağaç",@"Ev",@"Roket",@"Kedi",@"Daha...",nil] autorelease];a.tag=613;[a show]; }
-- (void)chooseStampPage5 { UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"Damga 5/5" message:@"Bir damga seç." delegate:self cancelButtonTitle:@"Vazgeç" otherButtonTitles:@"Robot",@"Taç",@"Müzik",@"Şimşek",nil] autorelease];a.tag=614;[a show]; }
-- (void)chooseColoringPage { UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"Boyama 1/4" message:@"Bir resim seç." delegate:self cancelButtonTitle:@"Vazgeç" otherButtonTitles:@"Çiçek",@"Ev",@"Balık",@"Kelebek",@"Araba",@"Daha...",nil] autorelease];a.tag=601;[a show]; }
-- (void)chooseColoringPage2 { UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"Boyama 2/4" message:@"Bir resim seç." delegate:self cancelButtonTitle:@"Vazgeç" otherButtonTitles:@"Roket",@"Kedi",@"Ağaç",@"Güneş",@"Robot",@"Daha...",nil] autorelease];a.tag=603;[a show]; }
-- (void)chooseColoringPage3 { UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"Boyama 3/4" message:@"Bir resim seç." delegate:self cancelButtonTitle:@"Vazgeç" otherButtonTitles:@"Gemi",@"Dondurma",@"Uçurtma",@"Mantar",@"Kaplumbağa",@"Daha...",nil] autorelease];a.tag=604;[a show]; }
-- (void)chooseColoringPage4 { UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"Boyama 4/4" message:@"Bir resim seç." delegate:self cancelButtonTitle:@"Vazgeç" otherButtonTitles:@"Tren",@"Şemsiye",@"Hediye",@"Kuş",@"Kalp",nil] autorelease];a.tag=605;[a show]; }
+
+- (void)chooseStamp
+{
+    UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"Damga Kategorisi" message:@"Bir kategori seç." delegate:self cancelButtonTitle:@"Vazgeç" otherButtonTitles:@"Temel",@"Doğa",@"Eğlence",@"Nesneler",nil] autorelease];
+    a.tag=650; [a show];
+}
+- (void)showStampCategory:(NSInteger)c
+{
+    NSArray *titles=nil;
+    if(c==0) titles=[NSArray arrayWithObjects:@"Yıldız",@"Kalp",@"Gülen",@"Daire",@"Kare",@"Üçgen",nil];
+    else if(c==1) titles=[NSArray arrayWithObjects:@"Çiçek",@"Güneş",@"Bulut",@"Balık",@"Kelebek",@"Ağaç",nil];
+    else if(c==2) titles=[NSArray arrayWithObjects:@"Ay",@"Balon",@"Kedi",@"Robot",@"Taç",@"Müzik",nil];
+    else titles=[NSArray arrayWithObjects:@"Araba",@"Elmas",@"Elma",@"Ev",@"Roket",@"Şimşek",nil];
+
+    UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"Damgalar" message:@"Bir damga seç." delegate:self cancelButtonTitle:@"Vazgeç" otherButtonTitles:nil] autorelease];
+    NSInteger i; for(i=0;i<[titles count];i++) [a addButtonWithTitle:[titles objectAtIndex:i]];
+    a.tag=660+c; [a show];
+}
+- (KidsStampType)stampForCategory:(NSInteger)c item:(NSInteger)item
+{
+    static const NSInteger map[4][6]={
+        {1,2,3,4,5,6},
+        {7,8,9,11,12,17},
+        {13,15,20,21,22,23},
+        {10,14,16,18,19,24}
+    };
+    if(c<0||c>3||item<0||item>5) return KidsStampNone;
+    return (KidsStampType)map[c][item];
+}
+
+- (void)chooseColoringPage
+{
+    UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"Boyama Kategorisi" message:@"Bir kategori seç." delegate:self cancelButtonTitle:@"Vazgeç" otherButtonTitles:@"Doğa",@"Hayvanlar",@"Araçlar",@"Eğlence",nil] autorelease];
+    a.tag=670; [a show];
+}
+- (void)showColoringCategory:(NSInteger)c
+{
+    NSArray *titles=nil;
+    if(c==0) titles=[NSArray arrayWithObjects:@"Çiçek",@"Ağaç",@"Güneş",@"Mantar",@"Kalp",nil];
+    else if(c==1) titles=[NSArray arrayWithObjects:@"Balık",@"Kelebek",@"Kedi",@"Kaplumbağa",@"Kuş",nil];
+    else if(c==2) titles=[NSArray arrayWithObjects:@"Araba",@"Roket",@"Gemi",@"Tren",@"Uçurtma",nil];
+    else titles=[NSArray arrayWithObjects:@"Ev",@"Robot",@"Dondurma",@"Şemsiye",@"Hediye",nil];
+
+    UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"Boyama" message:@"Bir resim seç." delegate:self cancelButtonTitle:@"Vazgeç" otherButtonTitles:nil] autorelease];
+    NSInteger i; for(i=0;i<[titles count];i++) [a addButtonWithTitle:[titles objectAtIndex:i]];
+    a.tag=680+c; [a show];
+}
+- (NSInteger)templateForCategory:(NSInteger)c item:(NSInteger)item
+{
+    static const NSInteger map[4][5]={
+        {0,7,8,13,19},
+        {2,3,6,14,18},
+        {4,5,10,15,12},
+        {1,9,11,16,17}
+    };
+    if(c<0||c>3||item<0||item>4) return 0;
+    return map[c][item];
+}
+
 - (void)chooseShape { UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"Şekil" message:@"Çizmek istediğin şekli seç." delegate:self cancelButtonTitle:@"Vazgeç" otherButtonTitles:@"Çizgi",@"Dikdörtgen",@"Daire/Oval",@"Üçgen",nil] autorelease];a.tag=620;[a show]; }
 - (void)promptText { UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"Yazı Ekle" message:@"Yazını gir." delegate:self cancelButtonTitle:@"Vazgeç" otherButtonTitles:@"Ekle",nil] autorelease];a.alertViewStyle=UIAlertViewStylePlainTextInput;a.tag=621;[a show]; }
 - (void)confirmClear { UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"Resmi temizle?" message:@"Bütün çizim silinecek." delegate:self cancelButtonTitle:@"Vazgeç" otherButtonTitles:@"Temizle",nil] autorelease];a.tag=501;[a show]; }
 
 - (void)alertView:(UIAlertView *)a clickedButtonAtIndex:(NSInteger)i
 {
+    if(a.tag==650&&i>=1&&i<=4){[self showStampCategory:i-1];return;}
+    if(a.tag>=660&&a.tag<=663&&i>=1&&i<=6){[self selectPaintMode];_drawingView.stampType=[self stampForCategory:a.tag-660 item:i-1];return;}
+    if(a.tag==670&&i>=1&&i<=4){[self showColoringCategory:i-1];return;}
+    if(a.tag>=680&&a.tag<=683&&i>=1&&i<=5){[_drawingView showColoringTemplate:[self templateForCategory:a.tag-680 item:i-1]];return;}
+
     if(a.tag==501&&i==1)[_drawingView clearCanvas];
     else if(a.tag==601&&i>=1&&i<=5)[_drawingView showColoringTemplate:i-1]; else if(a.tag==601&&i==6)[self chooseColoringPage2];
     else if(a.tag==603&&i>=1&&i<=5)[_drawingView showColoringTemplate:4+i]; else if(a.tag==603&&i==6)[self chooseColoringPage3];
     else if(a.tag==604&&i>=1&&i<=5)[_drawingView showColoringTemplate:9+i]; else if(a.tag==604&&i==6)[self chooseColoringPage4];
     else if(a.tag==605&&i>=1&&i<=5)[_drawingView showColoringTemplate:14+i];
-    else if(a.tag==610&&i>=1&&i<=5){[self selectPaintMode];_drawingView.stampType=(KidsStampType)i;} else if(a.tag==610&&i==6)[self chooseStampPage2];
-    else if(a.tag==611&&i>=1&&i<=5){[self selectPaintMode];_drawingView.stampType=(KidsStampType)(i+5);} else if(a.tag==611&&i==6)[self chooseStampPage3];
-    else if(a.tag==612&&i>=1&&i<=5){[self selectPaintMode];_drawingView.stampType=(KidsStampType)(i+10);} else if(a.tag==612&&i==6)[self chooseStampPage4];
-    else if(a.tag==613&&i>=1&&i<=5){[self selectPaintMode];_drawingView.stampType=(KidsStampType)(i+15);} else if(a.tag==613&&i==6)[self chooseStampPage5];
-    else if(a.tag==614&&i>=1&&i<=4){[self selectPaintMode];_drawingView.stampType=(KidsStampType)(i+20);}
     else if(a.tag==620&&i>=1&&i<=4){[self selectPaintMode];_drawingView.shapeType=(KidsShapeType)i;}
     else if(a.tag==621&&i==1){NSString *text=[[a textFieldAtIndex:0] text];[_drawingView addText:text];}
+}
+
+
+- (void)updateStarLabel
+{
+    _starLabel.text=[NSString stringWithFormat:@"★ %u",(unsigned int)_stars];
+}
+
+- (void)applyMode
+{
+    // Basit mod: çocuk için yalnızca temel çizim, damga, boyama, oynatma ve kaydet.
+    NSInteger advancedTags[]={203,205,206,207,303,307,308,309};
+    NSInteger k;
+    for(k=0;k<8;k++){
+        UIView *v=[self.view viewWithTag:advancedTags[k]];
+        if(v) v.hidden=_simpleMode;
+    }
+    [_modeButton setTitle:(_simpleMode?@"Basit":@"Gelişmiş") forState:UIControlStateNormal];
+}
+
+- (void)toggleMode
+{
+    _simpleMode=!_simpleMode;
+    [[NSUserDefaults standardUserDefaults] setBool:_simpleMode forKey:@"KidsDrawSimpleMode"];
+    [[NSUserDefaults standardUserDefaults] synchronize];
+    [self applyMode];
+}
+
+- (UIImage *)replayThumbnail
+{
+    UIImage *im=[_drawingView renderedImage];
+    if(!im) return nil;
+    CGSize s=CGSizeMake(256.0f,192.0f);
+    UIGraphicsBeginImageContext(s);
+    [[UIColor whiteColor] setFill]; UIRectFill(CGRectMake(0,0,s.width,s.height));
+    CGFloat scale=MIN(s.width/im.size.width,s.height/im.size.height);
+    CGSize z=CGSizeMake(im.size.width*scale,im.size.height*scale);
+    [im drawInRect:CGRectMake((s.width-z.width)/2.0f,(s.height-z.height)/2.0f,z.width,z.height)];
+    UIImage *out=UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+    return out;
+}
+
+- (void)captureReplayFrame
+{
+    UIImage *thumb=[self replayThumbnail];
+    if(!thumb) return;
+    [_replayFrames addObject:thumb];
+    while([_replayFrames count]>18) [_replayFrames removeObjectAtIndex:0];
+}
+
+- (void)playReplay
+{
+    if([_replayFrames count]<2){
+        UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"Oynatma" message:@"Oynatmak için biraz daha çizim yap." delegate:nil cancelButtonTitle:@"Tamam" otherButtonTitles:nil] autorelease];
+        [a show]; return;
+    }
+    if(_replayTimer){[_replayTimer invalidate];[_replayTimer release];_replayTimer=nil;}
+    if(_replayOverlay){[_replayOverlay removeFromSuperview];[_replayOverlay release];_replayOverlay=nil;}
+
+    _replayOverlay=[[UIImageView alloc] initWithFrame:_drawingView.frame];
+    _replayOverlay.backgroundColor=[UIColor whiteColor];
+    _replayOverlay.contentMode=UIViewContentModeScaleAspectFit;
+    _replayOverlay.userInteractionEnabled=NO;
+    [self.view addSubview:_replayOverlay];
+
+    _replayIndex=0;
+    _replayTimer=[[NSTimer scheduledTimerWithTimeInterval:0.22 target:self selector:@selector(replayTick:) userInfo:nil repeats:YES] retain];
+}
+
+- (void)replayTick:(NSTimer *)timer
+{
+    if(_replayIndex>=(NSInteger)[_replayFrames count]){
+        [_replayTimer invalidate]; [_replayTimer release]; _replayTimer=nil;
+        [_replayOverlay removeFromSuperview]; [_replayOverlay release]; _replayOverlay=nil;
+        return;
+    }
+    _replayOverlay.image=[_replayFrames objectAtIndex:_replayIndex++];
+}
+
+- (void)addRewardStar
+{
+    _stars++;
+    [[NSUserDefaults standardUserDefaults] setInteger:(NSInteger)_stars forKey:@"KidsDrawStars"];
+    [[NSUserDefaults standardUserDefaults] synchronize];
+    [self updateStarLabel];
 }
 
 - (NSString *)autosavePath
@@ -86,6 +244,7 @@
 }
 - (void)canvasChanged:(NSNotification *)n
 {
+    [self captureReplayFrame];
     if(_autosaveTimer){[_autosaveTimer invalidate];[_autosaveTimer release];_autosaveTimer=nil;}
     _autosaveTimer=[[NSTimer scheduledTimerWithTimeInterval:AUTOSAVE_DELAY target:self selector:@selector(writeAutosave:) userInfo:nil repeats:NO] retain];
 }
@@ -127,9 +286,10 @@
 
 - (void)saveDrawing
 {
+    [self addRewardStar];
     UIImage *im=[_drawingView renderedImage]; NSDateFormatter *f=[[[NSDateFormatter alloc] init] autorelease];[f setDateFormat:@"yyyyMMdd-HHmmss"];NSString *name=[NSString stringWithFormat:@"KidsDraw-%@.png",[f stringFromDate:[NSDate date]]];NSString *path=[[self galleryDirectory] stringByAppendingPathComponent:name];[UIImagePNGRepresentation(im) writeToFile:path atomically:YES]; UIImageWriteToSavedPhotosAlbum(im,self,@selector(image:didFinishSavingWithError:contextInfo:),NULL);
 }
 - (void)image:(UIImage *)image didFinishSavingWithError:(NSError *)error contextInfo:(void *)contextInfo { NSString *t=error?@"Galeriye kaydedildi":@"Kaydedildi";NSString *m=error?@"KidsDraw Çizimlerim'e kaydedildi; Fotoğraflar'a eklenemedi.":@"Resim Çizimlerim'e ve Fotoğraflar'a kaydedildi.";UIAlertView *a=[[[UIAlertView alloc] initWithTitle:t message:m delegate:nil cancelButtonTitle:@"Tamam" otherButtonTitles:nil] autorelease];[a show]; }
 - (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)o { return UIInterfaceOrientationIsLandscape(o); }
-- (void)dealloc { [[NSNotificationCenter defaultCenter] removeObserver:self];if(_autosaveTimer){[_autosaveTimer invalidate];[_autosaveTimer release];}[_drawingView release];[_topToolbar release];[_bottomToolbar release];[_galleryOverlay release];[_galleryFiles release];[_lastPaintColor release];[super dealloc]; }
+- (void)dealloc { [[NSNotificationCenter defaultCenter] removeObserver:self];if(_autosaveTimer){[_autosaveTimer invalidate];[_autosaveTimer release];}if(_replayTimer){[_replayTimer invalidate];[_replayTimer release];}[_replayOverlay removeFromSuperview];[_replayOverlay release];[_replayFrames release];[_starLabel release];[_modeButton release];[_drawingView release];[_topToolbar release];[_bottomToolbar release];[_galleryOverlay release];[_galleryFiles release];[_lastPaintColor release];[super dealloc]; }
 @end
