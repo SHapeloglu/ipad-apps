@@ -1,26 +1,21 @@
 # SESSION
 
-Current version: 0.2.0
+Current version: 0.3.0
 
-## Implemented and awaiting physical verification
-- Talking/repeat audio
-- Needs decay
-- XP and level
-- Daily reward
-- Coin economy
-- Wardrobe state
-- Mini game
-- Multiple touch reactions
+## Awaiting physical iPad verification
+- app launch
+- Food drag/drop
+- Bath soap drag + shower
+- Sleep lamp toggle
+- Pati Yakala
+- Baloncuk Patlat
+- Talking repeat audio
+- XP / coin persistence
+- RAM / responsiveness
 
 ## Immediate next action
-Build with FINALPACKAGE=1 and test on physical iPad 1.
+Build:
+FINALPACKAGE=1 make package
 
-Report:
-- Build errors/warnings
-- App launch status
-- Microphone start/stop/repeat
-- Whether repeat audio sounds higher pitched
-- Food coin deduction
-- Mini-game rewards
-- Wardrobe purchase/save
-- Any crashes or lag
+If successful, install on 192.168.1.2 and test all room interactions.
+Do not consider v0.3 validated until physical-device testing is complete.

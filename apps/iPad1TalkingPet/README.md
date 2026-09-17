@@ -1,43 +1,41 @@
-# iPad1TalkingPet v0.2
+# iPad1TalkingPet v0.3
 
-iPad 1 / iOS 5.1.1 / armv7 / Objective-C / Theos / non-ARC sanal evcil hayvan prototipi.
+Talking-pet tarzı özgün sanal evcil hayvan oyunu.
+Platform: iPad 1 / iOS 5.1.1 / armv7 / 256 MB RAM / Objective-C / Theos / non-ARC.
 
-## v0.2'de eklenenler
-- Konuş / kaydet / daha hızlı oynatarak ince ses taklidi
-- Mikrofon tabanlı Talking Pet özelliği
-- XP ve seviye sistemi
-- Günlük ödül
-- Coin harcama / kazanma
-- Offline ihtiyaç azalması
-- Dakikalık ihtiyaç azalması
-- Baş / gövde / ayak için farklı dokunma tepkileri
-- Basit Gardırop ekranı
-- Satın alınabilir aksesuarlar için kalıcı sahiplik
-- "Pati Yakala" 20 saniyelik mini oyun
-- Mini oyundan coin ve XP kazanma
-- Tamamen offline çalışma
+## v0.3 yenilikleri
+- Food artık ayrı etkileşim ekranı
+- Yiyeceği sürükleyip ağız bölgesine bırakma
+- Coin harcama + hunger + XP entegrasyonu
+- Bath artık ayrı etkileşim ekranı
+- Sabunu karakter alanında gezdirerek köpürtme
+- Duş kullanmadan hijyen artmıyor
+- Sleep artık ayrı yatak odası
+- Işık aç/kapat
+- Işık kapanınca uyku/enerji artışı
+- Mini oyun menüsü
+- Pati Yakala
+- Baloncuk Patlat
+- Önceki v0.2: konuşma kaydı/tekrar, XP, seviye, daily reward, coin, offline decay, wardrobe kayıt sistemi
 
-## Henüz görsel olarak tamamlanmayanlar
-Ana kedi hâlâ arka plan görselinin bir parçası. Bu nedenle seçilen kıyafetler henüz karakterin üzerinde görünmez.
-Bir sonraki görsel milestone:
-- Kediyi ayrı şeffaf sprite olarak üretmek
-- Idle / blink / talk / eat / happy / sleep animasyon kareleri
-- Kıyafetleri ayrı overlay sprite'ları yapmak
+## Önemli görsel not
+Onaylanan ana karakter hâlâ `home_bg.jpg` içine gömülü.
+Kod mimarisi karakteri ayrı sprite katmanına taşımaya hazır olacak şekilde odalar ayrıştırıldı; ancak gerçek
+`idle/blink/talk/eat/sleep/touch` sprite görselleri tek bir sabit fotoğraftan güvenilir biçimde üretilemez.
+Bu sanat varlıkları hazır olduğunda UIImageView tabanlı animasyon katmanına takılacak.
 
 ## Derleme
-
 ```bash
-cd ~/projects/iPad1TalkingPet-v0.2
+cd ~/projects/iPad1TalkingPet-v0.3
 rm -rf .theos packages
 FINALPACKAGE=1 make package
 ```
 
 ## iPad'e gönderme
-
 ```bash
 scp \
   -o HostKeyAlgorithms=+ssh-rsa \
   -o PubkeyAcceptedAlgorithms=+ssh-rsa \
-  packages/com.olapteknoloji.ipad1talkingpet_0.2.0_iphoneos-arm.deb \
+  packages/com.olapteknoloji.ipad1talkingpet_0.3.0_iphoneos-arm.deb \
   root@192.168.1.2:/var/mobile/
 ```

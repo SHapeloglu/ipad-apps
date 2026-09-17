@@ -1,41 +1,39 @@
 # PROJECT_CONTEXT
 
-## Platform constraints
+## Hard constraints
 - iPad 1
 - Apple A4
 - 256 MB RAM
 - iOS 5.1.1
 - armv7
 - Objective-C
-- Theos
-- legacy iPhoneOS 6.1 SDK
+- Theos + legacy iPhoneOS 6.1 SDK
 - non-ARC / MRC
-- Offline-first
-- Ağır 3D engine yok
+- offline-first
+- no heavy 3D engine
 
-## Product goal
-My Talking Tom benzeri temel sanal evcil hayvan döngüsünü, özgün beyaz kedi karakteri ve özgün görsellerle iPad 1'de akıcı biçimde sunmak.
+## Goal
+Talking-pet oyun döngüsünü özgün beyaz kedi karakteriyle iPad 1 üzerinde akıcı çalıştırmak.
 
-## Current implemented gameplay
-- Needs: hunger, happiness, hygiene, energy
-- Offline decay
-- Touch reactions
+## v0.3 implemented
 - Talking/repeat audio
-- XP / levels
-- Coins
-- Daily reward
-- Wardrobe ownership/select state
-- Mini game
-- Persistent save
+- Hunger/Happiness/Hygiene/Energy
+- Offline decay
+- XP / levels / coins / daily reward
+- Touch reactions
+- Wardrobe purchase persistence
+- Food drag-to-mouth interaction
+- Bath soap + shower sequence
+- Sleep room + lamp sequence
+- Mini-game menu
+- Pati Yakala
+- Baloncuk Patlat
 
-## Known visual limitation
-Character is still baked into the current room image.
-Wardrobe state is functional but cannot visually alter the baked-in character yet.
+## Known gap
+Character is still baked into the room artwork. Therefore:
+- wardrobe ownership is functional but visual outfit compositing is not yet final
+- true blink/talk/eat/sleep sprite animation requires separate transparent art frames
 
 ## Immediate next action
-1. Build and install v0.2 on real iPad 1.
-2. Verify microphone record/repeat.
-3. Verify mini-game.
-4. Verify wardrobe purchase persistence.
-5. Verify RAM/stability.
-6. Then split character from background into lightweight sprites.
+Compile and physically test v0.3 on iPad 1.
+Then create/approve transparent character animation frames and wire them into a lightweight UIImageView sprite animator.

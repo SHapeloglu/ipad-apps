@@ -3,6 +3,10 @@
 #import "PetProgressManager.h"
 #import "WardrobeViewController.h"
 #import "MiniGameViewController.h"
+#import "FoodViewController.h"
+#import "BathViewController.h"
+#import "SleepViewController.h"
+#import "GameMenuViewController.h"
 #import <QuartzCore/QuartzCore.h>
 
 @implementation HomeViewController
@@ -133,27 +137,24 @@
 
 - (void)actionTapped:(UIButton *)sender {
     switch (sender.tag) {
-        case 1:
-            if ([_progress spendCoins:10]) {
-                [_needs feed];
-                [_progress addXP:4];
-                [self showSpeech:@"Mmm! Çok lezzetli!"];
-            } else [self showMessage:@"Yiyecek için 10 coin gerekiyor."];
+        case 1: {
+            FoodViewController *f = [[[FoodViewController alloc] initWithNeeds:_needs progress:_progress] autorelease];
+            [self presentModalViewController:f animated:YES];
             break;
-        case 2:
-            [_needs bathe];
-            [_progress addXP:4];
-            [self showSpeech:@"Mis gibi oldum!"];
+        }
+        case 2: {
+            BathViewController *b = [[[BathViewController alloc] initWithNeeds:_needs progress:_progress] autorelease];
+            [self presentModalViewController:b animated:YES];
             break;
-        case 3:
-            [_needs sleep];
-            [_progress addXP:3];
-            [self showSpeech:@"Biraz dinlendim."];
+        }
+        case 3: {
+            SleepViewController *s = [[[SleepViewController alloc] initWithNeeds:_needs progress:_progress] autorelease];
+            [self presentModalViewController:s animated:YES];
             break;
+        }
         case 4: {
-            MiniGameViewController *m = [[[MiniGameViewController alloc] initWithProgressManager:_progress] autorelease];
-            m.modalTransitionStyle = UIModalTransitionStyleFlipHorizontal;
-            [self presentModalViewController:m animated:YES];
+            GameMenuViewController *g = [[[GameMenuViewController alloc] initWithProgressManager:_progress] autorelease];
+            [self presentModalViewController:g animated:YES];
             break;
         }
         case 5: {

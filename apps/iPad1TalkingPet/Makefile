@@ -10,7 +10,12 @@ iPad1TalkingPet_FILES = main.m \
     src/PetProgressManager.m \
     src/PetAudioManager.m \
     src/WardrobeViewController.m \
-    src/MiniGameViewController.m
+    src/MiniGameViewController.m \
+    src/FoodViewController.m \
+    src/BathViewController.m \
+    src/SleepViewController.m \
+    src/BubbleGameViewController.m \
+    src/GameMenuViewController.m
 iPad1TalkingPet_FRAMEWORKS = UIKit Foundation QuartzCore CoreGraphics AVFoundation AudioToolbox
 iPad1TalkingPet_CFLAGS = -fno-objc-arc
 
