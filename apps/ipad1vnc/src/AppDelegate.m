@@ -19,7 +19,6 @@
 - (void)terminalSendTapped;
 - (void)buildTerminalPanel;
 - (void)tightChanged;
-- (void)manageProfilesTapped;
 - (void)deleteProfileAtIndex:(NSInteger)index;
 - (void)renameRemoteEntry:(NSDictionary *)entry;
 - (void)deleteRemoteEntry:(NSDictionary *)entry;
@@ -31,6 +30,19 @@
 - (void)filesTapped;
 - (NSString*)remotePathForEntry:(NSDictionary*)e;
 - (NSURL*)downloadURLForEntry:(NSDictionary*)e;
+
+- (void)startDownloadFromURL:(NSURL *)url;
+- (void)refreshFileList;
+- (NSString *)downloadsDirectory;
+- (NSString *)uniqueDownloadPathForName:(NSString *)name;
+- (void)downloadTapped;
+- (void)cancelDownloadTapped;
+- (void)closeFilesTapped;
+- (void)startBrowseURL:(NSURL *)url;
+- (void)parseDirectoryHTML:(NSData *)data baseURL:(NSURL *)baseURL;
+- (void)filesUpTapped;
+- (void)saveConnectionSettings;
+- (void)setControlsCollapsed:(BOOL)collapsed animated:(BOOL)animated;
 @end
 
 @implementation AppDelegate
@@ -79,10 +91,6 @@
 - (void)terminalSessionOutput:(NSString*)text {if(![text length])return;_terminalView.text=[_terminalView.text stringByAppendingString:text];NSRange r=NSMakeRange([_terminalView.text length],0);[_terminalView scrollRangeToVisible:r];}
 - (void)terminalSessionEnded:(NSString*)reason {if(_terminalView)_terminalView.text=[_terminalView.text stringByAppendingFormat:@"\n[%@]\n",reason];}
 
-- (void)settingsTapped {
-    UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"SSH / Security" message:@"SSH user, port and key can be edited in the Terminal panel. Enable tunnel there before connecting. Tight can be toggled in Setup." delegate:nil cancelButtonTitle:@"OK" otherButtonTitles:nil] autorelease];
-    [a show];
-}
 - (void)actionSheet:(UIActionSheet *)actionSheet clickedButtonAtIndex:(NSInteger)buttonIndex {
     if(buttonIndex<0)return;
     if(actionSheet.tag==920){
@@ -635,6 +643,30 @@
         UIActionSheet *s=[[[UIActionSheet alloc] initWithTitle:[e objectForKey:@"name"] delegate:self cancelButtonTitle:@"Cancel" destructiveButtonTitle:@"Delete" otherButtonTitles:@"Download",@"Rename",nil] autorelease];
         s.tag=920;[s showInView:_filesPanel];
     }
+}
+- (void)startDownloadFromURL:(NSURL*)url {
+    if(_downloadConnection||!url)return;
+    NSString *name=[[url path] lastPathComponent];if(![name length])name=@"download.bin";
+    _downloadPath=[[self uniqueDownloadPathForName:name] retain];
+    [[NSFileManager defaultManager] createFileAtPath:_downloadPath contents:nil attributes:nil];
+    _downloadHandle=[[NSFileHandle fileHandleForWritingAtPath:_downloadPath] retain];
+    NSMutableURLRequest *req=[NSMutableURLRequest requestWithURL:url cachePolicy:NSURLRequestReloadIgnoringLocalCacheData timeoutInterval:30.0];
+    if([_filesToken length])[req setValue:_filesToken forHTTPHeaderField:@"X-iPad1VNC-Token"];
+    _downloadConnection=[[NSURLConnection alloc]initWithRequest:req delegate:self startImmediately:YES];
+    _downloadExpected=0;_downloadReceived=0;_downloadProgress.progress=0;
+    _downloadStatusLabel.text=[NSString stringWithFormat:@"Downloading %@…",name];
+}
+- (void)refreshFileList {
+    NSArray *items=[[NSFileManager defaultManager] contentsOfDirectoryAtPath:[self downloadsDirectory] error:nil];
+    NSMutableString *s=[NSMutableString string];
+    for(NSString *name in [items sortedArrayUsingSelector:@selector(caseInsensitiveCompare:)]){
+        NSString *fp=[[self downloadsDirectory] stringByAppendingPathComponent:name];
+        NSDictionary *a=[[NSFileManager defaultManager] attributesOfItemAtPath:fp error:nil];
+        unsigned long long bytes=[[a objectForKey:NSFileSize] unsignedLongLongValue];
+        [s appendFormat:@"%@   %.1f KB\n",name,(double)bytes/1024.0];
+    }
+    if(![s length])[s appendString:@"No downloaded files yet."];
+    _fileListView.text=s;
 }
 - (void)downloadTapped {
     NSString *u=[_downloadURLField.text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];

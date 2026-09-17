@@ -1,4 +1,4 @@
-# iPad1VNC v2.0.0-beta2
+# iPad1VNC v2.0.0-beta3
 
 A feature-complete beta aimed at turning an iPad 1 / iOS 5.1.1 into a lightweight Linux thin client.
 
@@ -60,4 +60,13 @@ Do not expose port 8085 broadly until the app token field is tested. SSH tunneli
 - Adds the missing `@implementation AppDelegate` and `@synthesize window = _window`.
 - Moves stray method prototypes (`keyboardTapped`, `filesTapped`, Files helpers) back into the private interface.
 - Fixes beta1's `expected ';' after method prototype` errors.
+- No v2 feature was removed.
+
+
+## beta3 compile fixes
+- Removed duplicate `settingsTapped`.
+- Removed unused `manageProfilesTapped` declaration.
+- Restored missing `startDownloadFromURL:` implementation.
+- Restored missing `refreshFileList` implementation.
+- Added private declarations for Files/download helper methods so the iOS 5 compiler does not treat them as unknown selectors.
 - No v2 feature was removed.
