@@ -1,6 +1,6 @@
 Package: com.olap.ipad1vnc
 Name: iPad1 VNC
-Version: 1.1.0
+Version: 1.1.1
 Architecture: iphoneos-arm
 Description: Legacy iPad VNC thin-client with Hextile acceleration, adaptive quality, Direct/Trackpad modes, connection profiles, clipboard, native remote files, reconnect and rotation.
 Maintainer: Local build

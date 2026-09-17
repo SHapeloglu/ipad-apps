@@ -14,43 +14,6 @@
 @interface AppDelegate () <VNCClientDelegate>
 - (void)connectTapped;
 
-- (void)profilesTapped {
-    if(!_profiles){NSArray *saved=[[NSUserDefaults standardUserDefaults] arrayForKey:@"profiles"];_profiles=[[NSMutableArray alloc] initWithArray:(saved?saved:[NSArray array])];}
-    UIActionSheet *sheet=[[[UIActionSheet alloc] initWithTitle:@"Connection Profiles" delegate:self cancelButtonTitle:nil destructiveButtonTitle:nil otherButtonTitles:nil] autorelease];
-    for(NSDictionary *p in _profiles)[sheet addButtonWithTitle:[p objectForKey:@"name"]];
-    [sheet addButtonWithTitle:@"Save Current…"];
-    sheet.cancelButtonIndex=[sheet addButtonWithTitle:@"Cancel"];
-    [sheet showInView:_controller.view];
-}
-- (void)actionSheet:(UIActionSheet *)actionSheet clickedButtonAtIndex:(NSInteger)buttonIndex {
-    (void)actionSheet;
-    if(buttonIndex<0)return;
-    if(buttonIndex<(NSInteger)[_profiles count]){[self loadProfileAtIndex:buttonIndex];return;}
-    if(buttonIndex==(NSInteger)[_profiles count]){
-        _savingProfilePrompt=YES;
-        UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"Save Profile" message:@"Profile name" delegate:self cancelButtonTitle:@"Cancel" otherButtonTitles:@"Save",nil] autorelease];
-        a.alertViewStyle=UIAlertViewStylePlainTextInput;[[a textFieldAtIndex:0] setText:_hostField.text];[a show];
-    }
-}
-- (void)alertView:(UIAlertView *)alertView clickedButtonAtIndex:(NSInteger)buttonIndex {
-    if(!_savingProfilePrompt)return;_savingProfilePrompt=NO;if(buttonIndex==alertView.cancelButtonIndex)return;
-    NSString *name=[[[alertView textFieldAtIndex:0] text] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
-    if(![name length])name=@"Server";[self saveProfileNamed:name];
-}
-- (void)saveProfileNamed:(NSString *)name {
-    if(!_profiles)_profiles=[[NSMutableArray alloc] init];
-    NSDictionary *p=[NSDictionary dictionaryWithObjectsAndKeys:name,@"name",(_hostField.text?:@""),@"host",(_portField.text?:@"5901"),@"port",(_passwordField.text?:@""),@"password",[NSNumber numberWithInteger:_qualityControl.selectedSegmentIndex],@"quality",[NSNumber numberWithInteger:_inputModeControl.selectedSegmentIndex],@"input",[NSNumber numberWithFloat:_speedSlider.value],@"speed",nil];
-    [_profiles addObject:p];[[NSUserDefaults standardUserDefaults] setObject:_profiles forKey:@"profiles"];[[NSUserDefaults standardUserDefaults] synchronize];_statusLabel.text=@"Profile saved";
-}
-- (void)loadProfileAtIndex:(NSInteger)index {
-    if(index<0||index>=(NSInteger)[_profiles count])return;NSDictionary *p=[_profiles objectAtIndex:index];
-    _hostField.text=[p objectForKey:@"host"];_portField.text=[p objectForKey:@"port"];_passwordField.text=[p objectForKey:@"password"];
-    NSInteger q=[[p objectForKey:@"quality"] integerValue];if(q>=0&&q<=3)_qualityControl.selectedSegmentIndex=q;
-    NSInteger im=[[p objectForKey:@"input"] integerValue];if(im>=0&&im<=1)_inputModeControl.selectedSegmentIndex=im;
-    CGFloat sp=[[p objectForKey:@"speed"] floatValue];if(sp>=0.5&&sp<=1.5){_speedSlider.value=sp;_vncView.pointerSensitivity=sp;}
-    _vncView.inputMode=(VNCInputMode)_inputModeControl.selectedSegmentIndex;[self saveConnectionSettings];_statusLabel.text=[NSString stringWithFormat:@"Loaded %@",[p objectForKey:@"name"]];
-}
-
 - (void)keyboardTapped;
 - (void)filesTapped;
 - (void)settingsTapped;
@@ -93,6 +56,44 @@
 
 @implementation AppDelegate
 @synthesize window = _window;
+
+- (void)profilesTapped {
+    if(!_profiles){NSArray *saved=[[NSUserDefaults standardUserDefaults] arrayForKey:@"profiles"];_profiles=[[NSMutableArray alloc] initWithArray:(saved?saved:[NSArray array])];}
+    UIActionSheet *sheet=[[[UIActionSheet alloc] initWithTitle:@"Connection Profiles" delegate:self cancelButtonTitle:nil destructiveButtonTitle:nil otherButtonTitles:nil] autorelease];
+    for(NSDictionary *p in _profiles)[sheet addButtonWithTitle:[p objectForKey:@"name"]];
+    [sheet addButtonWithTitle:@"Save Current…"];
+    sheet.cancelButtonIndex=[sheet addButtonWithTitle:@"Cancel"];
+    [sheet showInView:_controller.view];
+}
+- (void)actionSheet:(UIActionSheet *)actionSheet clickedButtonAtIndex:(NSInteger)buttonIndex {
+    (void)actionSheet;
+    if(buttonIndex<0)return;
+    if(buttonIndex<(NSInteger)[_profiles count]){[self loadProfileAtIndex:buttonIndex];return;}
+    if(buttonIndex==(NSInteger)[_profiles count]){
+        _savingProfilePrompt=YES;
+        UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"Save Profile" message:@"Profile name" delegate:self cancelButtonTitle:@"Cancel" otherButtonTitles:@"Save",nil] autorelease];
+        a.alertViewStyle=UIAlertViewStylePlainTextInput;[[a textFieldAtIndex:0] setText:_hostField.text];[a show];
+    }
+}
+- (void)alertView:(UIAlertView *)alertView clickedButtonAtIndex:(NSInteger)buttonIndex {
+    if(!_savingProfilePrompt)return;_savingProfilePrompt=NO;if(buttonIndex==alertView.cancelButtonIndex)return;
+    NSString *name=[[[alertView textFieldAtIndex:0] text] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    if(![name length])name=@"Server";[self saveProfileNamed:name];
+}
+- (void)saveProfileNamed:(NSString *)name {
+    if(!_profiles)_profiles=[[NSMutableArray alloc] init];
+    NSDictionary *p=[NSDictionary dictionaryWithObjectsAndKeys:name,@"name",(_hostField.text?:@""),@"host",(_portField.text?:@"5901"),@"port",(_passwordField.text?:@""),@"password",[NSNumber numberWithInteger:_qualityControl.selectedSegmentIndex],@"quality",[NSNumber numberWithInteger:_inputModeControl.selectedSegmentIndex],@"input",[NSNumber numberWithFloat:_speedSlider.value],@"speed",nil];
+    [_profiles addObject:p];[[NSUserDefaults standardUserDefaults] setObject:_profiles forKey:@"profiles"];[[NSUserDefaults standardUserDefaults] synchronize];_statusLabel.text=@"Profile saved";
+}
+- (void)loadProfileAtIndex:(NSInteger)index {
+    if(index<0||index>=(NSInteger)[_profiles count])return;NSDictionary *p=[_profiles objectAtIndex:index];
+    _hostField.text=[p objectForKey:@"host"];_portField.text=[p objectForKey:@"port"];_passwordField.text=[p objectForKey:@"password"];
+    NSInteger q=[[p objectForKey:@"quality"] integerValue];if(q>=0&&q<=3)_qualityControl.selectedSegmentIndex=q;
+    NSInteger im=[[p objectForKey:@"input"] integerValue];if(im>=0&&im<=1)_inputModeControl.selectedSegmentIndex=im;
+    CGFloat sp=[[p objectForKey:@"speed"] floatValue];if(sp>=0.5&&sp<=1.5){_speedSlider.value=sp;_vncView.pointerSensitivity=sp;}
+    _vncView.inputMode=(VNCInputMode)_inputModeControl.selectedSegmentIndex;[self saveConnectionSettings];_statusLabel.text=[NSString stringWithFormat:@"Loaded %@",[p objectForKey:@"name"]];
+}
+
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
     (void)launchOptions;

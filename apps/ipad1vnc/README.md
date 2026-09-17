@@ -1,4 +1,4 @@
-# iPad1VNC v1.1.0
+# iPad1VNC v1.1.1
 
 Legacy VNC thin-client for first-generation iPad / iOS 5.1.1.
 
@@ -43,3 +43,8 @@ python3 -m http.server 8085 --bind 0.0.0.0 --directory /home/desktop/Downloads
 
 ## Deliberately not bundled yet
 SSH tunneling and a native SSH terminal are **not** faked in this release. A secure implementation needs a maintained SSH crypto/library layer (for example libssh2) compiled for armv7/iOS 5 and should be tested separately before opening it to production credentials.
+
+
+## v1.1.1 build fix
+- Fixes the Objective-C compile error in v1.1.0 where connection-profile method implementations were accidentally emitted inside the private `@interface` block.
+- No feature was removed; Trackpad, Auto Quality, Hextile, Profiles and native Files remain enabled.
