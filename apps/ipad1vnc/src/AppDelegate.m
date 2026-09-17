@@ -39,6 +39,8 @@
 - (void)downloadTapped;
 - (void)cancelDownloadTapped;
 - (void)closeFilesTapped;
+- (void)browseFilesTapped;
+- (void)startDownloadFromURL:(NSURL *)url;
 - (void)refreshFileList;
 - (NSString *)downloadsDirectory;
 - (NSString *)uniqueDownloadPathForName:(NSString *)name;
@@ -169,6 +171,7 @@
     _keyboardField.delegate = self;
     _keyboardField.autocorrectionType = UITextAutocorrectionTypeNo;
     _keyboardField.autocapitalizationType = UITextAutocapitalizationTypeNone;
+    _keyboardField.text = @" ";
     [_controller.view addSubview:_keyboardField];
 
     _vncView = [[VNCView alloc] initWithFrame:CGRectMake(0,panelExpandedHeight,w,_controller.view.bounds.size.height-panelExpandedHeight)];
@@ -188,7 +191,7 @@
     _keyBar.autoresizingMask = UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleTopMargin;
     _keyBar.backgroundColor = [UIColor colorWithWhite:0.08 alpha:0.94];
     _keyBar.hidden = YES;
-    NSArray *titles = [NSArray arrayWithObjects:@"Esc",@"Ctrl",@"Alt",@"Tab",@"←",@"↑",@"↓",@"→",@"Copy",@"Paste",nil];
+    NSArray *titles = [NSArray arrayWithObjects:@"Esc",@"Ctrl",@"Alt",@"Tab",@"←",@"↑",@"↓",@"→",@"⌫",@"Copy",@"Paste",nil];
     for (NSUInteger i=0;i<[titles count];i++) {
         UIButton *b=[UIButton buttonWithType:UIButtonTypeRoundedRect];
         b.tag=100+(NSInteger)i;
@@ -260,9 +263,9 @@
 
 - (void)keyboardTapped {
     if ([_keyboardField isFirstResponder]) { [_keyboardField resignFirstResponder]; [_keyboardButton setTitle:@"Keyboard" forState:UIControlStateNormal]; }
-    else { [_keyboardField becomeFirstResponder]; [_keyboardButton setTitle:@"Hide KB" forState:UIControlStateNormal]; }
+    else { _keyboardField.text=@" "; [_keyboardField becomeFirstResponder]; [_keyboardButton setTitle:@"Hide KB" forState:UIControlStateNormal]; }
 }
-- (void)filesTapped { _filesPanel.hidden=NO; [_controller.view bringSubviewToFront:_filesPanel]; [self refreshFileList]; }
+- (void)filesTapped { _filesPanel.hidden=NO; if(![_downloadURLField.text length]&&[_hostField.text length])_downloadURLField.text=[NSString stringWithFormat:@"http://%@:8085/",_hostField.text]; [self refreshFileList]; }
 - (void)settingsTapped { [self setControlsCollapsed:!_controlsCollapsed animated:YES]; }
 - (void)fullScreenTapped { [self setFullScreen:YES animated:YES]; }
 - (void)exitFullScreenTapped { [self setFullScreen:NO animated:YES]; }
@@ -315,16 +318,25 @@
     switch(sender.tag){
         case 100:[self sendKey:0xFF1B];break; case 101:_ctrlArmed=!_ctrlArmed;[self refreshModifierButtons];break; case 102:_altArmed=!_altArmed;[self refreshModifierButtons];break;
         case 103:[self sendKey:0xFF09];break; case 104:[self sendKey:0xFF51];break; case 105:[self sendKey:0xFF52];break; case 106:[self sendKey:0xFF54];break; case 107:[self sendKey:0xFF53];break;
-        case 108:[self sendChordKey:'c' ctrl:YES alt:NO];break;
-        case 109:{ NSString *clip=[[UIPasteboard generalPasteboard] string]; if([clip length])[_client sendClipboardText:clip]; [self sendChordKey:'v' ctrl:YES alt:NO]; break; }
+        case 108:[self sendKey:0xFF08];break;
+        case 109:[self sendChordKey:'c' ctrl:YES alt:NO];break;
+        case 110:{ NSString *clip=[[UIPasteboard generalPasteboard] string]; if([clip length])[_client sendClipboardText:clip]; [self sendChordKey:'v' ctrl:YES alt:NO]; break; }
     }
 }
 
 - (BOOL)textField:(UITextField *)textField shouldChangeCharactersInRange:(NSRange)range replacementString:(NSString *)string {
     (void)range; if(textField!=_keyboardField||!_client)return YES;
-    if([string length]==0){[self sendKey:0xFF08];}
-    else for(NSUInteger i=0;i<[string length];i++){unichar c=[string characterAtIndex:i];[self sendKey:(c=='\n'?0xFF0D:(uint32_t)c)];}
-    textField.text=@""; return NO;
+    if([string length]==0){
+        [self sendKey:0xFF08];
+    } else {
+        for(NSUInteger i=0;i<[string length];i++){
+            unichar c=[string characterAtIndex:i];
+            [self sendKey:(c=='\n'?0xFF0D:(uint32_t)c)];
+        }
+    }
+    /* Keep one invisible sentinel character so iOS 5 continues to emit delete events. */
+    textField.text=@" ";
+    return NO;
 }
 - (BOOL)textFieldShouldReturn:(UITextField *)textField { if(textField==_keyboardField&&_client)[self sendKey:0xFF0D]; return NO; }
 
@@ -361,27 +373,114 @@
     return path;
 }
 - (void)buildFilesPanel {
-    CGFloat w=_controller.view.bounds.size.width,h=_controller.view.bounds.size.height,pw=MIN(700.0,w-30),ph=330.0;
-    _filesPanel=[[UIView alloc] initWithFrame:CGRectMake((w-pw)/2,(h-ph)/2,pw,ph)];_filesPanel.autoresizingMask=(UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleRightMargin | UIViewAutoresizingFlexibleTopMargin | UIViewAutoresizingFlexibleBottomMargin);_filesPanel.backgroundColor=[UIColor colorWithWhite:0.10 alpha:0.98];_filesPanel.hidden=YES;
-    UILabel *title=[[[UILabel alloc] initWithFrame:CGRectMake(15,10,pw-120,30)] autorelease];title.backgroundColor=[UIColor clearColor];title.textColor=[UIColor whiteColor];title.text=@"Downloads — /var/mobile/Documents/iPad1VNC";title.font=[UIFont boldSystemFontOfSize:14];[_filesPanel addSubview:title];
-    UIButton *close=[UIButton buttonWithType:UIButtonTypeRoundedRect];close.frame=CGRectMake(pw-95,8,80,32);[close setTitle:@"Close" forState:UIControlStateNormal];[close addTarget:self action:@selector(closeFilesTapped) forControlEvents:UIControlEventTouchUpInside];[_filesPanel addSubview:close];
-    _downloadURLField=[[UITextField alloc] initWithFrame:CGRectMake(15,50,pw-190,38)];_downloadURLField.borderStyle=UITextBorderStyleRoundedRect;_downloadURLField.placeholder=@"http://server/file.pdf";_downloadURLField.autocorrectionType=UITextAutocorrectionTypeNo;_downloadURLField.autocapitalizationType=UITextAutocapitalizationTypeNone;[_filesPanel addSubview:_downloadURLField];
-    UIButton *dl=[UIButton buttonWithType:UIButtonTypeRoundedRect];dl.frame=CGRectMake(pw-165,50,75,38);[dl setTitle:@"Download" forState:UIControlStateNormal];[dl addTarget:self action:@selector(downloadTapped) forControlEvents:UIControlEventTouchUpInside];[_filesPanel addSubview:dl];
-    UIButton *cancel=[UIButton buttonWithType:UIButtonTypeRoundedRect];cancel.frame=CGRectMake(pw-85,50,70,38);[cancel setTitle:@"Cancel" forState:UIControlStateNormal];[cancel addTarget:self action:@selector(cancelDownloadTapped) forControlEvents:UIControlEventTouchUpInside];[_filesPanel addSubview:cancel];
-    _downloadProgress=[[UIProgressView alloc] initWithProgressViewStyle:UIProgressViewStyleDefault];_downloadProgress.frame=CGRectMake(15,100,pw-30,18);[_filesPanel addSubview:_downloadProgress];
-    _downloadStatusLabel=[[UILabel alloc] initWithFrame:CGRectMake(15,118,pw-30,24)];_downloadStatusLabel.backgroundColor=[UIColor clearColor];_downloadStatusLabel.textColor=[UIColor whiteColor];_downloadStatusLabel.font=[UIFont systemFontOfSize:12];_downloadStatusLabel.text=@"Ready";[_filesPanel addSubview:_downloadStatusLabel];
-    _fileListView=[[UITextView alloc] initWithFrame:CGRectMake(15,148,pw-30,165)];_fileListView.editable=NO;_fileListView.font=[UIFont systemFontOfSize:12];[_filesPanel addSubview:_fileListView];
+    CGFloat w=_controller.view.bounds.size.width,h=_controller.view.bounds.size.height,pw=MIN(760.0,w-20),ph=MIN(620.0,h-20);
+    _filesPanel=[[UIView alloc] initWithFrame:CGRectMake((w-pw)/2,(h-ph)/2,pw,ph)];
+    _filesPanel.autoresizingMask=(UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleRightMargin | UIViewAutoresizingFlexibleTopMargin | UIViewAutoresizingFlexibleBottomMargin);
+    _filesPanel.backgroundColor=[UIColor colorWithWhite:0.10 alpha:0.98];
+    _filesPanel.hidden=YES;
+
+    UILabel *title=[[[UILabel alloc] initWithFrame:CGRectMake(15,8,pw-120,30)] autorelease];
+    title.backgroundColor=[UIColor clearColor];title.textColor=[UIColor whiteColor];
+    title.text=@"Remote Files";title.font=[UIFont boldSystemFontOfSize:16];[_filesPanel addSubview:title];
+
+    UIButton *close=[UIButton buttonWithType:UIButtonTypeRoundedRect];
+    close.frame=CGRectMake(pw-95,6,80,32);[close setTitle:@"Close" forState:UIControlStateNormal];
+    [close addTarget:self action:@selector(closeFilesTapped) forControlEvents:UIControlEventTouchUpInside];[_filesPanel addSubview:close];
+
+    _downloadURLField=[[UITextField alloc] initWithFrame:CGRectMake(15,44,pw-115,36)];
+    _downloadURLField.borderStyle=UITextBorderStyleRoundedRect;
+    _downloadURLField.placeholder=@"http://server:8085/";
+    _downloadURLField.autocorrectionType=UITextAutocorrectionTypeNo;
+    _downloadURLField.autocapitalizationType=UITextAutocapitalizationTypeNone;
+    NSString *saved=[[NSUserDefaults standardUserDefaults] stringForKey:@"filesBaseURL"];
+    if([saved length]) _downloadURLField.text=saved;
+    [_filesPanel addSubview:_downloadURLField];
+
+    _browseFilesButton=[[UIButton buttonWithType:UIButtonTypeRoundedRect] retain];
+    _browseFilesButton.frame=CGRectMake(pw-95,44,80,36);[_browseFilesButton setTitle:@"Browse" forState:UIControlStateNormal];
+    [_browseFilesButton addTarget:self action:@selector(browseFilesTapped) forControlEvents:UIControlEventTouchUpInside];[_filesPanel addSubview:_browseFilesButton];
+
+    _remoteFilesWebView=[[UIWebView alloc] initWithFrame:CGRectMake(15,88,pw-30,ph-250)];
+    _remoteFilesWebView.delegate=self;
+    _remoteFilesWebView.scalesPageToFit=YES;
+    [_filesPanel addSubview:_remoteFilesWebView];
+
+    _downloadProgress=[[UIProgressView alloc] initWithProgressViewStyle:UIProgressViewStyleDefault];
+    _downloadProgress.frame=CGRectMake(15,ph-152,pw-120,18);[_filesPanel addSubview:_downloadProgress];
+
+    UIButton *cancel=[UIButton buttonWithType:UIButtonTypeRoundedRect];
+    cancel.frame=CGRectMake(pw-95,ph-163,80,34);[cancel setTitle:@"Cancel" forState:UIControlStateNormal];
+    [cancel addTarget:self action:@selector(cancelDownloadTapped) forControlEvents:UIControlEventTouchUpInside];[_filesPanel addSubview:cancel];
+
+    _downloadStatusLabel=[[UILabel alloc] initWithFrame:CGRectMake(15,ph-132,pw-30,22)];
+    _downloadStatusLabel.backgroundColor=[UIColor clearColor];_downloadStatusLabel.textColor=[UIColor whiteColor];
+    _downloadStatusLabel.font=[UIFont systemFontOfSize:12];_downloadStatusLabel.text=@"Tap Browse, then tap a file to download.";
+    [_filesPanel addSubview:_downloadStatusLabel];
+
+    UILabel *local=[[[UILabel alloc] initWithFrame:CGRectMake(15,ph-108,pw-30,20)] autorelease];
+    local.backgroundColor=[UIColor clearColor];local.textColor=[UIColor lightGrayColor];local.font=[UIFont boldSystemFontOfSize:12];
+    local.text=@"Downloaded to /var/mobile/Documents/iPad1VNC";[_filesPanel addSubview:local];
+
+    _fileListView=[[UITextView alloc] initWithFrame:CGRectMake(15,ph-86,pw-30,72)];
+    _fileListView.editable=NO;_fileListView.font=[UIFont systemFontOfSize:11];[_filesPanel addSubview:_fileListView];
+
     [_controller.view addSubview:_filesPanel];
 }
+
+- (void)browseFilesTapped {
+    NSString *u=[_downloadURLField.text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    if(![u length] && [_hostField.text length]) u=[NSString stringWithFormat:@"http://%@:8085/",_hostField.text];
+    if(![u hasSuffix:@"/"]) u=[u stringByAppendingString:@"/"];
+    NSURL *url=[NSURL URLWithString:u];
+    if(!url){_downloadStatusLabel.text=@"Invalid server address";return;}
+    _downloadURLField.text=u;
+    [[NSUserDefaults standardUserDefaults] setObject:u forKey:@"filesBaseURL"];
+    [[NSUserDefaults standardUserDefaults] synchronize];
+    [_downloadURLField resignFirstResponder];
+    _downloadStatusLabel.text=@"Loading remote files…";
+    [_remoteFilesWebView loadRequest:[NSURLRequest requestWithURL:url cachePolicy:NSURLRequestReloadIgnoringLocalCacheData timeoutInterval:20.0]];
+}
+
+- (BOOL)webView:(UIWebView *)webView shouldStartLoadWithRequest:(NSURLRequest *)request navigationType:(UIWebViewNavigationType)navigationType {
+    if(webView!=_remoteFilesWebView)return YES;
+    NSURL *url=[request URL];
+    if(navigationType==UIWebViewNavigationTypeLinkClicked){
+        NSString *path=[url path];
+        if([path hasSuffix:@"/"])return YES;
+        [self startDownloadFromURL:url];
+        return NO;
+    }
+    return YES;
+}
+
+- (void)webViewDidFinishLoad:(UIWebView *)webView {
+    if(webView==_remoteFilesWebView)_downloadStatusLabel.text=@"Tap a folder to open it, or a file to download it.";
+}
+
+- (void)webView:(UIWebView *)webView didFailLoadWithError:(NSError *)error {
+    if(webView==_remoteFilesWebView)_downloadStatusLabel.text=[NSString stringWithFormat:@"Browse failed: %@",[error localizedDescription]];
+}
+
+- (void)startDownloadFromURL:(NSURL *)url {
+    if(_downloadConnection||!url)return;
+    NSString *name=[[url path] lastPathComponent];
+    _downloadPath=[[self uniqueDownloadPathForName:name] retain];
+    [[NSFileManager defaultManager] createFileAtPath:_downloadPath contents:nil attributes:nil];
+    _downloadHandle=[[NSFileHandle fileHandleForWritingAtPath:_downloadPath] retain];
+    NSURLRequest *req=[NSURLRequest requestWithURL:url cachePolicy:NSURLRequestReloadIgnoringLocalCacheData timeoutInterval:30.0];
+    _downloadConnection=[[NSURLConnection alloc] initWithRequest:req delegate:self startImmediately:YES];
+    _downloadExpected=0;_downloadReceived=0;_downloadProgress.progress=0;
+    _downloadStatusLabel.text=[NSString stringWithFormat:@"Downloading %@…",name];
+}
+
 - (void)refreshFileList {
     NSArray *items=[[NSFileManager defaultManager] contentsOfDirectoryAtPath:[self downloadsDirectory] error:nil]; NSMutableString *s=[NSMutableString string];
     for(NSString *name in [items sortedArrayUsingSelector:@selector(caseInsensitiveCompare:)]){NSString *p=[[self downloadsDirectory] stringByAppendingPathComponent:name];NSDictionary *a=[[NSFileManager defaultManager] attributesOfItemAtPath:p error:nil];unsigned long long bytes=[[a objectForKey:NSFileSize] unsignedLongLongValue];[s appendFormat:@"%@   %.1f KB\n",name,(double)bytes/1024.0];}
     if(![s length])[s appendString:@"No downloaded files yet."];_fileListView.text=s;
 }
 - (void)downloadTapped {
-    if(_downloadConnection)return; NSString *u=[_downloadURLField.text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];NSURL *url=[NSURL URLWithString:u];if(!url){_downloadStatusLabel.text=@"Invalid URL";return;}
-    NSString *name=[[url path] lastPathComponent];_downloadPath=[[self uniqueDownloadPathForName:name] retain];[[NSFileManager defaultManager] createFileAtPath:_downloadPath contents:nil attributes:nil];_downloadHandle=[[NSFileHandle fileHandleForWritingAtPath:_downloadPath] retain];
-    NSURLRequest *req=[NSURLRequest requestWithURL:url cachePolicy:NSURLRequestReloadIgnoringLocalCacheData timeoutInterval:30.0];_downloadConnection=[[NSURLConnection alloc] initWithRequest:req delegate:self startImmediately:YES];_downloadExpected=0;_downloadReceived=0;_downloadProgress.progress=0;_downloadStatusLabel.text=@"Connecting…";
+    NSString *u=[_downloadURLField.text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    [self startDownloadFromURL:[NSURL URLWithString:u]];
 }
 - (void)cancelDownloadTapped { if(_downloadConnection){[_downloadConnection cancel];[_downloadConnection release];_downloadConnection=nil;}if(_downloadHandle){[_downloadHandle closeFile];[_downloadHandle release];_downloadHandle=nil;}if(_downloadPath){[[NSFileManager defaultManager] removeItemAtPath:_downloadPath error:nil];[_downloadPath release];_downloadPath=nil;}_downloadStatusLabel.text=@"Cancelled";_downloadProgress.progress=0; }
 - (void)closeFilesTapped { [_downloadURLField resignFirstResponder]; _filesPanel.hidden=YES; }
@@ -398,7 +497,7 @@
     if(_reconnectTimer){[_reconnectTimer invalidate];[_reconnectTimer release];}
     if(_downloadConnection){[_downloadConnection cancel];[_downloadConnection release];}if(_downloadHandle){[_downloadHandle closeFile];[_downloadHandle release];}[_downloadPath release];
     _client.delegate=nil;[_client disconnect];[_client release];
-    [_filesPanel release];[_downloadURLField release];[_downloadStatusLabel release];[_downloadProgress release];[_fileListView release];[_keyBar release];
+    [_filesPanel release];[_downloadURLField release];[_remoteFilesWebView release];[_browseFilesButton release];[_downloadStatusLabel release];[_downloadProgress release];[_fileListView release];[_keyBar release];
     [_exitFullScreenButton release];[_fullScreenButton release];[_settingsButton release];[_filesButton release];[_keyboardButton release];[_qualityControl release];[_speedSlider release];[_speedLabel release];
     [_vncView release];[_keyboardField release];[_statusLabel release];[_connectButton release];[_passwordField release];[_portField release];[_hostField release];[_connectionPanel release];[_controller release];[_window release];[super dealloc];
 }

@@ -99,3 +99,11 @@ Do not leave TCP 5901 open to the entire internet. Restrict it at the Contabo fi
 ## Scope
 
 The 1.0 build intentionally avoids heavyweight dependencies such as libssh2 and modern video codecs. That keeps the app realistic for 256 MB RAM and iOS 5.1.1. Native SSH tunnelling, SFTP browsing, audio streaming, and H.264-style remote-display codecs are candidates for a separate advanced branch rather than the legacy core.
+
+
+## v1.0.1 fixes
+- Backspace now has a dedicated `⌫` toolbar key.
+- iOS 5 on-screen keyboard deletion uses a sentinel character so Backspace keeps generating key events.
+- `Files` is now a remote browser instead of requiring a full file URL.
+- Enter a base address such as `http://95.111.242.96:8085/`, tap **Browse**, navigate folders, and tap a file to download it.
+- The file server address is remembered.

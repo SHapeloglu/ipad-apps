@@ -2,7 +2,7 @@
 @class VNCClient;
 @class VNCView;
 
-@interface AppDelegate : NSObject <UIApplicationDelegate, UITextFieldDelegate> {
+@interface AppDelegate : NSObject <UIApplicationDelegate, UITextFieldDelegate, UIWebViewDelegate> {
     UIWindow *_window;
     UIViewController *_controller;
     UIView *_connectionPanel;
@@ -34,6 +34,8 @@
 
     UIView *_filesPanel;
     UITextField *_downloadURLField;
+    UIWebView *_remoteFilesWebView;
+    UIButton *_browseFilesButton;
     UILabel *_downloadStatusLabel;
     UIProgressView *_downloadProgress;
     UITextView *_fileListView;
