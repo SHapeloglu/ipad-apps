@@ -1,4 +1,4 @@
-# KidsDraw v0.5 for iPad 1
+# KidsDraw v0.5.2 for iPad 1
 
 Çocuklar için hafif çizim, boyama ve yaratıcı oyun uygulaması.
 
@@ -39,8 +39,17 @@ FINALPACKAGE=1 make package
 ```
 
 Beklenen paket:
-`packages/com.olap.kidsdraw_0.5.0_iphoneos-arm.deb`
+`packages/com.olap.kidsdraw_0.5.2_iphoneos-arm.deb`
 
 ## Bellek yaklaşımı
 Replay tam çözünürlüklü stroke geçmişi tutmaz. En fazla 18 küçük önizleme
 saklar; böylece iPad 1'in 256 MB RAM sınırında kontrollü kalır.
+
+## v0.5.1 düzeltmesi
+- Eski chooseStampPage2/3/4/5 çağrıları kaldırıldı.
+- Yeni kategori tabanlı damga sistemi tek kaynak olarak bırakıldı.
+
+## v0.5.2 düzeltmesi
+- Eski 601-604 boyama sayfalama akışı kaldırıldı.
+- Eski chooseColoringPage2/3/4 ve chooseStampPage2/3/4/5 selector'ları kaldırıldı.
+- Yalnızca yeni kategori tabanlı menüler kullanılıyor.

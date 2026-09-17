@@ -143,9 +143,6 @@
     if(a.tag>=680&&a.tag<=683&&i>=1&&i<=5){[_drawingView showColoringTemplate:[self templateForCategory:a.tag-680 item:i-1]];return;}
 
     if(a.tag==501&&i==1)[_drawingView clearCanvas];
-    else if(a.tag==601&&i>=1&&i<=5)[_drawingView showColoringTemplate:i-1]; else if(a.tag==601&&i==6)[self chooseColoringPage2];
-    else if(a.tag==603&&i>=1&&i<=5)[_drawingView showColoringTemplate:4+i]; else if(a.tag==603&&i==6)[self chooseColoringPage3];
-    else if(a.tag==604&&i>=1&&i<=5)[_drawingView showColoringTemplate:9+i]; else if(a.tag==604&&i==6)[self chooseColoringPage4];
     else if(a.tag==605&&i>=1&&i<=5)[_drawingView showColoringTemplate:14+i];
     else if(a.tag==620&&i>=1&&i<=4){[self selectPaintMode];_drawingView.shapeType=(KidsShapeType)i;}
     else if(a.tag==621&&i==1){NSString *text=[[a textFieldAtIndex:0] text];[_drawingView addText:text];}
