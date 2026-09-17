@@ -1,31 +1,42 @@
-# iPad1TalkingPet v1.4 — Neutral Base Clothing Rig
+# iPad1TalkingPet v1.4.1 — Clean Neutral Base Update
 
-## En önemli değişiklik
-Kıyafet sistemi artık eski kıyafetli karakter yerine `pet_base_neutral.png` kullanır.
+Bu sürümün amacı, gardırop sisteminin nihayet doğru bir temel karakter asset'i üzerinde çalışmasını sağlamaktır.
 
-Bu sayede:
-- kıyafet kıyafetin üstüne binmez
-- bel/kalça/gövde bölgeleri daha temiz görünür
-- ClothingRigManager maskeleri daha anlamlı çalışır
-- tişört/crop/pantolon/etek karakterin nötr anatomisine bağlanır
+## Değişiklik
+- `Resources/pet_base_neutral.png` temiz, gerçek alpha kanallı, transparan kıyafetsiz karakter ile değiştirildi.
+- Yeni neutral base, kullanıcı tarafından sağlanan şeffaf PNG'den kırpılıp uygulama ölçeğine uygun hale getirildi.
+- Kod mimarisi korunmuştur:
+  - `ClothingRigManager`
+  - torso / hips / left leg / right leg masks
+  - Style 1 için segmented clothing rig
+  - Style 2 için legacy overlay fallback
 
-## Mimari
-- neutral base character
-- ClothingRigManager
-- torso / hips / left leg / right leg masks
-- segmented top/bottom clothing
-- attachment-like transforms
-- no mesh engine / no physics
-- iPad 1 friendly
+## Neden önemli?
+Önceki denemelerde:
+- eski kıyafetli karakter üstüne yeni kıyafet biniyordu
+- veya arka plan temizliği bozuk asset yüzünden görüntü kirleniyordu
 
-## Not
-Bu sürümde nötr karakter görseli yüklenen referanstan hazırlanmıştır.
-Arka planı temizlemek için hafif alfa ayrıştırması uygulanmıştır.
-Gerçek cihazda kenar kalitesi ve olası arka plan kalıntıları kontrol edilmelidir.
+Bu sürümde artık temel karakter:
+- kıyafetsiz
+- temiz transparan
+- tek parça
+- gardırop sistemi için uygun
 
 ## Derleme
 ```bash
-cd ~/projects/iPad1TalkingPet-v1.4
+cd ~/projects/iPad1TalkingPet-v1.4.1
 rm -rf .theos packages
 FINALPACKAGE=1 make package
 ```
+
+## Test odağı
+Önce sadece şu kombinasyonları kontrol et:
+1. Tişört Stil 1 + Pantolon Stil 1
+2. Crop Stil 1 + Etek Stil 1
+
+Ardından:
+- jump
+- dance
+- wave
+- stretch
+sırasında kıyafet kayması var mı bak.
