@@ -1,8 +1,9 @@
 #import "DrawingViewController.h"
 #import "DrawingView.h"
+#import <AudioToolbox/AudioToolbox.h>
 
-#define TOP_HEIGHT 68.0f
-#define BOTTOM_HEIGHT 62.0f
+#define TOP_HEIGHT 58.0f
+#define BOTTOM_HEIGHT 64.0f
 #define AUTOSAVE_DELAY 2.0
 
 @implementation DrawingViewController
@@ -10,22 +11,74 @@
 - (UIColor *)colorWithR:(CGFloat)r g:(CGFloat)g b:(CGFloat)b { return [UIColor colorWithRed:r/255.0f green:g/255.0f blue:b/255.0f alpha:1]; }
 - (UIButton *)textButton:(NSString *)title tag:(NSInteger)tag { UIButton *b=[UIButton buttonWithType:UIButtonTypeRoundedRect];[b setTitle:title forState:UIControlStateNormal];b.titleLabel.font=[UIFont boldSystemFontOfSize:12];b.tag=tag;[b addTarget:self action:@selector(toolPressed:) forControlEvents:UIControlEventTouchUpInside];return b; }
 
+- (NSArray *)paintColors
+{
+    return [NSArray arrayWithObjects:
+        [UIColor blackColor],
+        [self colorWithR:90 g:90 b:90],
+        [UIColor whiteColor],
+        [self colorWithR:230 g:45 b:55],
+        [self colorWithR:255 g:105 b:35],
+        [self colorWithR:255 g:210 b:20],
+        [self colorWithR:180 g:245 b:40],
+        [self colorWithR:45 g:190 b:80],
+        [self colorWithR:30 g:210 b:190],
+        [self colorWithR:35 g:170 b:245],
+        [self colorWithR:35 g:80 b:215],
+        [self colorWithR:115 g:70 b:210],
+        [self colorWithR:205 g:55 b:220],
+        [self colorWithR:250 g:80 b:160],
+        [self colorWithR:145 g:85 b:45],
+        [self colorWithR:255 g:245 b:125],
+        nil];
+}
+
 - (void)loadView
 {
-    UIView *root=[[[UIView alloc] initWithFrame:[[UIScreen mainScreen] bounds]] autorelease]; root.backgroundColor=[UIColor colorWithWhite:.88 alpha:1]; self.view=root;
-    _topToolbar=[[UIView alloc] initWithFrame:CGRectZero]; _topToolbar.backgroundColor=[UIColor colorWithWhite:.94 alpha:1]; [self.view addSubview:_topToolbar];
-    _bottomToolbar=[[UIView alloc] initWithFrame:CGRectZero]; _bottomToolbar.backgroundColor=[UIColor colorWithWhite:.94 alpha:1]; [self.view addSubview:_bottomToolbar];
-    _drawingView=[[DrawingView alloc] initWithFrame:CGRectZero]; [self.view addSubview:_drawingView]; _lastPaintColor=[[UIColor blackColor] retain];
+    UIView *root=[[[UIView alloc] initWithFrame:[[UIScreen mainScreen] bounds]] autorelease];
+    root.backgroundColor=[UIColor colorWithWhite:.88 alpha:1];
+    self.view=root;
+
+    _topToolbar=[[UIView alloc] initWithFrame:CGRectZero];
+    _topToolbar.backgroundColor=[UIColor colorWithWhite:.94 alpha:1];
+    [self.view addSubview:_topToolbar];
+
+    _bottomToolbar=[[UIView alloc] initWithFrame:CGRectZero];
+    _bottomToolbar.backgroundColor=[UIColor colorWithWhite:.94 alpha:1];
+    [self.view addSubview:_bottomToolbar];
+
+    _drawingView=[[DrawingView alloc] initWithFrame:CGRectZero];
+    [self.view addSubview:_drawingView];
+    _lastPaintColor=[[UIColor blackColor] retain];
+
+    _lineSizeIndex=2;   /* 7 px */
+    _stampSizeIndex=1;  /* orta */
+    _sprayDensityIndex=1;
+    _neonStrengthIndex=1;
+    _drawingView.lineWidth=7.0f;
+    _drawingView.stampScale=1.0f;
+    _drawingView.sprayDensity=1.0f;
+    _drawingView.neonStrength=1.0f;
 
     _replayFrames=[[NSMutableArray alloc] initWithCapacity:18];
     _stars=(NSUInteger)[[NSUserDefaults standardUserDefaults] integerForKey:@"KidsDrawStars"];
-    _simpleMode=[[NSUserDefaults standardUserDefaults] boolForKey:@"KidsDrawSimpleMode"];
-    NSArray *colors=[NSArray arrayWithObjects:[UIColor blackColor],[self colorWithR:245 g:70 b:75],[self colorWithR:255 g:145 b:55],[self colorWithR:255 g:220 b:70],[self colorWithR:70 g:200 b:110],[self colorWithR:60 g:150 b:240],[self colorWithR:145 g:95 b:220],[self colorWithR:245 g:95 b:180],nil];
-    int i; for(i=0;i<8;i++){UIButton *b=[UIButton buttonWithType:UIButtonTypeCustom];b.backgroundColor=[colors objectAtIndex:i];b.tag=100+i;[b addTarget:self action:@selector(colorPressed:) forControlEvents:UIControlEventTouchUpInside];[_topToolbar addSubview:b];}
-    NSArray *top=[NSArray arrayWithObjects:@"İnce",@"Orta",@"Kalın",@"Normal",@"Pastel",@"Fosfor",@"Gökkuşağı",nil]; for(i=0;i<7;i++)[_topToolbar addSubview:[self textButton:[top objectAtIndex:i] tag:201+i]];
+    if([[NSUserDefaults standardUserDefaults] objectForKey:@"KidsDrawSoundEnabled"]==nil) _soundEnabled=YES;
+    else _soundEnabled=[[NSUserDefaults standardUserDefaults] boolForKey:@"KidsDrawSoundEnabled"];
 
-    _modeButton=[[self textButton:(_simpleMode?@"Basit":@"Gelişmiş") tag:208] retain];
-    [_topToolbar addSubview:_modeButton];
+    NSArray *colors=[self paintColors];
+    int i;
+    for(i=0;i<16;i++){
+        UIButton *b=[UIButton buttonWithType:UIButtonTypeCustom];
+        b.backgroundColor=[colors objectAtIndex:i];
+        b.tag=100+i;
+        [b addTarget:self action:@selector(colorPressed:) forControlEvents:UIControlEventTouchUpInside];
+        [_topToolbar addSubview:b];
+    }
+
+    [_topToolbar addSubview:[self textButton:@"Fırça" tag:201]];
+    [_topToolbar addSubview:[self textButton:@"Kalınlık" tag:202]];
+    [_topToolbar addSubview:[self textButton:@"Sprey" tag:203]];
+    [_topToolbar addSubview:[self textButton:@"Fosfor" tag:204]];
 
     _starLabel=[[UILabel alloc] initWithFrame:CGRectZero];
     _starLabel.backgroundColor=[UIColor clearColor];
@@ -34,44 +87,161 @@
     [_topToolbar addSubview:_starLabel];
     [self updateStarLabel];
 
-    NSArray *bottom=[NSArray arrayWithObjects:@"↶ Geri",@"İleri ↷",@"Dolgu",@"Silgi",@"Damga",@"Boyama",@"Şekil",@"Simetri",@"Yazı",@"Oynat",@"Çizimlerim",@"Kaydet",nil]; for(i=0;i<12;i++)[_bottomToolbar addSubview:[self textButton:[bottom objectAtIndex:i] tag:301+i]];
+    NSArray *bottom=[NSArray arrayWithObjects:
+        @"↶ Geri",@"İleri ↷",@"Dolgu",@"Silgi",@"Damga",@"Damga Boyut",
+        @"Boyama",@"Şekil",@"Simetri",@"Yazı",@"Oynat",@"Ödüller",
+        @"Ses",@"Temizle",@"Çizimlerim",@"Kaydet",nil];
+
+    for(i=0;i<16;i++) [_bottomToolbar addSubview:[self textButton:[bottom objectAtIndex:i] tag:301+i]];
+
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(canvasChanged:) name:@"KidsDrawCanvasChanged" object:_drawingView];
-    [self applyMode];
     [self performSelector:@selector(loadAutosaveDraft) withObject:nil afterDelay:0.1];
 }
 
 - (void)viewDidLayoutSubviews
 {
-    [super viewDidLayoutSubviews]; CGRect b=self.view.bounds; _topToolbar.frame=CGRectMake(0,0,b.size.width,TOP_HEIGHT); _bottomToolbar.frame=CGRectMake(0,b.size.height-BOTTOM_HEIGHT,b.size.width,BOTTOM_HEIGHT); _drawingView.frame=CGRectMake(0,TOP_HEIGHT,b.size.width,b.size.height-TOP_HEIGHT-BOTTOM_HEIGHT);
-    CGFloat x=8; int i; for(i=0;i<8;i++){UIView *v=[_topToolbar viewWithTag:100+i];v.frame=CGRectMake(x,12,42,42);x+=48;} for(i=0;i<7;i++){UIView *v=[_topToolbar viewWithTag:201+i];v.frame=CGRectMake(x,10,58,46);x+=61;}
-    _modeButton.frame=CGRectMake(x,10,72,46); x+=76;
-    _starLabel.frame=CGRectMake(x,10,72,46);
+    [super viewDidLayoutSubviews];
+    CGRect b=self.view.bounds;
+    _topToolbar.frame=CGRectMake(0,0,b.size.width,TOP_HEIGHT);
+    _bottomToolbar.frame=CGRectMake(0,b.size.height-BOTTOM_HEIGHT,b.size.width,BOTTOM_HEIGHT);
+    _drawingView.frame=CGRectMake(0,TOP_HEIGHT,b.size.width,b.size.height-TOP_HEIGHT-BOTTOM_HEIGHT);
 
-    CGFloat gap=3,bw=(b.size.width-gap*13)/12.0f;x=gap; for(i=0;i<12;i++){UIView *v=[_bottomToolbar viewWithTag:301+i];v.frame=CGRectMake(x,8,bw,46);x+=bw+gap;}
+    CGFloat x=7.0f;
+    int i;
+    for(i=0;i<16;i++){
+        UIView *v=[_topToolbar viewWithTag:100+i];
+        v.frame=CGRectMake(x,14,26,30);
+        x+=30;
+    }
+
+    UIView *brush=[_topToolbar viewWithTag:201];
+    brush.frame=CGRectMake(x+2,8,62,42); x+=66;
+    UIView *size=[_topToolbar viewWithTag:202];
+    size.frame=CGRectMake(x,8,64,42); x+=68;
+    UIView *spray=[_topToolbar viewWithTag:203];
+    spray.frame=CGRectMake(x,8,58,42); x+=62;
+    UIView *neon=[_topToolbar viewWithTag:204];
+    neon.frame=CGRectMake(x,8,58,42); x+=62;
+    _starLabel.frame=CGRectMake(x,8,66,42);
+
+    CGFloat gap=2.0f;
+    CGFloat bw=(b.size.width-gap*17.0f)/16.0f;
+    x=gap;
+    for(i=0;i<16;i++){
+        UIView *v=[_bottomToolbar viewWithTag:301+i];
+        v.frame=CGRectMake(x,9,bw,46);
+        x+=bw+gap;
+    }
+
     if(_galleryOverlay) _galleryOverlay.frame=self.view.bounds;
     if(_replayOverlay) _replayOverlay.frame=_drawingView.frame;
 }
 
-- (void)selectPaintMode { _drawingView.bucketMode=NO; _drawingView.stampType=KidsStampNone; _drawingView.shapeType=KidsShapeNone; _drawingView.strokeColor=_lastPaintColor; }
+- (void)selectPaintMode
+{
+    _drawingView.bucketMode=NO;
+    _drawingView.stampType=KidsStampNone;
+    _drawingView.shapeType=KidsShapeNone;
+    _drawingView.strokeColor=_lastPaintColor;
+}
+
 - (void)colorPressed:(UIButton *)sender
 {
-    NSArray *colors=[NSArray arrayWithObjects:[UIColor blackColor],[self colorWithR:245 g:70 b:75],[self colorWithR:255 g:145 b:55],[self colorWithR:255 g:220 b:70],[self colorWithR:70 g:200 b:110],[self colorWithR:60 g:150 b:240],[self colorWithR:145 g:95 b:220],[self colorWithR:245 g:95 b:180],nil]; NSInteger idx=sender.tag-100; if(idx>=0&&idx<[colors count]){UIColor *c=[colors objectAtIndex:idx];[_lastPaintColor release];_lastPaintColor=[c retain];_drawingView.strokeColor=c;}
+    NSArray *colors=[self paintColors];
+    NSInteger idx=sender.tag-100;
+    if(idx>=0 && idx<[colors count]){
+        UIColor *c=[colors objectAtIndex:idx];
+        [_lastPaintColor release];
+        _lastPaintColor=[c retain];
+        _drawingView.strokeColor=c;
+    }
+}
+
+- (void)chooseBrush
+{
+    UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"Fırça / Kalem"
+                                               message:@"Bir çizim tipi seç."
+                                              delegate:self
+                                     cancelButtonTitle:@"Vazgeç"
+                                     otherButtonTitles:@"Normal",@"Kurşun Kalem",@"Keçeli Kalem",@"Pastel",@"Fosfor",@"Gökkuşağı",@"Boya Spreyi",@"Tebeşir",nil] autorelease];
+    a.tag=640;
+    [a show];
+}
+
+- (void)cycleLineSize:(UIButton *)button
+{
+    static const CGFloat sizes[]={2.0f,4.0f,7.0f,12.0f,18.0f,28.0f};
+    static NSString *names[]={@"Çok İnce",@"İnce",@"Orta",@"Kalın",@"Çok Kalın",@"XXL"};
+    _lineSizeIndex=(_lineSizeIndex+1)%6;
+    _drawingView.lineWidth=sizes[_lineSizeIndex];
+    [button setTitle:names[_lineSizeIndex] forState:UIControlStateNormal];
+}
+
+- (void)cycleStampSize:(UIButton *)button
+{
+    static const CGFloat scales[]={0.55f,0.80f,1.0f,1.25f,1.55f,1.90f};
+    static NSString *names[]={@"Damga XS",@"Damga S",@"Damga M",@"Damga L",@"Damga XL",@"Damga XXL"};
+    _stampSizeIndex=(_stampSizeIndex+1)%6;
+    _drawingView.stampScale=scales[_stampSizeIndex];
+    [button setTitle:names[_stampSizeIndex] forState:UIControlStateNormal];
+}
+
+
+- (void)cycleSprayDensity:(UIButton *)button
+{
+    static const CGFloat vals[]={0.55f,1.0f,1.45f};
+    static NSString *names[]={@"Sprey Az",@"Sprey Orta",@"Sprey Çok"};
+    _sprayDensityIndex=(_sprayDensityIndex+1)%3;
+    _drawingView.sprayDensity=vals[_sprayDensityIndex];
+    [button setTitle:names[_sprayDensityIndex] forState:UIControlStateNormal];
+}
+
+- (void)cycleNeonStrength:(UIButton *)button
+{
+    static const CGFloat vals[]={0.65f,1.0f,1.35f};
+    static NSString *names[]={@"Fosfor Az",@"Fosfor Orta",@"Fosfor Çok"};
+    _neonStrengthIndex=(_neonStrengthIndex+1)%3;
+    _drawingView.neonStrength=vals[_neonStrengthIndex];
+    [button setTitle:names[_neonStrengthIndex] forState:UIControlStateNormal];
 }
 
 - (void)toolPressed:(UIButton *)s
 {
     switch(s.tag){
-        case 201:[self selectPaintMode];_drawingView.lineWidth=3;break; case 202:[self selectPaintMode];_drawingView.lineWidth=7;break; case 203:[self selectPaintMode];_drawingView.lineWidth=14;break;
-        case 204:[self selectPaintMode];_drawingView.brushStyle=KidsBrushNormal;break; case 205:[self selectPaintMode];_drawingView.brushStyle=KidsBrushPastel;break; case 206:[self selectPaintMode];_drawingView.brushStyle=KidsBrushNeon;break; case 207:[self selectPaintMode];_drawingView.brushStyle=KidsBrushRainbow;break;
-        case 301:[_drawingView undo];break; case 302:[_drawingView redo];break;
-        case 303:_drawingView.bucketMode=YES;_drawingView.stampType=KidsStampNone;_drawingView.shapeType=KidsShapeNone;_drawingView.strokeColor=_lastPaintColor;break;
-        case 304:_drawingView.bucketMode=NO;_drawingView.stampType=KidsStampNone;_drawingView.shapeType=KidsShapeNone;_drawingView.brushStyle=KidsBrushNormal;_drawingView.lineWidth=24;_drawingView.strokeColor=_drawingView.canvasColor;break;
-        case 305:[self chooseStamp];break; case 306:[self chooseColoringPage];break; case 307:[self chooseShape];break; case 308:_drawingView.mirrorMode=!_drawingView.mirrorMode;[s setTitle:(_drawingView.mirrorMode?@"Simetri ✓":@"Simetri") forState:UIControlStateNormal];break; case 309:[self promptText];break;
-        case 310:[self playReplay];break; case 311:[self showGallery];break; case 312:[self saveDrawing];break;
-        case 208:[self toggleMode];break; default:break;
+        case 201:[self chooseBrush];break;
+        case 202:[self cycleLineSize:s];break;
+        case 203:[self cycleSprayDensity:s];break;
+        case 204:[self cycleNeonStrength:s];break;
+
+        case 301:[_drawingView undo];break;
+        case 302:[_drawingView redo];break;
+        case 303:
+            _drawingView.bucketMode=YES; _drawingView.stampType=KidsStampNone;
+            _drawingView.shapeType=KidsShapeNone; _drawingView.strokeColor=_lastPaintColor;
+            break;
+        case 304:
+            _drawingView.bucketMode=NO; _drawingView.stampType=KidsStampNone;
+            _drawingView.shapeType=KidsShapeNone; _drawingView.brushStyle=KidsBrushNormal;
+            _drawingView.lineWidth=28; _drawingView.strokeColor=_drawingView.canvasColor;
+            break;
+        case 305:[self chooseStamp];break;
+        case 306:[self cycleStampSize:s];break;
+        case 307:[self chooseColoringPage];break;
+        case 308:[self chooseShape];break;
+        case 309:
+            _drawingView.mirrorMode=!_drawingView.mirrorMode;
+            [s setTitle:(_drawingView.mirrorMode?@"Simetri ✓":@"Simetri") forState:UIControlStateNormal];
+            break;
+        case 310:[self promptText];break;
+        case 311:[self playReplay];break;
+        case 312:[self showRewards];break;
+        case 313:[self toggleSound];break;
+        case 314:[self confirmClear];break;
+        case 315:[self showGallery];break;
+        case 316:[self saveDrawing];break;
+        default:break;
     }
 }
-
 
 - (void)chooseStamp
 {
@@ -137,10 +307,29 @@
 
 - (void)alertView:(UIAlertView *)a clickedButtonAtIndex:(NSInteger)i
 {
+    if(a.tag==640&&i>=1&&i<=8){
+        [self selectPaintMode];
+        _drawingView.brushStyle=(KidsBrushStyle)(i-1);
+        [self playTinySound];
+        return;
+    }
     if(a.tag==650&&i>=1&&i<=4){[self showStampCategory:i-1];return;}
-    if(a.tag>=660&&a.tag<=663&&i>=1&&i<=6){[self selectPaintMode];_drawingView.stampType=[self stampForCategory:a.tag-660 item:i-1];return;}
+    if(a.tag>=660&&a.tag<=663&&i>=1&&i<=6){
+        KidsStampType st=[self stampForCategory:a.tag-660 item:i-1];
+        if(![self isStampUnlocked:st]){
+            UIAlertView *lock=[[[UIAlertView alloc] initWithTitle:@"Kilitli" message:@"Bu damga için biraz daha yıldız kazanmalısın." delegate:nil cancelButtonTitle:@"Tamam" otherButtonTitles:nil] autorelease];
+            [lock show]; return;
+        }
+        [self selectPaintMode]; _drawingView.stampType=st; [self playTinySound]; return;
+    }
     if(a.tag==670&&i>=1&&i<=4){[self showColoringCategory:i-1];return;}
-    if(a.tag>=680&&a.tag<=683&&i>=1&&i<=5){[_drawingView showColoringTemplate:[self templateForCategory:a.tag-680 item:i-1]];return;}
+    if(a.tag>=680&&a.tag<=683&&i>=1&&i<=5){
+        NSInteger t=[self templateForCategory:a.tag-680 item:i-1];
+        [_drawingView showColoringTemplate:t];
+        [self playTinySound];
+        [self showColorHintForTemplate:t];
+        return;
+    }
 
     if(a.tag==501&&i==1)[_drawingView clearCanvas];
     else if(a.tag==605&&i>=1&&i<=5)[_drawingView showColoringTemplate:14+i];
@@ -149,30 +338,99 @@
 }
 
 
+
+- (void)playTinySound
+{
+    if(!_soundEnabled) return;
+    AudioServicesPlaySystemSound(1104);
+}
+
+- (void)toggleSound
+{
+    _soundEnabled=!_soundEnabled;
+    [[NSUserDefaults standardUserDefaults] setBool:_soundEnabled forKey:@"KidsDrawSoundEnabled"];
+    [[NSUserDefaults standardUserDefaults] synchronize];
+    UIButton *b=(UIButton *)[self.view viewWithTag:313];
+    [b setTitle:(_soundEnabled?@"Ses ✓":@"Ses ×") forState:UIControlStateNormal];
+    if(_soundEnabled) [self playTinySound];
+}
+
+- (void)showRewards
+{
+    if(_rewardOverlay){[_rewardOverlay removeFromSuperview];[_rewardOverlay release];_rewardOverlay=nil;}
+
+    _rewardOverlay=[[UIView alloc] initWithFrame:self.view.bounds];
+    _rewardOverlay.backgroundColor=[UIColor colorWithWhite:0.97f alpha:0.98f];
+
+    UILabel *title=[[[UILabel alloc] initWithFrame:CGRectMake(40,40,self.view.bounds.size.width-80,60)] autorelease];
+    title.backgroundColor=[UIColor clearColor];
+    title.textAlignment=UITextAlignmentCenter;
+    title.font=[UIFont boldSystemFontOfSize:28.0f];
+    title.text=[NSString stringWithFormat:@"Ödüllerin  ★ %u",(unsigned int)_stars];
+    [_rewardOverlay addSubview:title];
+
+    NSArray *names=[NSArray arrayWithObjects:@"Taç",@"Roket",@"Robot",@"Kelebek",@"Elmas",@"Müzik",nil];
+    NSInteger thresholds[]={10,20,30,40,50,60};
+    NSInteger i;
+    for(i=0;i<6;i++){
+        UILabel *l=[[[UILabel alloc] initWithFrame:CGRectMake(120,120+i*62,self.view.bounds.size.width-240,48)] autorelease];
+        l.backgroundColor=[UIColor clearColor];
+        l.font=[UIFont boldSystemFontOfSize:20.0f];
+        BOOL unlocked=_stars>=(NSUInteger)thresholds[i];
+        l.text=[NSString stringWithFormat:@"%@  %@  (%d ★)",
+                unlocked?@"✓":@"🔒",[names objectAtIndex:i],thresholds[i]];
+        [_rewardOverlay addSubview:l];
+    }
+
+    UIButton *close=[UIButton buttonWithType:UIButtonTypeRoundedRect];
+    close.frame=CGRectMake(self.view.bounds.size.width-150,24,120,44);
+    [close setTitle:@"Kapat" forState:UIControlStateNormal];
+    close.tag=901;
+    [close addTarget:self action:@selector(closeRewards) forControlEvents:UIControlEventTouchUpInside];
+    [_rewardOverlay addSubview:close];
+
+    [self.view addSubview:_rewardOverlay];
+}
+
+- (void)closeRewards
+{
+    [_rewardOverlay removeFromSuperview];
+    [_rewardOverlay release];
+    _rewardOverlay=nil;
+}
+
+- (BOOL)isStampUnlocked:(KidsStampType)t
+{
+    if(t==KidsStampCrown) return _stars>=10;
+    if(t==KidsStampRocket) return _stars>=20;
+    if(t==KidsStampRobot) return _stars>=30;
+    if(t==KidsStampButterfly) return _stars>=40;
+    if(t==KidsStampDiamond) return _stars>=50;
+    if(t==KidsStampMusic) return _stars>=60;
+    return YES;
+}
+
+- (void)showColorHintForTemplate:(NSInteger)t
+{
+    NSString *hint=@"İstediğin renkleri kullanabilirsin!";
+    switch(t){
+        case 0: hint=@"Çiçeği kırmızı, sarı veya pembe deneyebilirsin."; break;
+        case 2: hint=@"Balıkta mavi, turuncu ve sarı güzel durur."; break;
+        case 4: hint=@"Arabayı sevdiğin renge boya."; break;
+        case 5: hint=@"Rokette kırmızı, mavi ve sarı deneyebilirsin."; break;
+        case 6: hint=@"Kediyi turuncu, gri veya mor deneyebilirsin."; break;
+        case 7: hint=@"Ağaç için yeşil ve kahverengi güzel olur."; break;
+        default: break;
+    }
+    UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"Renk Önerisi" message:hint delegate:nil cancelButtonTitle:@"Tamam" otherButtonTitles:nil] autorelease];
+    [a show];
+}
+
 - (void)updateStarLabel
 {
     _starLabel.text=[NSString stringWithFormat:@"★ %u",(unsigned int)_stars];
 }
 
-- (void)applyMode
-{
-    // Basit mod: çocuk için yalnızca temel çizim, damga, boyama, oynatma ve kaydet.
-    NSInteger advancedTags[]={203,205,206,207,303,307,308,309};
-    NSInteger k;
-    for(k=0;k<8;k++){
-        UIView *v=[self.view viewWithTag:advancedTags[k]];
-        if(v) v.hidden=_simpleMode;
-    }
-    [_modeButton setTitle:(_simpleMode?@"Basit":@"Gelişmiş") forState:UIControlStateNormal];
-}
-
-- (void)toggleMode
-{
-    _simpleMode=!_simpleMode;
-    [[NSUserDefaults standardUserDefaults] setBool:_simpleMode forKey:@"KidsDrawSimpleMode"];
-    [[NSUserDefaults standardUserDefaults] synchronize];
-    [self applyMode];
-}
 
 - (UIImage *)replayThumbnail
 {
@@ -229,6 +487,7 @@
 - (void)addRewardStar
 {
     _stars++;
+    [self playTinySound];
     [[NSUserDefaults standardUserDefaults] setInteger:(NSInteger)_stars forKey:@"KidsDrawStars"];
     [[NSUserDefaults standardUserDefaults] synchronize];
     [self updateStarLabel];
@@ -288,5 +547,5 @@
 }
 - (void)image:(UIImage *)image didFinishSavingWithError:(NSError *)error contextInfo:(void *)contextInfo { NSString *t=error?@"Galeriye kaydedildi":@"Kaydedildi";NSString *m=error?@"KidsDraw Çizimlerim'e kaydedildi; Fotoğraflar'a eklenemedi.":@"Resim Çizimlerim'e ve Fotoğraflar'a kaydedildi.";UIAlertView *a=[[[UIAlertView alloc] initWithTitle:t message:m delegate:nil cancelButtonTitle:@"Tamam" otherButtonTitles:nil] autorelease];[a show]; }
 - (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)o { return UIInterfaceOrientationIsLandscape(o); }
-- (void)dealloc { [[NSNotificationCenter defaultCenter] removeObserver:self];if(_autosaveTimer){[_autosaveTimer invalidate];[_autosaveTimer release];}if(_replayTimer){[_replayTimer invalidate];[_replayTimer release];}[_replayOverlay removeFromSuperview];[_replayOverlay release];[_replayFrames release];[_starLabel release];[_modeButton release];[_drawingView release];[_topToolbar release];[_bottomToolbar release];[_galleryOverlay release];[_galleryFiles release];[_lastPaintColor release];[super dealloc]; }
+- (void)dealloc { [[NSNotificationCenter defaultCenter] removeObserver:self];if(_autosaveTimer){[_autosaveTimer invalidate];[_autosaveTimer release];}if(_replayTimer){[_replayTimer invalidate];[_replayTimer release];}[_replayOverlay removeFromSuperview];[_replayOverlay release];[_replayFrames release];[_rewardOverlay removeFromSuperview];[_rewardOverlay release];[_starLabel release];[_drawingView release];[_topToolbar release];[_bottomToolbar release];[_galleryOverlay release];[_galleryFiles release];[_lastPaintColor release];[super dealloc]; }
 @end

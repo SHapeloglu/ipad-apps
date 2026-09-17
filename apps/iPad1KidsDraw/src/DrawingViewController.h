@@ -1,5 +1,6 @@
 #import <UIKit/UIKit.h>
 @class DrawingView;
+
 @interface DrawingViewController : UIViewController <UIAlertViewDelegate>
 {
     DrawingView *_drawingView;
@@ -16,9 +17,15 @@
     UIImageView *_replayOverlay;
 
     UILabel *_starLabel;
-    UIButton *_modeButton;
     NSUInteger _stars;
-    BOOL _simpleMode;
+    BOOL _soundEnabled;
+    UIView *_rewardOverlay;
+    UILabel *_rewardTitle;
+
+    NSInteger _lineSizeIndex;
+    NSInteger _stampSizeIndex;
+    NSInteger _sprayDensityIndex;
+    NSInteger _neonStrengthIndex;
 }
 - (void)openExternalImageAtPath:(NSString *)path;
 @end

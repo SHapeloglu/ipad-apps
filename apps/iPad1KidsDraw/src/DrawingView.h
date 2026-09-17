@@ -2,9 +2,13 @@
 
 typedef enum {
     KidsBrushNormal = 0,
-    KidsBrushPastel = 1,
-    KidsBrushNeon = 2,
-    KidsBrushRainbow = 3
+    KidsBrushPencil,
+    KidsBrushMarker,
+    KidsBrushPastel,
+    KidsBrushNeon,
+    KidsBrushRainbow,
+    KidsBrushSpray,
+    KidsBrushChalk
 } KidsBrushStyle;
 
 typedef enum {
@@ -50,13 +54,25 @@ typedef enum {
     UIColor *_canvasColor;
     CGFloat _lineWidth;
     CGFloat _strokeAlpha;
+    CGFloat _stampScale;
+    CGFloat _sprayDensity;
+    CGFloat _neonStrength;
+
     CGPoint _lastPoint;
     CGPoint _shapeStartPoint;
     BOOL _drawing;
     BOOL _bucketMode;
     BOOL _mirrorMode;
+
+    /* iPad 1 için en fazla iki eşzamanlı serbest çizim dokunuşu. */
+    UITouch *_touchA;
+    UITouch *_touchB;
+    CGPoint _lastPointA;
+    CGPoint _lastPointB;
+
     NSMutableArray *_undoStack;
     NSMutableArray *_redoStack;
+
     KidsBrushStyle _brushStyle;
     KidsStampType _stampType;
     KidsShapeType _shapeType;
@@ -65,6 +81,9 @@ typedef enum {
 @property (nonatomic, retain) UIColor *strokeColor;
 @property (nonatomic, retain) UIColor *canvasColor;
 @property (nonatomic, assign) CGFloat lineWidth;
+@property (nonatomic, assign) CGFloat stampScale;
+@property (nonatomic, assign) CGFloat sprayDensity;
+@property (nonatomic, assign) CGFloat neonStrength;
 @property (nonatomic, assign) KidsBrushStyle brushStyle;
 @property (nonatomic, assign) KidsStampType stampType;
 @property (nonatomic, assign) KidsShapeType shapeType;

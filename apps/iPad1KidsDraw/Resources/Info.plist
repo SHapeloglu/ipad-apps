@@ -13,7 +13,7 @@
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleVersion</key>
-    <string>0.5.2</string>
+    <string>0.8.0</string>
     <key>CFBundleURLTypes</key>
     <array>
         <dict>
@@ -21,6 +21,12 @@
             <key>CFBundleURLSchemes</key><array><string>kidsdraw</string></array>
         </dict>
     </array>
+    <key>CFBundleIconFiles</key>
+    <array>
+        <string>Icon-72.png</string>
+    </array>
+    <key>UILaunchImageFile</key>
+    <string>Default-Landscape</string>
     <key>LSRequiresIPhoneOS</key>
     <true/>
     <key>UIDeviceFamily</key>

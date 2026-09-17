@@ -12,6 +12,9 @@ typedef struct { int x; int y; } KidsPixelPoint;
 @synthesize strokeColor = _strokeColor;
 @synthesize canvasColor = _canvasColor;
 @synthesize lineWidth = _lineWidth;
+@synthesize stampScale = _stampScale;
+@synthesize sprayDensity = _sprayDensity;
+@synthesize neonStrength = _neonStrength;
 @synthesize brushStyle = _brushStyle;
 @synthesize stampType = _stampType;
 @synthesize shapeType = _shapeType;
@@ -23,12 +26,15 @@ typedef struct { int x; int y; } KidsPixelPoint;
     self = [super initWithFrame:frame];
     if (self) {
         self.backgroundColor = [UIColor whiteColor];
-        self.multipleTouchEnabled = NO;
+        self.multipleTouchEnabled = YES;
         self.opaque = YES;
         self.strokeColor = [UIColor blackColor];
         self.canvasColor = [UIColor whiteColor];
         self.lineWidth = 7.0f;
         _strokeAlpha = 1.0f;
+        _stampScale = 1.0f;
+        _sprayDensity = 1.0f;
+        _neonStrength = 1.0f;
         _brushStyle = KidsBrushNormal;
         _stampType = KidsStampNone;
         _shapeType = KidsShapeNone;
@@ -74,8 +80,12 @@ typedef struct { int x; int y; } KidsPixelPoint;
 
 - (void)applyBrushStyle
 {
-    if (_brushStyle == KidsBrushPastel) _strokeAlpha = 0.55f;
-    else if (_brushStyle == KidsBrushNeon) _strokeAlpha = 0.78f;
+    if (_brushStyle == KidsBrushPencil) _strokeAlpha = 0.90f;
+    else if (_brushStyle == KidsBrushMarker) _strokeAlpha = 0.58f;
+    else if (_brushStyle == KidsBrushPastel) _strokeAlpha = 0.52f;
+    else if (_brushStyle == KidsBrushNeon) _strokeAlpha = 1.0f;
+    else if (_brushStyle == KidsBrushChalk) _strokeAlpha = 0.72f;
+    else if (_brushStyle == KidsBrushSpray) _strokeAlpha = 0.58f;
     else _strokeAlpha = 1.0f;
 }
 
@@ -99,41 +109,130 @@ typedef struct { int x; int y; } KidsPixelPoint;
     [[NSNotificationCenter defaultCenter] postNotificationName:@"KidsDrawCanvasChanged" object:self];
 }
 
+
+- (void)setSelectedColorInContext:(CGContextRef)ctx alpha:(CGFloat)alpha fill:(BOOL)fill
+{
+    CGFloat r=0,g=0,b=0,a=1;
+    if ([self.strokeColor respondsToSelector:@selector(getRed:green:blue:alpha:)] &&
+        [self.strokeColor getRed:&r green:&g blue:&b alpha:&a]) {
+        if(fill) CGContextSetRGBFillColor(ctx,r,g,b,a*alpha);
+        else CGContextSetRGBStrokeColor(ctx,r,g,b,a*alpha);
+    } else {
+        if(fill) CGContextSetFillColorWithColor(ctx,self.strokeColor.CGColor);
+        else CGContextSetStrokeColorWithColor(ctx,self.strokeColor.CGColor);
+        CGContextSetAlpha(ctx,alpha);
+    }
+}
+
+- (void)strokeSimpleFrom:(CGPoint)a to:(CGPoint)b context:(CGContextRef)ctx width:(CGFloat)width alpha:(CGFloat)alpha
+{
+    CGContextSetAlpha(ctx,1.0f);
+    [self setSelectedColorInContext:ctx alpha:alpha fill:NO];
+    CGContextSetLineWidth(ctx,width);
+    CGContextSetLineCap(ctx,kCGLineCapRound);
+    CGContextSetLineJoin(ctx,kCGLineJoinRound);
+    CGContextBeginPath(ctx);
+    CGContextMoveToPoint(ctx,a.x,a.y);
+    CGContextAddLineToPoint(ctx,b.x,b.y);
+    CGContextStrokePath(ctx);
+}
+
+- (void)drawSprayAt:(CGPoint)p context:(CGContextRef)ctx
+{
+    int count=(int)MIN(36.0f,MAX(8.0f,self.lineWidth*(0.8f+_sprayDensity)));
+    CGFloat radius=MAX(7.0f,self.lineWidth*(1.25f+0.75f*_sprayDensity));
+    [self setSelectedColorInContext:ctx alpha:0.58f fill:YES];
+    int i;
+    for(i=0;i<count;i++){
+        CGFloat rx=((CGFloat)(rand()%2001)/1000.0f-1.0f)*radius;
+        CGFloat ry=((CGFloat)(rand()%2001)/1000.0f-1.0f)*radius;
+        if(rx*rx+ry*ry>radius*radius) continue;
+        CGFloat dot=1.0f+(CGFloat)(rand()%3);
+        CGContextFillEllipseInRect(ctx,CGRectMake(p.x+rx,p.y+ry,dot,dot));
+    }
+}
+
+- (void)drawSegmentFrom:(CGPoint)fromPoint to:(CGPoint)toPoint context:(CGContextRef)ctx
+{
+    CGFloat width=self.lineWidth;
+
+    if(_brushStyle==KidsBrushSpray){
+        [self drawSprayAt:toPoint context:ctx];
+        if(_mirrorMode) [self drawSprayAt:CGPointMake(self.bounds.size.width-toPoint.x,toPoint.y) context:ctx];
+        return;
+    }
+
+    if(_brushStyle==KidsBrushRainbow){
+        CGFloat hue=fmodf((toPoint.x+toPoint.y)/(MAX(1.0f,self.bounds.size.width+self.bounds.size.height)),1.0f);
+        UIColor *rain=[UIColor colorWithHue:hue saturation:0.95f brightness:1.0f alpha:1.0f];
+        CGContextSetStrokeColorWithColor(ctx,rain.CGColor);
+        CGContextSetLineWidth(ctx,width);
+        CGContextSetLineCap(ctx,kCGLineCapRound);
+        CGContextBeginPath(ctx); CGContextMoveToPoint(ctx,fromPoint.x,fromPoint.y); CGContextAddLineToPoint(ctx,toPoint.x,toPoint.y); CGContextStrokePath(ctx);
+        if(_mirrorMode){
+            CGFloat w=self.bounds.size.width;
+            CGContextBeginPath(ctx); CGContextMoveToPoint(ctx,w-fromPoint.x,fromPoint.y); CGContextAddLineToPoint(ctx,w-toPoint.x,toPoint.y); CGContextStrokePath(ctx);
+        }
+        return;
+    }
+
+    if(_brushStyle==KidsBrushPencil){
+        [self strokeSimpleFrom:fromPoint to:toPoint context:ctx width:MAX(1.0f,width*0.34f) alpha:0.86f];
+        [self strokeSimpleFrom:CGPointMake(fromPoint.x+0.6f,fromPoint.y+0.4f)
+                            to:CGPointMake(toPoint.x+0.6f,toPoint.y+0.4f)
+                       context:ctx width:MAX(1.0f,width*0.16f) alpha:0.26f];
+    } else if(_brushStyle==KidsBrushMarker){
+        [self strokeSimpleFrom:fromPoint to:toPoint context:ctx width:width*1.65f alpha:0.52f];
+        [self strokeSimpleFrom:fromPoint to:toPoint context:ctx width:MAX(1.0f,width*0.60f) alpha:0.18f];
+    } else if(_brushStyle==KidsBrushPastel){
+        [self strokeSimpleFrom:fromPoint to:toPoint context:ctx width:width*1.30f alpha:0.46f];
+        [self strokeSimpleFrom:CGPointMake(fromPoint.x-1.0f,fromPoint.y)
+                            to:CGPointMake(toPoint.x-1.0f,toPoint.y)
+                       context:ctx width:MAX(1.0f,width*0.30f) alpha:0.14f];
+    } else if(_brushStyle==KidsBrushNeon){
+        CGFloat glowAlpha=MIN(0.38f,0.12f+0.18f*_neonStrength);
+        CGFloat coreAlpha=MIN(1.0f,0.72f+0.20f*_neonStrength);
+        CGFloat glowWidth=width*(1.65f+0.85f*_neonStrength);
+        [self strokeSimpleFrom:fromPoint to:toPoint context:ctx width:glowWidth alpha:glowAlpha];
+        [self strokeSimpleFrom:fromPoint to:toPoint context:ctx width:MAX(2.0f,width*(0.56f+0.24f*_neonStrength)) alpha:coreAlpha];
+    } else if(_brushStyle==KidsBrushChalk){
+        [self strokeSimpleFrom:fromPoint to:toPoint context:ctx width:width alpha:0.62f];
+        int i;
+        for(i=0;i<3;i++){
+            CGFloat jx=(CGFloat)((rand()%7)-3);
+            CGFloat jy=(CGFloat)((rand()%7)-3);
+            [self strokeSimpleFrom:CGPointMake(fromPoint.x+jx,fromPoint.y+jy)
+                                to:CGPointMake(toPoint.x+jx,toPoint.y+jy)
+                           context:ctx width:MAX(1.0f,width*0.22f) alpha:0.16f];
+        }
+    } else {
+        [self strokeSimpleFrom:fromPoint to:toPoint context:ctx width:width alpha:1.0f];
+    }
+
+    if(_mirrorMode){
+        CGFloat w=self.bounds.size.width;
+        CGPoint ma=CGPointMake(w-fromPoint.x,fromPoint.y);
+        CGPoint mb=CGPointMake(w-toPoint.x,toPoint.y);
+        if(_brushStyle==KidsBrushNeon){
+            CGFloat glowAlpha=MIN(0.38f,0.12f+0.18f*_neonStrength);
+            CGFloat coreAlpha=MIN(1.0f,0.72f+0.20f*_neonStrength);
+            CGFloat glowWidth=width*(1.65f+0.85f*_neonStrength);
+            [self strokeSimpleFrom:ma to:mb context:ctx width:glowWidth alpha:glowAlpha];
+            [self strokeSimpleFrom:ma to:mb context:ctx width:MAX(2.0f,width*(0.56f+0.24f*_neonStrength)) alpha:coreAlpha];
+        } else {
+            [self strokeSimpleFrom:ma to:mb context:ctx width:width alpha:_strokeAlpha];
+        }
+    }
+}
+
 - (void)drawLineFrom:(CGPoint)fromPoint to:(CGPoint)toPoint
 {
     [self ensureImage];
+    [self applyBrushStyle];
     UIGraphicsBeginImageContext(self.bounds.size);
     [_image drawInRect:self.bounds];
     CGContextRef ctx=UIGraphicsGetCurrentContext();
-    CGContextSetLineCap(ctx,kCGLineCapRound);
-    CGContextSetLineJoin(ctx,kCGLineJoinRound);
-    CGContextSetLineWidth(ctx,self.lineWidth);
-    if (_brushStyle == KidsBrushRainbow) {
-        CGFloat hue=fmodf((toPoint.x+toPoint.y)/(MAX(1.0f,self.bounds.size.width+self.bounds.size.height)),1.0f);
-        UIColor *rain=[UIColor colorWithHue:hue saturation:0.90f brightness:1.0f alpha:1.0f];
-        CGContextSetStrokeColorWithColor(ctx,rain.CGColor);
-    } else {
-        [self setStrokeInContext:ctx];
-    }
-    CGContextBeginPath(ctx);
-    CGContextMoveToPoint(ctx,fromPoint.x,fromPoint.y);
-    CGContextAddLineToPoint(ctx,toPoint.x,toPoint.y);
-    CGContextStrokePath(ctx);
-    if (_mirrorMode) {
-        CGFloat w=self.bounds.size.width;
-        CGContextBeginPath(ctx);
-        CGContextMoveToPoint(ctx,w-fromPoint.x,fromPoint.y);
-        CGContextAddLineToPoint(ctx,w-toPoint.x,toPoint.y);
-        CGContextStrokePath(ctx);
-    }
-    if (_brushStyle==KidsBrushPastel && self.lineWidth>=6.0f) {
-        CGContextSetLineWidth(ctx,MAX(1.0f,self.lineWidth*0.45f));
-        CGContextSetAlpha(ctx,0.20f);
-        CGContextBeginPath(ctx);
-        CGContextMoveToPoint(ctx,fromPoint.x,fromPoint.y);
-        CGContextAddLineToPoint(ctx,toPoint.x,toPoint.y);
-        CGContextStrokePath(ctx);
-    }
+    [self drawSegmentFrom:fromPoint to:toPoint context:ctx];
     UIImage *newImage=UIGraphicsGetImageFromCurrentImageContext();
     UIGraphicsEndImageContext();
     [_image release]; _image=[newImage retain];
@@ -218,7 +317,7 @@ typedef struct { int x; int y; } KidsPixelPoint;
     [self ensureImage]; [self pushUndoSnapshot];
     UIGraphicsBeginImageContext(self.bounds.size); [_image drawInRect:self.bounds];
     CGContextRef ctx=UIGraphicsGetCurrentContext(); [self setStrokeInContext:ctx]; CGContextSetLineWidth(ctx,4.0f);
-    CGFloat r=30.0f;
+    CGFloat r=30.0f*MAX(0.45f,MIN(2.2f,_stampScale));
     switch(_stampType) {
         case KidsStampStar: [self drawStarAt:p context:ctx radius:r]; break;
         case KidsStampHeart: [self drawHeartAt:p context:ctx size:r]; break;
@@ -308,7 +407,7 @@ static int KidsColorDistance(unsigned char *a, unsigned char *b)
     free(visited);
     free(queue);
     CGImageRef out=CGBitmapContextCreateImage(ctx);
-    UIImage *newImage=[UIImage imageWithCGImage:out];
+    UIImage *newImage=[UIImage imageWithCGImage:out scale:1.0f orientation:UIImageOrientationDown];
     [_image release]; _image=[newImage retain]; [self setNeedsDisplay];
     CGImageRelease(out); CGContextRelease(ctx); CGColorSpaceRelease(cs); free(data);
 }
@@ -331,21 +430,107 @@ static int KidsColorDistance(unsigned char *a, unsigned char *b)
     UIImage *n=UIGraphicsGetImageFromCurrentImageContext(); UIGraphicsEndImageContext(); [_image release]; _image=[n retain]; [self setNeedsDisplay]; [self notifyCanvasChanged];
 }
 
+
+- (BOOL)hasActiveFreehandTouch
+{
+    return (_touchA!=nil || _touchB!=nil);
+}
+
+- (void)assignFreehandTouch:(UITouch *)touch point:(CGPoint)p
+{
+    if(_touchA==nil){ _touchA=touch; _lastPointA=p; }
+    else if(_touchB==nil){ _touchB=touch; _lastPointB=p; }
+}
+
+- (void)removeFreehandTouch:(UITouch *)touch
+{
+    if(touch==_touchA) _touchA=nil;
+    if(touch==_touchB) _touchB=nil;
+}
+
+- (void)renderFreehandTouches:(NSSet *)touches drawDots:(BOOL)drawDots
+{
+    [self ensureImage];
+    [self applyBrushStyle];
+    UIGraphicsBeginImageContext(self.bounds.size);
+    [_image drawInRect:self.bounds];
+    CGContextRef ctx=UIGraphicsGetCurrentContext();
+
+    for(UITouch *touch in touches){
+        CGPoint p=[touch locationInView:self];
+        if(touch==_touchA){
+            CGPoint from=drawDots?p:_lastPointA;
+            CGFloat dx=p.x-from.x, dy=p.y-from.y;
+            if(drawDots || dx*dx+dy*dy>=1.0f){
+                [self drawSegmentFrom:from to:p context:ctx];
+                _lastPointA=p;
+            }
+        } else if(touch==_touchB){
+            CGPoint from=drawDots?p:_lastPointB;
+            CGFloat dx=p.x-from.x, dy=p.y-from.y;
+            if(drawDots || dx*dx+dy*dy>=1.0f){
+                [self drawSegmentFrom:from to:p context:ctx];
+                _lastPointB=p;
+            }
+        }
+    }
+
+    UIImage *n=UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+    [_image release]; _image=[n retain];
+    [self setNeedsDisplay];
+}
+
 - (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event
 {
-    UITouch *touch=[touches anyObject]; _lastPoint=[touch locationInView:self];
-    if(_bucketMode){ [self floodFillAt:_lastPoint]; [self notifyCanvasChanged]; _drawing=NO; return; }
-    if(_stampType!=KidsStampNone){ [self placeStampAt:_lastPoint]; [self notifyCanvasChanged]; _drawing=NO; return; }
-    if(_shapeType!=KidsShapeNone){ _shapeStartPoint=_lastPoint; _drawing=YES; [self pushUndoSnapshot]; return; }
-    _drawing=YES; [self pushUndoSnapshot]; [self drawLineFrom:_lastPoint to:_lastPoint];
+    UITouch *first=[touches anyObject];
+    CGPoint firstPoint=[first locationInView:self];
+
+    /* Dolgu, damga ve şekil tek dokunuşlu araçlardır. Çift kalem serbest çizimde aktiftir. */
+    if(_bucketMode){ [self floodFillAt:firstPoint]; [self notifyCanvasChanged]; return; }
+    if(_stampType!=KidsStampNone){ [self placeStampAt:firstPoint]; [self notifyCanvasChanged]; return; }
+    if(_shapeType!=KidsShapeNone){
+        _shapeStartPoint=firstPoint; _drawing=YES; [self pushUndoSnapshot]; return;
+    }
+
+    BOOL hadTouch=[self hasActiveFreehandTouch];
+    if(!hadTouch) [self pushUndoSnapshot];
+
+    for(UITouch *touch in touches){
+        if(_touchA!=nil && _touchB!=nil) break;
+        CGPoint p=[touch locationInView:self];
+        [self assignFreehandTouch:touch point:p];
+    }
+    [self renderFreehandTouches:touches drawDots:YES];
 }
 
 - (void)touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event
 {
-    if(!_drawing) return; UITouch *touch=[touches anyObject]; CGPoint p=[touch locationInView:self]; [self drawLineFrom:_lastPoint to:p]; _lastPoint=p;
+    if(_shapeType!=KidsShapeNone) return;
+    if(![self hasActiveFreehandTouch]) return;
+    [self renderFreehandTouches:touches drawDots:NO];
 }
-- (void)touchesEnded:(NSSet *)touches withEvent:(UIEvent *)event { if(_drawing && _shapeType!=KidsShapeNone){UITouch *t=[touches anyObject];CGPoint p=[t locationInView:self];[self drawShapeFrom:_shapeStartPoint to:p];} else if(_drawing){[self notifyCanvasChanged];} _drawing=NO; }
-- (void)touchesCancelled:(NSSet *)touches withEvent:(UIEvent *)event { _drawing=NO; }
+
+- (void)touchesEnded:(NSSet *)touches withEvent:(UIEvent *)event
+{
+    if(_drawing && _shapeType!=KidsShapeNone){
+        UITouch *t=[touches anyObject];
+        CGPoint p=[t locationInView:self];
+        [self drawShapeFrom:_shapeStartPoint to:p];
+        _drawing=NO;
+        return;
+    }
+
+    for(UITouch *touch in touches) [self removeFreehandTouch:touch];
+    if(![self hasActiveFreehandTouch]) [self notifyCanvasChanged];
+}
+
+- (void)touchesCancelled:(NSSet *)touches withEvent:(UIEvent *)event
+{
+    for(UITouch *touch in touches) [self removeFreehandTouch:touch];
+    _drawing=NO;
+    if(![self hasActiveFreehandTouch]) [self notifyCanvasChanged];
+}
 
 - (BOOL)canUndo { return [_undoStack count]>0; }
 - (BOOL)canRedo { return [_redoStack count]>0; }
