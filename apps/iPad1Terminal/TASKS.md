@@ -1,73 +1,59 @@
 # TASKS
 
 ## Phase 0 - Skeleton
-
-- [x] Theos application skeleton
-- [x] iPad-only Info.plist
+- [x] Theos skeleton
 - [x] armv7 / iOS 5.1 target
-- [x] MRC / no ARC
+- [x] MRC
 - [x] Home screen
 
 ## Phase 1 - Local PTY
-
-- [x] POSIX PTY allocation
-- [x] `fork`
-- [x] `setsid`
-- [x] slave PTY setup
-- [x] stdin/stdout/stderr duplication
+- [x] PTY allocation
+- [x] fork / setsid / dup2 / exec
 - [x] `/bin/sh -i`
-- [x] background read loop
-- [x] terminal write API
-- [x] resize with `TIOCSWINSZ`
-- [ ] Compile in actual Theos environment
-- [ ] Install on iPad 1
-- [ ] Verify `pwd`
-- [ ] Verify `ls`
-- [ ] Verify Ctrl+C
-- [ ] Verify arrow-key history
+- [x] background PTY read
+- [x] direct PTY write
+- [x] TIOCSWINSZ
+- [x] real-device shell prompt confirmed
 
 ## Phase 2 - Terminal UI
-
-- [x] terminal text area
-- [x] command input
+- [x] remove visible command box
+- [x] direct keyboard capture
+- [x] Backspace
+- [x] Enter
 - [x] Esc
 - [x] Ctrl+C
 - [x] Tab
-- [x] arrow keys
+- [x] arrows
+- [x] `~`
+- [x] `|`
+- [x] visible special-key labels
 - [x] bounded scrollback
-- [x] Clear
-- [ ] improve direct keystroke behavior
+- [ ] font A-/A+
+- [ ] copy/paste polish
 - [ ] Ctrl modifier state
-- [ ] A-/A+ font size
-- [ ] copy/paste validation
-- [ ] keyboard toolbar layout on rotation
 
-## Phase 3 - ANSI parser
-
-- [ ] parser state machine
-- [ ] cursor model
-- [ ] clear screen
-- [ ] SGR
+## Phase 3 - ANSI / VT100
+- [x] suppress raw ESC[K artifacts
+- [x] consume common CSI
+- [x] clear-screen action for ESC[2J
+- [x] consume SGR codes
+- [ ] real cursor row/column model
+- [ ] screen cell buffer
+- [ ] erase line semantics
+- [ ] erase display semantics
+- [ ] cursor save/restore
 - [ ] basic colors
-- [ ] full-screen command compatibility
+- [ ] `nano`
+- [ ] `vim`
+- [ ] `top`
+- [ ] `less`
 
 ## Phase 4 - SSH
-
-Do not begin until Local PTY passes real-device testing.
-
-- [ ] discover installed `ssh`
-- [ ] SSH profile model
-- [ ] host / port / username UI
+Do not begin until Phase 2 real-device validation passes.
+- [ ] discover ssh binary
+- [ ] SSH profiles
+- [ ] host/port/user
 - [ ] run ssh under PTY
-- [ ] connect / disconnect
+- [ ] connect/disconnect
 - [ ] host key prompt
 - [ ] password prompt
-- [ ] reconnect behavior
-
-## Phase 5 - Stability
-
-- [ ] memory pressure tests
-- [ ] orientation tests
-- [ ] process cleanup
-- [ ] zombie-process verification
-- [ ] repeated open/close test

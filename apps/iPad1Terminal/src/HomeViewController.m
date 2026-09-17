@@ -26,7 +26,7 @@
 
     UILabel *subtitle = [[[UILabel alloc] initWithFrame:CGRectMake(100.0f, 255.0f, 568.0f, 40.0f)] autorelease];
     subtitle.text = @"Local shell first. SSH will be added after PTY validation.";
-    subtitle.textAlignment = (NSTextAlignment)UITextAlignmentCenter;
+    subtitle.textAlignment = UITextAlignmentCenter;
     subtitle.textColor = [UIColor darkGrayColor];
     subtitle.backgroundColor = [UIColor clearColor];
     subtitle.autoresizingMask =

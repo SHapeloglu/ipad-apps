@@ -1,14 +1,18 @@
 #import <UIKit/UIKit.h>
 #import "LocalTerminalSession.h"
+#import "TerminalInputView.h"
+#import "TerminalANSIParser.h"
 
 @interface TerminalViewController : UIViewController
-    <UITextFieldDelegate, LocalTerminalSessionDelegate>
+    <LocalTerminalSessionDelegate, TerminalInputViewDelegate>
 {
     UITextView *_terminalView;
-    UITextField *_inputField;
+    TerminalInputView *_inputCaptureView;
     UIView *_specialKeyBar;
 
     LocalTerminalSession *_session;
+    TerminalANSIParser *_ansiParser;
+
     NSMutableString *_scrollback;
     NSUInteger _maxScrollbackCharacters;
 }

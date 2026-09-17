@@ -10,6 +10,8 @@ iPad1Terminal_FILES = \
 	src/AppDelegate.m \
 	src/HomeViewController.m \
 	src/TerminalViewController.m \
+	src/TerminalInputView.m \
+	src/TerminalANSIParser.m \
 	src/LocalTerminalSession.m
 
 iPad1Terminal_FRAMEWORKS = UIKit Foundation

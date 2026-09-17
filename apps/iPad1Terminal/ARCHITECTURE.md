@@ -1,75 +1,53 @@
 # ARCHITECTURE
 
-## Scope
-
-iPad1Terminal is a lightweight terminal application for iPad 1 / iOS 5.1.1.
-
-Current phase: **local PTY only**.
-
-SSH is not yet implemented.
-
-## Data flow
+## Current architecture
 
 ```text
-UITextField / Special Key Bar
-        |
-        v
+iOS keyboard
+    |
+    v
+TerminalInputView (UIKeyInput, invisible)
+    |
+    v
 TerminalViewController
-        |
-        v
+    |
+    +--> Special key bar
+    |
+    +--> TerminalANSIParser
+    |
+    v
 LocalTerminalSession
-        |
-        v
-PTY master <----> PTY slave
-                     |
-                     v
-                  /bin/sh
+    |
+    v
+PTY master <--> PTY slave <--> /bin/sh
 ```
 
-## PTY choice
+## Input
 
-The first implementation avoids a direct `forkpty()` dependency.
+The visible command UITextField used by 0.1 has been removed.
 
-It uses:
+`TerminalInputView` is an invisible `UIKeyInput` responder. This gives the terminal direct keyboard input without displaying a separate white form control.
 
-- `posix_openpt`
-- `grantpt`
-- `unlockpt`
-- `ptsname`
-- `fork`
-- `setsid`
-- `open` of slave PTY
-- `dup2`
-- `execl`
+## ANSI
 
-This keeps the implementation close to POSIX/libc and reduces dependency risk on old SDKs.
+`TerminalANSIParser` is intentionally lightweight in 0.2.
 
-## Threading
+It prevents raw CSI sequences such as `ESC[K` from leaking into the terminal text.
 
-The UI thread never blocks on PTY reads.
-
-A single `NSThread` runs a `select()` + `read()` loop.
-
-Received text is delivered to the main thread with `performSelectorOnMainThread:`.
+It is not yet a complete screen emulator. Cursor-oriented terminal programs will be handled by a future screen-buffer implementation.
 
 ## Memory
 
-Terminal history is bounded by character count.
+- PTY reads use a fixed 2048-byte buffer.
+- UTF-8 incomplete byte tails are bounded.
+- terminal scrollback is bounded at 120000 characters.
+- no WebView is used.
 
-Current alpha default:
+## Compatibility
 
-```text
-120000 UTF-16 characters
-```
-
-This is intentionally conservative for a 256 MB device.
-
-## MRC
-
-All Objective-C code is manual retain/release.
-
-No ARC is used.
-
-## SSH future phase
-
-SSH will reuse the same terminal/PTY presentation layer and launch the installed `ssh` executable as a child process rather than implementing cryptography in the app.
+- iPad 1
+- iOS 5.1.1
+- armv7
+- Theos
+- SDK 6.1 / deployment target 5.1
+- Objective-C MRC

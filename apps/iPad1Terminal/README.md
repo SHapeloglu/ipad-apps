@@ -1,63 +1,37 @@
-# iPad1Terminal
+# iPad1Terminal 0.2 alpha
 
-Lightweight local shell and future SSH terminal for a jailbroken iPad 1.
+A lightweight real local terminal for jailbroken iPad 1 / iOS 5.1.1.
 
-## Platform
+## Current milestone
 
-- iPad 1
-- iOS 5.1.1
-- armv7
-- 256 MB RAM
-- Objective-C
-- non-ARC / MRC
-- Theos
-- UIKit / Foundation
+The PTY and `/bin/sh` have already been confirmed on real iPad 1 hardware.
 
-## v0.1 milestone
+0.2 improves the UI based on the first hardware screenshot:
 
-The first milestone intentionally implements only:
-
-1. Launch application.
-2. Open **Local Terminal**.
-3. Allocate a POSIX pseudo terminal.
-4. Fork and launch `/bin/sh -i`.
-5. Send commands from the UI.
-6. Read terminal output without blocking the main thread.
-7. Provide Esc, Ctrl+C, Tab and arrow keys.
-8. Limit terminal scrollback memory.
-
-SSH is deliberately postponed until the local PTY works on real hardware.
+- direct terminal keyboard input
+- no separate white command field
+- basic ANSI escape suppression
+- fixes visible `[K` artifacts
+- visible special terminal key bar
+- Backspace / Enter / Esc / Ctrl+C / Tab / arrows
+- `~` and `|`
+- bounded scrollback
+- iOS 5.1 / armv7 / MRC
 
 ## Build
-
-From the project root:
 
 ```bash
 make clean
 make package
 ```
 
-If your installed SDK is represented by a different Theos target string, adjust `TARGET` in the Makefile while keeping deployment target 5.1 and `ARCHS = armv7`.
-
-## Install
-
-Install the generated `.deb` on the jailbroken iPad with your normal SCP/dpkg flow.
-
-## First hardware test
-
-Open **Local Terminal** and run:
+## Install/test before SSH
 
 ```bash
 pwd
 whoami
-uname -a
 ls -la
-df -h
-echo "Türkçe: ğüşiöç İĞÜŞÖÇ"
+clear
 ```
 
-Expected initial working directory is `/var/mobile`.
-
-## Important
-
-A normal App Store sandbox cannot provide a real fork/exec terminal. This project assumes the existing jailbroken/Theos deployment environment.
+SSH remains intentionally postponed until this terminal UI passes real-device validation.

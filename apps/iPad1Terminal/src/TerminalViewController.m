@@ -3,12 +3,15 @@
 
 @interface TerminalViewController ()
 - (void)startLocalShell;
-- (void)sendCurrentCommand;
 - (void)appendTerminalText:(NSString *)text;
 - (void)trimScrollbackIfNeeded;
 - (void)sendSpecialKey:(UIButton *)button;
 - (void)sendControlC;
 - (void)updateTerminalSize;
+- (void)focusTerminalInput:(id)sender;
+- (UIButton *)specialButtonWithTitle:(NSString *)title
+                               value:(NSString *)value
+                               frame:(CGRect)frame;
 @end
 
 @implementation TerminalViewController
@@ -20,6 +23,7 @@
         self.title = @"Local Terminal";
         _maxScrollbackCharacters = 120000;
         _scrollback = [[NSMutableString alloc] init];
+        _ansiParser = [[TerminalANSIParser alloc] init];
     }
     return self;
 }
@@ -32,12 +36,10 @@
     root.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     self.view = root;
 
-    CGFloat keyBarHeight = 40.0f;
-    CGFloat inputHeight = 38.0f;
+    CGFloat keyBarHeight = 44.0f;
 
-    _terminalView = [[UITextView alloc] initWithFrame:CGRectMake(0.0f, 0.0f,
-                                                                frame.size.width,
-                                                                frame.size.height - keyBarHeight - inputHeight)];
+    _terminalView = [[UITextView alloc] initWithFrame:
+        CGRectMake(0.0f, 0.0f, frame.size.width, frame.size.height - keyBarHeight)];
     _terminalView.backgroundColor = [UIColor blackColor];
     _terminalView.textColor = [UIColor whiteColor];
     _terminalView.font = [UIFont fontWithName:@"Courier" size:15.0f];
@@ -45,55 +47,77 @@
         _terminalView.font = [UIFont systemFontOfSize:15.0f];
     }
     _terminalView.editable = NO;
-    _terminalView.autocorrectionType = UITextAutocorrectionTypeNo;
-    _terminalView.autocapitalizationType = UITextAutocapitalizationTypeNone;
-    _terminalView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    _terminalView.autoresizingMask =
+        UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     [self.view addSubview:_terminalView];
 
-    _specialKeyBar = [[UIView alloc] initWithFrame:CGRectMake(0.0f,
-                                                             frame.size.height - keyBarHeight - inputHeight,
-                                                             frame.size.width,
-                                                             keyBarHeight)];
-    _specialKeyBar.backgroundColor = [UIColor darkGrayColor];
-    _specialKeyBar.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleTopMargin;
+    UITapGestureRecognizer *tap =
+        [[[UITapGestureRecognizer alloc] initWithTarget:self
+                                                action:@selector(focusTerminalInput:)] autorelease];
+    [_terminalView addGestureRecognizer:tap];
+
+    /*
+     * Invisible UIKeyInput capture view.
+     * The keyboard belongs to the terminal itself instead of a visible
+     * white UITextField.
+     */
+    _inputCaptureView = [[TerminalInputView alloc] initWithFrame:CGRectMake(0.0f, 0.0f, 1.0f, 1.0f)];
+    _inputCaptureView.terminalDelegate = self;
+    _inputCaptureView.backgroundColor = [UIColor clearColor];
+    _inputCaptureView.alpha = 0.01f;
+    [self.view addSubview:_inputCaptureView];
+
+    _specialKeyBar = [[UIView alloc] initWithFrame:
+        CGRectMake(0.0f, frame.size.height - keyBarHeight, frame.size.width, keyBarHeight)];
+    _specialKeyBar.backgroundColor = [UIColor colorWithWhite:0.15f alpha:1.0f];
+    _specialKeyBar.autoresizingMask =
+        UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleTopMargin;
     [self.view addSubview:_specialKeyBar];
 
-    NSArray *titles = [NSArray arrayWithObjects:@"Esc", @"Ctrl+C", @"Tab", @"←", @"↑", @"↓", @"→", nil];
-    NSArray *values = [NSArray arrayWithObjects:@"\x1b", @"CTRL_C", @"\t",
-                                                @"\x1b[D", @"\x1b[A", @"\x1b[B", @"\x1b[C", nil];
+    NSArray *titles = [NSArray arrayWithObjects:
+        @"Esc", @"Ctrl+C", @"Tab", @"<", @"^", @"v", @">", @"~", @"|", nil];
 
-    CGFloat buttonWidth = floorf(frame.size.width / (CGFloat)[titles count]);
+    NSArray *values = [NSArray arrayWithObjects:
+        @"\x1b", @"CTRL_C", @"\t", @"\x1b[D", @"\x1b[A",
+        @"\x1b[B", @"\x1b[C", @"~", @"|", nil];
+
+    NSUInteger count = [titles count];
+    CGFloat buttonWidth = floorf(frame.size.width / (CGFloat)count);
+
     NSUInteger index;
-    for (index = 0; index < [titles count]; index++) {
-        UIButton *button = [UIButton buttonWithType:UIButtonTypeRoundedRect];
-        button.frame = CGRectMake(index * buttonWidth + 2.0f, 3.0f,
-                                  buttonWidth - 4.0f, keyBarHeight - 6.0f);
-        [button setTitle:[titles objectAtIndex:index] forState:UIControlStateNormal];
-        button.titleLabel.font = [UIFont boldSystemFontOfSize:12.0f];
-        button.accessibilityLabel = [values objectAtIndex:index];
-        [button addTarget:self action:@selector(sendSpecialKey:)
-         forControlEvents:UIControlEventTouchUpInside];
+    for (index = 0; index < count; index++) {
+        CGRect buttonFrame = CGRectMake(index * buttonWidth + 1.0f,
+                                        3.0f,
+                                        buttonWidth - 2.0f,
+                                        keyBarHeight - 6.0f);
+        UIButton *button = [self specialButtonWithTitle:[titles objectAtIndex:index]
+                                                 value:[values objectAtIndex:index]
+                                                 frame:buttonFrame];
         button.autoresizingMask = UIViewAutoresizingFlexibleWidth;
         [_specialKeyBar addSubview:button];
     }
+}
 
-    _inputField = [[UITextField alloc] initWithFrame:CGRectMake(0.0f,
-                                                               frame.size.height - inputHeight,
-                                                               frame.size.width,
-                                                               inputHeight)];
-    _inputField.backgroundColor = [UIColor whiteColor];
-    _inputField.textColor = [UIColor blackColor];
-    _inputField.font = [UIFont fontWithName:@"Courier" size:16.0f];
-    if (_inputField.font == nil) {
-        _inputField.font = [UIFont systemFontOfSize:16.0f];
-    }
-    _inputField.delegate = self;
-    _inputField.autocorrectionType = UITextAutocorrectionTypeNo;
-    _inputField.autocapitalizationType = UITextAutocapitalizationTypeNone;
-    _inputField.returnKeyType = UIReturnKeyDefault;
-    _inputField.placeholder = @"Type command and press Return";
-    _inputField.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleTopMargin;
-    [self.view addSubview:_inputField];
+- (UIButton *)specialButtonWithTitle:(NSString *)title
+                               value:(NSString *)value
+                               frame:(CGRect)frame
+{
+    UIButton *button = [UIButton buttonWithType:UIButtonTypeCustom];
+    button.frame = frame;
+    button.backgroundColor = [UIColor colorWithWhite:0.28f alpha:1.0f];
+
+    [button setTitle:title forState:UIControlStateNormal];
+    [button setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
+    [button setTitleColor:[UIColor lightGrayColor] forState:UIControlStateHighlighted];
+
+    button.titleLabel.font = [UIFont boldSystemFontOfSize:12.0f];
+    button.accessibilityLabel = value;
+
+    [button addTarget:self
+               action:@selector(sendSpecialKey:)
+     forControlEvents:UIControlEventTouchUpInside];
+
+    return button;
 }
 
 - (void)viewDidLoad
@@ -113,7 +137,8 @@
 - (void)viewDidAppear:(BOOL)animated
 {
     [super viewDidAppear:animated];
-    [_inputField becomeFirstResponder];
+
+    [_inputCaptureView becomeFirstResponder];
     [self updateTerminalSize];
 }
 
@@ -121,6 +146,12 @@
 {
     [super viewDidLayoutSubviews];
     [self updateTerminalSize];
+}
+
+- (void)focusTerminalInput:(id)sender
+{
+    (void)sender;
+    [_inputCaptureView becomeFirstResponder];
 }
 
 - (void)startLocalShell
@@ -131,30 +162,34 @@
     NSError *error = nil;
     if (![_session startWithError:&error]) {
         [self appendTerminalText:
-         [NSString stringWithFormat:@"\r\n[PTY ERROR] %@\r\n",
+         [NSString stringWithFormat:@"\n[PTY ERROR] %@\n",
           [error localizedDescription]]];
     }
 }
 
-- (BOOL)textFieldShouldReturn:(UITextField *)textField
+#pragma mark - UIKeyInput bridge
+
+- (void)terminalInputView:(TerminalInputView *)inputView didInsertText:(NSString *)text
 {
-    if (textField == _inputField) {
-        [self sendCurrentCommand];
-        return NO;
+    (void)inputView;
+
+    if ([text isEqualToString:@"\n"]) {
+        [_session writeString:@"\n"];
+    } else {
+        [_session writeString:text];
     }
-    return YES;
 }
 
-- (void)sendCurrentCommand
+- (void)terminalInputViewDidDeleteBackward:(TerminalInputView *)inputView
 {
-    NSString *command = _inputField.text;
-    if (command == nil) {
-        command = @"";
-    }
+    (void)inputView;
 
-    [_session writeString:[command stringByAppendingString:@"\n"]];
-    _inputField.text = @"";
+    unsigned char byte = 0x7F;
+    NSData *data = [NSData dataWithBytes:&byte length:1];
+    [_session writeData:data];
 }
+
+#pragma mark - Special keys
 
 - (void)sendSpecialKey:(UIButton *)button
 {
@@ -162,14 +197,11 @@
 
     if ([value isEqualToString:@"CTRL_C"]) {
         [self sendControlC];
-        return;
-    }
-
-    if (value != nil) {
+    } else if (value != nil) {
         [_session writeString:value];
     }
 
-    [_inputField becomeFirstResponder];
+    [_inputCaptureView becomeFirstResponder];
 }
 
 - (void)sendControlC
@@ -177,8 +209,10 @@
     unsigned char byte = 0x03;
     NSData *data = [NSData dataWithBytes:&byte length:1];
     [_session writeData:data];
-    [_inputField becomeFirstResponder];
+    [_inputCaptureView becomeFirstResponder];
 }
+
+#pragma mark - Output
 
 - (void)appendTerminalText:(NSString *)text
 {
@@ -186,7 +220,17 @@
         return;
     }
 
-    [_scrollback appendString:text];
+    TerminalANSIAction action = TerminalANSIActionNone;
+    NSString *cleanText = [_ansiParser consumeText:text action:&action];
+
+    if (action == TerminalANSIActionClearScreen) {
+        [_scrollback setString:@""];
+    }
+
+    if ([cleanText length] > 0) {
+        [_scrollback appendString:cleanText];
+    }
+
     [self trimScrollbackIfNeeded];
 
     _terminalView.text = _scrollback;
@@ -209,8 +253,7 @@
     NSRange newlineRange =
         [_scrollback rangeOfString:@"\n"
                            options:0
-                             range:NSMakeRange(removeCount,
-                                               length - removeCount)];
+                             range:NSMakeRange(removeCount, length - removeCount)];
 
     if (newlineRange.location != NSNotFound) {
         removeCount = NSMaxRange(newlineRange);
@@ -222,9 +265,18 @@
 - (void)clearTerminal:(id)sender
 {
     (void)sender;
+
     [_scrollback setString:@""];
     _terminalView.text = @"";
-    [_session writeString:@"\x0c"];
+
+    /*
+     * Ctrl+L lets the interactive shell redraw the prompt naturally.
+     */
+    unsigned char byte = 0x0C;
+    NSData *data = [NSData dataWithBytes:&byte length:1];
+    [_session writeData:data];
+
+    [_inputCaptureView becomeFirstResponder];
 }
 
 - (void)updateTerminalSize
@@ -239,11 +291,15 @@
     CGFloat usableWidth = _terminalView.bounds.size.width - 16.0f;
     CGFloat usableHeight = _terminalView.bounds.size.height - 16.0f;
 
-    unsigned short columns = (unsigned short)MAX(20, floorf(usableWidth / MAX(1.0f, glyph.width)));
-    unsigned short rows = (unsigned short)MAX(5, floorf(usableHeight / MAX(1.0f, glyph.height)));
+    unsigned short columns =
+        (unsigned short)MAX(20, floorf(usableWidth / MAX(1.0f, glyph.width)));
+    unsigned short rows =
+        (unsigned short)MAX(5, floorf(usableHeight / MAX(1.0f, glyph.height)));
 
     [_session resizeRows:rows columns:columns];
 }
+
+#pragma mark - Session delegate
 
 - (void)localTerminalSession:(LocalTerminalSession *)session didReceiveText:(NSString *)text
 {
@@ -254,7 +310,7 @@
 - (void)localTerminalSessionDidExit:(LocalTerminalSession *)session
 {
     (void)session;
-    [self appendTerminalText:@"\r\n[Process exited]\r\n"];
+    [self appendTerminalText:@"\n[Process exited]\n"];
 }
 
 - (void)localTerminalSession:(LocalTerminalSession *)session
@@ -262,7 +318,7 @@
 {
     (void)session;
     [self appendTerminalText:
-     [NSString stringWithFormat:@"\r\n[PTY ERROR] %@\r\n",
+     [NSString stringWithFormat:@"\n[PTY ERROR] %@\n",
       [error localizedDescription]]];
 }
 
@@ -284,12 +340,15 @@
 
 - (void)dealloc
 {
+    _inputCaptureView.terminalDelegate = nil;
+
     _session.delegate = nil;
     [_session stop];
     [_session release];
 
+    [_ansiParser release];
     [_terminalView release];
-    [_inputField release];
+    [_inputCaptureView release];
     [_specialKeyBar release];
     [_scrollback release];
 
