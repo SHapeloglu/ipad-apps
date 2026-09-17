@@ -1,25 +1,16 @@
 # SESSION
 
-Current version: 0.6.0
-Milestone: Polish + Animation
-Status: generated; physical iPad validation pending.
+Current version: 0.8.0
+Milestone: Wardrobe Fit Update
+Status: source prepared, physical iPad validation pending.
 
-## Immediate next action
-
-```bash
-cd ~/projects/iPad1TalkingPet-v0.6
-rm -rf .theos packages
+Immediate next action:
 FINALPACKAGE=1 make package
-```
 
-Then install on 192.168.1.2 and validate:
-- launch
-- sprite animations
-- SFX/music
-- talking repeat
-- furniture
-- wardrobe
-- daily tasks
-- achievements
-- level-up
-- memory stability
+Then test:
+- T-shirt Style 1/2
+- Pants Style 1/2
+- Crop Style 1/2
+- Skirt Style 1/2
+- combinations of top + bottom
+- animation clipping

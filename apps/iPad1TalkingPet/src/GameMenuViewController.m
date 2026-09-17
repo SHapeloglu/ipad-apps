@@ -6,6 +6,8 @@
 #import "FoodCatchViewController.h"
 #import "MazeGameViewController.h"
 #import "BasketGameViewController.h"
+#import "RunnerGameViewController.h"
+#import "MatchGameViewController.h"
 #import "AchievementManager.h"
 #import "SoundManager.h"
 
@@ -19,27 +21,30 @@
     [super viewDidLoad];
     self.view.backgroundColor=[UIColor colorWithRed:0.93 green:0.90 blue:1 alpha:1];
 
-    UILabel *title=[[[UILabel alloc] initWithFrame:CGRectMake(40,35,688,55)] autorelease];
-    title.text=@"Mini Oyunlar (6)";
+    UILabel *title=[[[UILabel alloc] initWithFrame:CGRectMake(40,25,688,55)] autorelease];
+    title.text=@"Mini Oyunlar (8)";
     title.textAlignment=UITextAlignmentCenter;
-    title.font=[UIFont boldSystemFontOfSize:34]; title.backgroundColor=[UIColor clearColor];
+    title.font=[UIFont boldSystemFontOfSize:34];
+    title.backgroundColor=[UIColor clearColor];
     [self.view addSubview:title];
 
-    NSArray *names=[NSArray arrayWithObjects:@"Pati Yakala",@"Baloncuk Patlat",@"Hafıza Kartları",
-                    @"Yemek Yakala",@"Labirent",@"Topu Sepete At",nil];
-    for(NSInteger i=0;i<6;i++){
-        NSInteger row=i/2, col=i%2;
+    NSArray *names=[NSArray arrayWithObjects:@"Pati Yakala",@"Baloncuk Patlat",@"Hafıza Kartları",@"Yemek Yakala",
+                    @"Labirent",@"Topu Sepete At",@"Koşu",@"Eşleştir",nil];
+
+    for(NSInteger i=0;i<8;i++){
+        NSInteger row=i/2,col=i%2;
         UIButton *b=[UIButton buttonWithType:UIButtonTypeRoundedRect];
-        b.frame=CGRectMake(80+col*330,140+row*210,278,145);
+        b.frame=CGRectMake(80+col*330,115+row*190,278,135);
         b.tag=400+i;
         [b setTitle:[names objectAtIndex:i] forState:UIControlStateNormal];
-        b.titleLabel.font=[UIFont boldSystemFontOfSize:23];
+        b.titleLabel.font=[UIFont boldSystemFontOfSize:22];
         [b addTarget:self action:@selector(openGame:) forControlEvents:UIControlEventTouchUpInside];
         [self.view addSubview:b];
     }
 
     UIButton *back=[UIButton buttonWithType:UIButtonTypeRoundedRect];
-    back.frame=CGRectMake(30,930,160,55); [back setTitle:@"Geri" forState:UIControlStateNormal];
+    back.frame=CGRectMake(30,930,160,55);
+    [back setTitle:@"Geri" forState:UIControlStateNormal];
     [back addTarget:self action:@selector(goBack) forControlEvents:UIControlEventTouchUpInside];
     [self.view addSubview:back];
 }
@@ -52,6 +57,9 @@
     else if(i==3) vc=[[[FoodCatchViewController alloc] initWithProgressManager:_progress] autorelease];
     else if(i==4) vc=[[[MazeGameViewController alloc] initWithProgressManager:_progress] autorelease];
     else if(i==5) vc=[[[BasketGameViewController alloc] initWithProgressManager:_progress] autorelease];
+    else if(i==6) vc=[[[RunnerGameViewController alloc] initWithProgressManager:_progress] autorelease];
+    else if(i==7) vc=[[[MatchGameViewController alloc] initWithProgressManager:_progress] autorelease];
+
     if(vc) {
         [[SoundManager sharedManager] play:@"game"];
         [[AchievementManager sharedManager] increment:@"game" amount:1];
@@ -62,7 +70,7 @@
     }
 }
 
-- (void)goBack{[self dismissModalViewControllerAnimated:YES];}
-- (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)o{return o==UIInterfaceOrientationPortrait;}
-- (void)dealloc{[_progress release];[super dealloc];}
+- (void)goBack { [self dismissModalViewControllerAnimated:YES]; }
+- (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)o { return o==UIInterfaceOrientationPortrait; }
+- (void)dealloc { [_progress release]; [super dealloc]; }
 @end

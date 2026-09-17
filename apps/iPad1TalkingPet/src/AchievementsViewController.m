@@ -1,5 +1,6 @@
 #import "AchievementsViewController.h"
 #import "AchievementManager.h"
+#import <QuartzCore/QuartzCore.h>
 
 @implementation AchievementsViewController
 
@@ -7,48 +8,57 @@
     [super viewDidLoad];
     self.view.backgroundColor=[UIColor colorWithRed:0.95 green:0.94 blue:1 alpha:1];
 
-    UILabel *title=[[[UILabel alloc] initWithFrame:CGRectMake(30,30,708,55)] autorelease];
+    UILabel *title=[[[UILabel alloc] initWithFrame:CGRectMake(30,25,708,55)] autorelease];
     title.text=@"Görevler & Başarımlar";
     title.textAlignment=UITextAlignmentCenter;
     title.font=[UIFont boldSystemFontOfSize:32];
     title.backgroundColor=[UIColor clearColor];
     [self.view addSubview:title];
 
-    UILabel *d=[[[UILabel alloc] initWithFrame:CGRectMake(50,105,668,40)] autorelease];
-    d.text=@"Günlük Görevler";
-    d.font=[UIFont boldSystemFontOfSize:24];
-    d.backgroundColor=[UIColor clearColor];
-    [self.view addSubview:d];
+    UILabel *dailyTitle=[[[UILabel alloc] initWithFrame:CGRectMake(50,95,668,40)] autorelease];
+    dailyTitle.text=@"Günlük Görevler";
+    dailyTitle.font=[UIFont boldSystemFontOfSize:24];
+    dailyTitle.backgroundColor=[UIColor clearColor];
+    [self.view addSubview:dailyTitle];
 
     NSUserDefaults *ud=[NSUserDefaults standardUserDefaults];
     NSArray *daily=[[AchievementManager sharedManager] dailyTaskRows];
-    for(NSInteger i=0;i<[daily count];i++) {
+    for(NSInteger i=0;i<[daily count];i++){
         NSDictionary *r=[daily objectAtIndex:i];
         NSInteger v=[ud integerForKey:[r objectForKey:@"key"]];
         NSInteger g=[[r objectForKey:@"goal"] integerValue];
-        UILabel *l=[[[UILabel alloc] initWithFrame:CGRectMake(70,155+i*70,628,52)] autorelease];
+
+        UILabel *l=[[[UILabel alloc] initWithFrame:CGRectMake(70,145+i*65,628,50)] autorelease];
+        l.backgroundColor=[UIColor colorWithWhite:1 alpha:0.72];
+        l.layer.cornerRadius=9;
         l.text=[NSString stringWithFormat:@"%@   %ld/%ld",[r objectForKey:@"title"],(long)v,(long)g];
-        l.backgroundColor=[UIColor colorWithWhite:1 alpha:0.7];
-        l.font=[UIFont systemFontOfSize:20];
+        l.font=[UIFont systemFontOfSize:19];
         [self.view addSubview:l];
     }
 
-    UILabel *a=[[[UILabel alloc] initWithFrame:CGRectMake(50,455,668,40)] autorelease];
-    a.text=@"Başarımlar";
-    a.font=[UIFont boldSystemFontOfSize:24];
-    a.backgroundColor=[UIColor clearColor];
-    [self.view addSubview:a];
+    UILabel *achTitle=[[[UILabel alloc] initWithFrame:CGRectMake(50,430,668,40)] autorelease];
+    achTitle.text=@"Rozetler";
+    achTitle.font=[UIFont boldSystemFontOfSize:24];
+    achTitle.backgroundColor=[UIColor clearColor];
+    [self.view addSubview:achTitle];
 
     NSArray *rows=[[AchievementManager sharedManager] achievementRows];
-    for(NSInteger i=0;i<[rows count];i++) {
+    for(NSInteger i=0;i<[rows count];i++){
         NSDictionary *r=[rows objectAtIndex:i];
         NSInteger v=[[AchievementManager sharedManager] valueFor:[r objectForKey:@"key"]];
         NSInteger g=[[r objectForKey:@"goal"] integerValue];
-        UILabel *l=[[[UILabel alloc] initWithFrame:CGRectMake(70,505+i*70,628,52)] autorelease];
-        l.text=[NSString stringWithFormat:@"%@   %ld/%ld",[r objectForKey:@"title"],(long)v,(long)g];
-        l.backgroundColor=[UIColor colorWithWhite:1 alpha:0.7];
-        l.font=[UIFont systemFontOfSize:20];
-        [self.view addSubview:l];
+
+        UIView *badge=[[[UIView alloc] initWithFrame:CGRectMake(70,485+i*78,62,62)] autorelease];
+        badge.layer.cornerRadius=31;
+        badge.backgroundColor=(v>=g)?[UIColor colorWithRed:1 green:0.78 blue:0.14 alpha:1]:
+                                      [UIColor colorWithWhite:0.75 alpha:1];
+        [self.view addSubview:badge];
+
+        UILabel *n=[[[UILabel alloc] initWithFrame:CGRectMake(150,485+i*78,548,62)] autorelease];
+        n.backgroundColor=[UIColor colorWithWhite:1 alpha:0.70];
+        n.text=[NSString stringWithFormat:@"%@   %ld/%ld",[r objectForKey:@"title"],(long)v,(long)g];
+        n.font=[UIFont systemFontOfSize:20];
+        [self.view addSubview:n];
     }
 
     UIButton *back=[UIButton buttonWithType:UIButtonTypeRoundedRect];
@@ -60,4 +70,5 @@
 
 - (void)goBack { [self dismissModalViewControllerAnimated:YES]; }
 - (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)o { return o==UIInterfaceOrientationPortrait; }
+
 @end

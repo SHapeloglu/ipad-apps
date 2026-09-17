@@ -37,11 +37,14 @@
     NSInteger rug=[d integerForKey:@"room.furniture.1"];
     NSInteger lamp=[d integerForKey:@"room.furniture.2"];
     NSInteger plant=[d integerForKey:@"room.furniture.4"];
+    NSInteger tv=[d integerForKey:@"room.furniture.3"];
 
     [self drawImage:[NSString stringWithFormat:@"sofa_%ld.png",(long)(sofa?1:0)] inRect:CGRectMake(10,500,260,150)];
     [self drawImage:[NSString stringWithFormat:@"rug_%ld.png",(long)(rug?1:0)] inRect:CGRectMake(245,760,280,120)];
     [self drawImage:[NSString stringWithFormat:@"lamp_%ld.png",(long)(lamp?1:0)] inRect:CGRectMake(585,400,100,180)];
     [self drawImage:[NSString stringWithFormat:@"plant_%ld.png",(long)(plant?1:0)] inRect:CGRectMake(650,300,120,180)];
+
+    [self drawImage:[NSString stringWithFormat:@"tv_%ld.png",(long)(tv?1:0)] inRect:CGRectMake(575,500,180,140)];
 
     // Cabinet
     [[UIColor colorWithRed:0.68 green:0.45 blue:0.33 alpha:1] setFill];

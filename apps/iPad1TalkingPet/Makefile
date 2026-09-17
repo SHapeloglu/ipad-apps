@@ -26,6 +26,8 @@ iPad1TalkingPet_FILES = main.m \
     src/FoodCatchViewController.m \
     src/MazeGameViewController.m \
     src/BasketGameViewController.m \
+    src/RunnerGameViewController.m \
+    src/MatchGameViewController.m \
     src/PhotoAlbumViewController.m \
     src/TravelViewController.m \
     src/AchievementsViewController.m
