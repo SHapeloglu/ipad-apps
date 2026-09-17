@@ -1,14 +1,16 @@
 #import "HomeViewController.h"
 #import "PetNeedsManager.h"
 #import "PetProgressManager.h"
-#import "PetAnimator.h"
-#import "PetAccessoryView.h"
+#import "RoomBackgroundView.h"
+#import "PetCharacterView.h"
 #import "WardrobeViewController.h"
+#import "RoomDecorViewController.h"
 #import "FoodViewController.h"
 #import "BathViewController.h"
 #import "SleepViewController.h"
 #import "GameMenuViewController.h"
-#import "RoomDecorViewController.h"
+#import "PhotoAlbumViewController.h"
+#import "TravelViewController.h"
 #import <QuartzCore/QuartzCore.h>
 
 @implementation HomeViewController
@@ -22,191 +24,195 @@
     _audio=[[PetAudioManager alloc] init];
     _audio.delegate=self;
 
-    UIImage *bg=[UIImage imageNamed:@"home_bg.jpg"];
-    _backgroundView=[[UIImageView alloc] initWithImage:bg];
-    _backgroundView.frame=self.view.bounds;
-    _backgroundView.contentMode=UIViewContentModeScaleAspectFill;
-    _backgroundView.userInteractionEnabled=YES;
-    [self.view addSubview:_backgroundView];
+    _roomView=[[RoomBackgroundView alloc] initWithFrame:self.view.bounds];
+    [self.view addSubview:_roomView];
 
-    _themeOverlay=[[UIView alloc] initWithFrame:_backgroundView.bounds];
-    _themeOverlay.userInteractionEnabled=NO;
-    [_backgroundView addSubview:_themeOverlay];
+    // Real separated transparent character layer.
+    _petView=[[PetCharacterView alloc] initWithFrame:CGRectMake(185,205,400,610)];
+    [_roomView addSubview:_petView];
+    [_petView startIdle];
 
-    // Visual accessory layer on top of the character in the approved home art.
-    _accessoryView=[[PetAccessoryView alloc] initWithFrame:CGRectMake(274,205,320,320)];
-    [_backgroundView addSubview:_accessoryView];
-
-    [self buildStatusOverlay];
-    [self buildTouchZones];
-    [self buildTalkButton];
-    [self buildDecorButton];
-    [self applyRoomTheme];
-    [self refreshUI];
-
-    _animator=[[PetAnimator alloc] initWithHostView:_backgroundView];
-    [_animator startIdle];
+    [self buildStatus];
+    [self buildTopActions];
+    [self buildBottomMenu];
+    [self buildPetTouchZones];
 
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(outfitChanged)
                                                  name:@"WardrobeChanged" object:nil];
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(applyRoomTheme)
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(roomChanged)
                                                  name:@"RoomThemeChanged" object:nil];
 
     if([_progress claimDailyRewardIfAvailable])
         [self showMessage:@"Günlük ödül: 50 coin + 10 XP!"];
 
-    _decayTimer=[[NSTimer scheduledTimerWithTimeInterval:60.0 target:self
-                                                selector:@selector(runDecay)
+    [self refreshUI];
+    _decayTimer=[[NSTimer scheduledTimerWithTimeInterval:60 target:self selector:@selector(runDecay)
                                                 userInfo:nil repeats:YES] retain];
 }
 
-- (void)buildStatusOverlay {
+- (UILabel *)panelLabel:(CGRect)frame {
+    UILabel *l=[[[UILabel alloc] initWithFrame:frame] autorelease];
+    l.backgroundColor=[UIColor colorWithWhite:1 alpha:0.82];
+    l.textAlignment=UITextAlignmentCenter;
+    l.layer.cornerRadius=10;
+    return l;
+}
+
+- (void)buildStatus {
     _hungerBar=[[UIProgressView alloc] initWithProgressViewStyle:UIProgressViewStyleDefault];
     _happinessBar=[[UIProgressView alloc] initWithProgressViewStyle:UIProgressViewStyleDefault];
     _hygieneBar=[[UIProgressView alloc] initWithProgressViewStyle:UIProgressViewStyleDefault];
     _energyBar=[[UIProgressView alloc] initWithProgressViewStyle:UIProgressViewStyleDefault];
     _xpBar=[[UIProgressView alloc] initWithProgressViewStyle:UIProgressViewStyleDefault];
 
+    NSArray *names=[NSArray arrayWithObjects:@"Açlık",@"Mutluluk",@"Hijyen",@"Enerji",nil];
     NSArray *bars=[NSArray arrayWithObjects:_hungerBar,_happinessBar,_hygieneBar,_energyBar,nil];
-    CGFloat x=96;
-    for(NSInteger i=0;i<[bars count];i++){
-        UIProgressView *bar=[bars objectAtIndex:i];
-        bar.frame=CGRectMake(x+i*155,50,105,10);
-        [_backgroundView addSubview:bar];
+    for(NSInteger i=0;i<4;i++){
+        UILabel *n=[self panelLabel:CGRectMake(25+i*185,25,175,32)];
+        n.text=[names objectAtIndex:i];
+        n.font=[UIFont boldSystemFontOfSize:15];
+        [_roomView addSubview:n];
+        UIProgressView *b=[bars objectAtIndex:i];
+        b.frame=CGRectMake(40+i*185,62,145,10);
+        [_roomView addSubview:b];
     }
 
-    _coinLabel=[[UILabel alloc] initWithFrame:CGRectMake(35,112,155,38)];
-    _coinLabel.backgroundColor=[UIColor colorWithWhite:1 alpha:0.82];
-    _coinLabel.textColor=[UIColor brownColor];
-    _coinLabel.textAlignment=UITextAlignmentCenter;
-    _coinLabel.font=[UIFont boldSystemFontOfSize:20];
-    _coinLabel.layer.cornerRadius=10;
-    [_backgroundView addSubview:_coinLabel];
+    _coinLabel=[[self panelLabel:CGRectMake(25,90,150,38)] retain];
+    _levelLabel=[[self panelLabel:CGRectMake(185,90,150,38)] retain];
+    _coinLabel.font=[UIFont boldSystemFontOfSize:18];
+    _levelLabel.font=[UIFont boldSystemFontOfSize:18];
+    [_roomView addSubview:_coinLabel]; [_roomView addSubview:_levelLabel];
 
-    _levelLabel=[[UILabel alloc] initWithFrame:CGRectMake(205,112,145,38)];
-    _levelLabel.backgroundColor=[UIColor colorWithWhite:1 alpha:0.82];
-    _levelLabel.textAlignment=UITextAlignmentCenter;
-    _levelLabel.font=[UIFont boldSystemFontOfSize:20];
-    _levelLabel.layer.cornerRadius=10;
-    [_backgroundView addSubview:_levelLabel];
+    _xpBar.frame=CGRectMake(350,105,180,10);
+    [_roomView addSubview:_xpBar];
 
-    _xpBar.frame=CGRectMake(370,125,170,10);
-    [_backgroundView addSubview:_xpBar];
-
-    _speechLabel=[[UILabel alloc] initWithFrame:CGRectMake(180,165,408,56)];
-    _speechLabel.backgroundColor=[UIColor colorWithWhite:1 alpha:0.82];
-    _speechLabel.textAlignment=UITextAlignmentCenter;
-    _speechLabel.font=[UIFont boldSystemFontOfSize:18];
-    _speechLabel.layer.cornerRadius=12;
+    _speechLabel=[[self panelLabel:CGRectMake(235,145,300,50)] retain];
     _speechLabel.hidden=YES;
-    [_backgroundView addSubview:_speechLabel];
+    _speechLabel.font=[UIFont boldSystemFontOfSize:17];
+    [_roomView addSubview:_speechLabel];
 }
 
-- (UIButton *)invisibleButtonWithFrame:(CGRect)frame tag:(NSInteger)tag {
-    UIButton *b=[UIButton buttonWithType:UIButtonTypeCustom];
-    b.frame=frame; b.tag=tag; b.backgroundColor=[UIColor clearColor];
-    [b addTarget:self action:@selector(actionTapped:) forControlEvents:UIControlEventTouchUpInside];
-    [_backgroundView addSubview:b]; return b;
+- (UIButton *)button:(NSString *)title frame:(CGRect)frame selector:(SEL)sel {
+    UIButton *b=[UIButton buttonWithType:UIButtonTypeRoundedRect];
+    b.frame=frame;
+    [b setTitle:title forState:UIControlStateNormal];
+    b.titleLabel.font=[UIFont boldSystemFontOfSize:18];
+    [b addTarget:self action:sel forControlEvents:UIControlEventTouchUpInside];
+    [_roomView addSubview:b];
+    return b;
 }
 
-- (void)buildTouchZones {
-    [self invisibleButtonWithFrame:CGRectMake(25,830,125,180) tag:1];
-    [self invisibleButtonWithFrame:CGRectMake(165,830,125,180) tag:2];
-    [self invisibleButtonWithFrame:CGRectMake(305,830,125,180) tag:3];
-    [self invisibleButtonWithFrame:CGRectMake(445,830,125,180) tag:4];
-    [self invisibleButtonWithFrame:CGRectMake(585,830,150,180) tag:5];
-    [self invisibleButtonWithFrame:CGRectMake(270,200,230,190) tag:20];
-    [self invisibleButtonWithFrame:CGRectMake(275,390,225,250) tag:21];
-    [self invisibleButtonWithFrame:CGRectMake(275,640,225,170) tag:22];
+- (void)buildTopActions {
+    _talkButton=[[self button:@"Konuş" frame:CGRectMake(570,90,165,48) selector:@selector(toggleTalking)] retain];
+    [self button:@"Kamera" frame:CGRectMake(570,145,165,45) selector:@selector(takePhoto)];
+    [self button:@"Albüm" frame:CGRectMake(570,195,80,42) selector:@selector(openAlbum)];
+    [self button:@"Seyahat" frame:CGRectMake(655,195,80,42) selector:@selector(openTravel)];
 }
 
-- (void)buildTalkButton {
-    _talkButton=[[UIButton buttonWithType:UIButtonTypeRoundedRect] retain];
-    _talkButton.frame=CGRectMake(565,105,170,58);
-    [_talkButton setTitle:@"Konuş" forState:UIControlStateNormal];
-    _talkButton.titleLabel.font=[UIFont boldSystemFontOfSize:22];
-    [_talkButton addTarget:self action:@selector(toggleTalking) forControlEvents:UIControlEventTouchUpInside];
-    [_backgroundView addSubview:_talkButton];
+- (void)buildBottomMenu {
+    NSArray *titles=[NSArray arrayWithObjects:@"Yemek",@"Banyo",@"Uyku",@"Oyun",@"Gardırop",@"Oda",nil];
+    SEL sels[6]={@selector(openFood),@selector(openBath),@selector(openSleep),@selector(openGames),
+                 @selector(openWardrobe),@selector(openDecor)};
+    CGFloat start=18, gap=8, width=116;
+    for(NSInteger i=0;i<6;i++)
+        [self button:[titles objectAtIndex:i] frame:CGRectMake(start+i*(width+gap),920,width,70) selector:sels[i]];
 }
 
-- (void)buildDecorButton {
-    _decorButton=[[UIButton buttonWithType:UIButtonTypeRoundedRect] retain];
-    _decorButton.frame=CGRectMake(565,175,170,50);
-    [_decorButton setTitle:@"Oda" forState:UIControlStateNormal];
-    [_decorButton addTarget:self action:@selector(openDecor) forControlEvents:UIControlEventTouchUpInside];
-    [_backgroundView addSubview:_decorButton];
+- (void)buildPetTouchZones {
+    UIButton *head=[UIButton buttonWithType:UIButtonTypeCustom];
+    head.frame=CGRectMake(255,245,250,190);
+    [head addTarget:self action:@selector(touchHead) forControlEvents:UIControlEventTouchUpInside];
+    [_roomView addSubview:head];
+
+    UIButton *body=[UIButton buttonWithType:UIButtonTypeCustom];
+    body.frame=CGRectMake(250,440,260,230);
+    [body addTarget:self action:@selector(touchBody) forControlEvents:UIControlEventTouchUpInside];
+    [_roomView addSubview:body];
+
+    UIButton *feet=[UIButton buttonWithType:UIButtonTypeCustom];
+    feet.frame=CGRectMake(245,680,270,145);
+    [feet addTarget:self action:@selector(touchFeet) forControlEvents:UIControlEventTouchUpInside];
+    [_roomView addSubview:feet];
 }
 
-- (void)openDecor {
-    RoomDecorViewController *d=[[[RoomDecorViewController alloc] init] autorelease];
-    [self presentModalViewController:d animated:YES];
-}
-
-- (void)outfitChanged { [_accessoryView reloadSelectedOutfit]; }
-
-- (void)applyRoomTheme {
-    NSInteger t=[[NSUserDefaults standardUserDefaults] integerForKey:@"room.theme"];
-    if(t==0) _themeOverlay.backgroundColor=[UIColor clearColor];
-    else if(t==1) _themeOverlay.backgroundColor=[UIColor colorWithRed:1 green:0.35 blue:0.65 alpha:0.07];
-    else if(t==2) _themeOverlay.backgroundColor=[UIColor colorWithRed:0.08 green:0.12 blue:0.30 alpha:0.14];
-    else _themeOverlay.backgroundColor=[UIColor colorWithRed:1.0 green:0.65 blue:0.15 alpha:0.08];
-}
+- (void)touchHead { [_petView touchHead]; [_progress addXP:1]; [self speak:@"Başımı okşaman hoşuma gitti!"]; [self refreshUI]; }
+- (void)touchBody { [_petView touchBody]; [_progress addXP:1]; [self speak:@"Hihi, gıdıklanıyorum!"]; [self refreshUI]; }
+- (void)touchFeet { [_petView touchFeet]; [self speak:@"Ayaklarım hassas!"]; }
 
 - (void)toggleTalking {
     if(!_audio.recording) {
         if([_audio startRecording]) {
             [_talkButton setTitle:@"Bitir / Tekrarla" forState:UIControlStateNormal];
-            [self showSpeech:@"Seni dinliyorum..."];
+            [self speak:@"Seni dinliyorum..."];
         } else [self showMessage:@"Mikrofon başlatılamadı."];
     } else {
         [_talkButton setTitle:@"Konuş" forState:UIControlStateNormal];
-        [self showSpeech:@"Şimdi seni taklit ediyorum!"];
-        [_animator setTalking:YES];
+        [_petView setTalking:YES];
+        [self speak:@"Şimdi seni taklit ediyorum!"];
         [_audio stopAndRepeat];
         [_progress addXP:3];
         [self refreshUI];
     }
 }
 
-- (void)petAudioDidFinishRepeat {
-    [_animator setTalking:NO];
-    [self showSpeech:@"Bir daha konuşalım mı?"];
+- (void)petAudioDidFinishRepeat { [_petView setTalking:NO]; [self speak:@"Bir daha konuşalım mı?"]; }
+
+- (void)openFood {
+    FoodViewController *v=[[[FoodViewController alloc] initWithNeeds:_needs progress:_progress] autorelease];
+    [self presentModalViewController:v animated:YES];
+}
+- (void)openBath {
+    BathViewController *v=[[[BathViewController alloc] initWithNeeds:_needs progress:_progress] autorelease];
+    [self presentModalViewController:v animated:YES];
+}
+- (void)openSleep {
+    SleepViewController *v=[[[SleepViewController alloc] initWithNeeds:_needs progress:_progress] autorelease];
+    [self presentModalViewController:v animated:YES];
+}
+- (void)openGames {
+    GameMenuViewController *v=[[[GameMenuViewController alloc] initWithProgressManager:_progress] autorelease];
+    [self presentModalViewController:v animated:YES];
+}
+- (void)openWardrobe {
+    WardrobeViewController *v=[[[WardrobeViewController alloc] initWithProgressManager:_progress] autorelease];
+    [self presentModalViewController:v animated:YES];
+}
+- (void)openDecor {
+    RoomDecorViewController *v=[[[RoomDecorViewController alloc] init] autorelease];
+    [self presentModalViewController:v animated:YES];
+}
+- (void)openAlbum {
+    PhotoAlbumViewController *v=[[[PhotoAlbumViewController alloc] init] autorelease];
+    [self presentModalViewController:v animated:YES];
+}
+- (void)openTravel {
+    TravelViewController *v=[[[TravelViewController alloc] initWithProgressManager:_progress] autorelease];
+    [self presentModalViewController:v animated:YES];
 }
 
-- (void)actionTapped:(UIButton *)sender {
-    switch(sender.tag) {
-        case 1: {
-            FoodViewController *f=[[[FoodViewController alloc] initWithNeeds:_needs progress:_progress] autorelease];
-            [self presentModalViewController:f animated:YES]; break;
-        }
-        case 2: {
-            BathViewController *b=[[[BathViewController alloc] initWithNeeds:_needs progress:_progress] autorelease];
-            [self presentModalViewController:b animated:YES]; break;
-        }
-        case 3: {
-            SleepViewController *s=[[[SleepViewController alloc] initWithNeeds:_needs progress:_progress] autorelease];
-            [self presentModalViewController:s animated:YES]; break;
-        }
-        case 4: {
-            GameMenuViewController *g=[[[GameMenuViewController alloc] initWithProgressManager:_progress] autorelease];
-            [self presentModalViewController:g animated:YES]; break;
-        }
-        case 5: {
-            WardrobeViewController *w=[[[WardrobeViewController alloc] initWithProgressManager:_progress] autorelease];
-            [self presentModalViewController:w animated:YES]; break;
-        }
-        case 20:
-            [_progress addXP:1]; [self showSpeech:@"Başımı okşaman hoşuma gitti!"];
-            [_animator happy]; break;
-        case 21:
-            [_progress addXP:1]; [self showSpeech:@"Hihi, gıdıklanıyorum!"];
-            [_animator touchReaction]; break;
-        case 22:
-            [self showSpeech:@"Ayaklarım biraz hassas!"];
-            [_animator touchReaction]; break;
-    }
+- (NSString *)albumDirectory {
+    NSString *docs=[NSSearchPathForDirectoriesInDomains(NSDocumentDirectory,NSUserDomainMask,YES) objectAtIndex:0];
+    NSString *dir=[docs stringByAppendingPathComponent:@"Album"];
+    [[NSFileManager defaultManager] createDirectoryAtPath:dir withIntermediateDirectories:YES attributes:nil error:nil];
+    return dir;
+}
+
+- (void)takePhoto {
+    UIGraphicsBeginImageContextWithOptions(_roomView.bounds.size, YES, 1.0);
+    [_roomView.layer renderInContext:UIGraphicsGetCurrentContext()];
+    UIImage *im=UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+
+    NSData *data=UIImagePNGRepresentation(im);
+    NSString *fn=[NSString stringWithFormat:@"pati_%0.f.png",[[NSDate date] timeIntervalSince1970]];
+    [data writeToFile:[[self albumDirectory] stringByAppendingPathComponent:fn] atomically:YES];
+    [_progress addXP:5];
+    [self showMessage:@"Fotoğraf albüme kaydedildi. +5 XP"];
     [self refreshUI];
 }
+
+- (void)outfitChanged { [_petView reloadOutfit]; }
+- (void)roomChanged { [_roomView reloadTheme]; }
 
 - (void)refreshUI {
     _hungerBar.progress=_needs.hunger/100.0f;
@@ -219,10 +225,10 @@
     _xpBar.progress=needed>0?((float)_progress.xp/(float)needed):0;
 }
 
-- (void)showSpeech:(NSString *)text {
+- (void)speak:(NSString *)text {
     _speechLabel.text=text; _speechLabel.hidden=NO;
     [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(hideSpeech) object:nil];
-    [self performSelector:@selector(hideSpeech) withObject:nil afterDelay:2.4];
+    [self performSelector:@selector(hideSpeech) withObject:nil afterDelay:2.3];
 }
 - (void)hideSpeech { _speechLabel.hidden=YES; }
 
@@ -232,28 +238,32 @@
     [a show];
 }
 
-- (void)runDecay { [_needs applyMinuteDecay]; [self refreshUI]; }
+- (void)runDecay {
+    [_needs applyMinuteDecay];
+    if(_needs.hunger<20 || _needs.energy<20) [_petView sad];
+    [self refreshUI];
+}
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
-    [self refreshUI]; [_accessoryView reloadSelectedOutfit]; [self applyRoomTheme];
+    [_petView reloadOutfit];
+    [_roomView reloadTheme];
+    [self refreshUI];
 }
 
-- (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)o {
-    return o==UIInterfaceOrientationPortrait;
-}
+- (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)o { return o==UIInterfaceOrientationPortrait; }
 
 - (void)dealloc {
     [NSObject cancelPreviousPerformRequestsWithTarget:self];
     [[NSNotificationCenter defaultCenter] removeObserver:self];
     [_decayTimer invalidate]; [_decayTimer release];
-    [_animator stop]; [_animator release];
+    [_petView stop]; [_petView release];
     [_audio stopAll]; [_audio release];
-    [_progress release]; [_needs release];
-    [_talkButton release]; [_decorButton release];
-    [_speechLabel release]; [_coinLabel release]; [_levelLabel release];
+    [_needs release]; [_progress release];
     [_hungerBar release]; [_happinessBar release]; [_hygieneBar release]; [_energyBar release]; [_xpBar release];
-    [_accessoryView release]; [_themeOverlay release]; [_backgroundView release];
+    [_coinLabel release]; [_levelLabel release]; [_speechLabel release]; [_talkButton release];
+    [_roomView release];
     [super dealloc];
 }
+
 @end

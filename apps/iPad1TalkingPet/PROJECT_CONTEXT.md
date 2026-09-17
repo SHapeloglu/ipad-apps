@@ -1,52 +1,55 @@
 # PROJECT_CONTEXT
 
-## Immutable platform constraints
-- iPad 1
-- Apple A4
-- 256 MB RAM
+## Immutable constraints
+- iPad 1 / Apple A4 / 256 MB RAM
 - iOS 5.1.1
 - armv7
-- Objective-C / UIKit / Foundation
+- Objective-C
+- UIKit/Foundation/CoreGraphics/AVFoundation
 - Theos + legacy iPhoneOS 6.1 SDK
-- non-ARC / MRC
+- non-ARC/MRC
 - offline-first
 - no heavy 3D engine
 
-## Goal
-Talking-pet oyun hissini, özgün beyaz kedi karakteriyle iPad 1 üzerinde akıcı ve düşük bellekli biçimde sunmak.
+## Current milestone
+v0.5 Character 2.0
 
-## v0.4 implemented
-- Talking/repeat audio
-- lightweight animation manager (idle/blink/happy/touch/talk-mouth)
-- 4 needs + offline decay
-- XP / levels / coins / daily reward
-- Food drag-to-mouth with 6 food choices
-- Bath soap + foam + shower
-- Sleep room + lamp
-- Wardrobe purchase persistence
-- visual hat/glasses accessory overlays on home screen
-- room theme selection/persistence
-- four mini-games
+## Major architecture change
+The pet is no longer baked into the room background.
 
-## Remaining high-priority gaps versus modern Talking Tom
-- true separated transparent character sprite art
-- real eat/chew body animation
-- real sleep pose art
-- clothing overlays beyond hat/glasses
-- furniture object replacement, not only theme tint
-- photo album
-- travel map
-- more mini-games / achievements
+`RoomBackgroundView`
+    -> programmatic lightweight room
+
+`PetCharacterView`
+    -> transparent pet_base.png
+    -> face animation overlays
+    -> outfit layers
+
+This is the required architecture for future real sprite sheets.
+
+## Implemented
+- separated transparent pet layer
+- idle/blink/talk/happy/sad/touch animations
+- outfit slots
+- 4 room themes + furniture slot persistence
+- 6 food types
+- bath foam/shower
+- sleep room
+- six mini-games
+- talking/repeat audio
+- XP/levels/coins/daily reward/offline decay
+- local photo album
+- lightweight travel screen
+
+## Remaining important differences from modern Talking Tom
+- true multi-frame body animation art for eat/sleep/run
+- more polished clothing artwork instead of procedural overlay shapes
+- more furniture artwork
+- richer mini-game graphics
+- achievements UI
+- more destinations/content
+- sound effects/music pack
 
 ## Immediate next action
-Compile v0.4 and test on physical iPad 1.
-Check:
-1. app launch
-2. idle/blink/talk visual effects
-3. wardrobe overlays
-4. room theme
-5. six foods
-6. bath foam/shower
-7. all four mini-games
-8. audio repeat
-9. memory usage and lag
+Compile and physically test v0.5 on iPad 1.
+Do not assume it works until hardware validation.

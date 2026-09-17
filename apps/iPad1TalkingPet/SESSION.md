@@ -1,24 +1,26 @@
 # SESSION
 
-Current version: 0.4.0
-Status: source prepared; physical iPad verification required.
-
-## New in this handoff
-- PetAnimator
-- PetAccessoryView
-- RoomDecorViewController
-- MemoryGameViewController
-- FoodCatchViewController
-- multi-food FoodViewController
-- bath foam particles
-- Game menu expanded to 4 games
-
-## Important
-Do not mark v0.4 as working until built and tested on iPad 1 / iOS 5.1.1.
+Current version: 0.5.0
+Milestone: Character 2.0
+Status: source generated, not yet physically validated.
 
 ## Immediate next action
-Run:
 
+```bash
+rm -rf .theos packages
 FINALPACKAGE=1 make package
+```
 
-Then install the generated 0.4.0 .deb on 192.168.1.2.
+Then test on the physical iPad:
+1. launch
+2. separated character renders correctly
+3. transparent edges are acceptable
+4. idle/blink/talk animations
+5. wardrobe slot overlays
+6. room themes
+7. six mini-games
+8. photo save + album
+9. travel
+10. RAM/lag/crash behavior
+
+Any physical-device failure must be treated as a bug before v0.5 is considered complete.

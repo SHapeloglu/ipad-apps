@@ -1,47 +1,81 @@
-# iPad1TalkingPet v0.4
+# iPad1TalkingPet v0.5 — Character 2.0
 
-iPad 1 / iOS 5.1.1 / armv7 / Apple A4 / 256 MB RAM / Objective-C / Theos / non-ARC.
+Platform:
+- iPad 1
+- iOS 5.1.1
+- armv7
+- Apple A4
+- 256 MB RAM
+- Objective-C / UIKit
+- Theos + legacy iPhoneOS 6.1 SDK
+- non-ARC / MRC
 
-## v0.4 ana geliştirmeleri
-- Hafif karakter animasyon yöneticisi:
-  - idle hareket
-  - blink
-  - happy bounce
-  - touch wobble
-  - konuşma sırasında ağız pulse efekti
-- Gardırop seçiminin ana ekranda görsel aksesuar overlay olarak görünmesi
-  - mavi şapka
-  - yıldız/gözlük benzeri aksesuar
-- Oda tema sistemi ve kalıcı seçim
-- Yemek sistemi 6 çeşide çıkarıldı
-  - Elma
-  - Muz
-  - Havuç
-  - Tavuk
-  - Pasta
-  - Süt
-- Yemek sürükle-bırak korunuyor
-- Banyo köpük partikülleri
-- Mini oyun sayısı 4:
-  - Pati Yakala
-  - Baloncuk Patlat
-  - Hafıza Kartları
-  - Yemek Yakala
-- XP / seviye / coin / daily reward / offline decay korunuyor
-- Konuş ve komik ses tekrar sistemi korunuyor
+## v0.5 ile gelen büyük değişiklik
 
-## Teknik not
-Onaylanan karakter görseli hâlâ oda görüntüsünün içinde olduğu için v0.4'te gerçek tam sprite-sheet yerine
-iPad 1'e çok hafif gelen UIKit/CGAffineTransform + overlay tabanlı karakter animasyonu kullanılıyor.
-Bu, fiziksel cihaz performansını doğrulamak için güvenli ara mimaridir.
+Ana karakter artık oda JPG'sinin içine gömülü değil.
 
-Gerçek şeffaf `idle/blink/talk/eat/sleep/touch` kareleri hazır olduğunda PetAnimator aynı API ile
-UIImageView sprite animasyonuna geçirilebilir.
+`Resources/pet_base.png` gerçek şeffaf karakter katmanıdır ve `PetCharacterView`
+üzerinde oda arka planından bağımsız çizilir.
+
+Bu sayede:
+- karakter animasyonu odadan bağımsız
+- kıyafetler karakterin üzerine bindirilebilir
+- konuşma/ağız animasyonu karakterle beraber hareket eder
+- oda değişse bile karakter aynı kalır
+
+## Karakter animasyonları
+- idle
+- blink
+- talking mouth
+- happy
+- sad
+- head touch
+- body touch
+- feet touch
+- chew helper
+
+## Gardırop 2.0
+Slotlar:
+- şapka
+- yüz/gözlük
+- tişört
+- pantolon
+- ayakkabı
+
+Satın alma ve seçim `NSUserDefaults` ile kalıcıdır.
+
+## Oda & Mobilya
+- 4 oda teması
+- koltuk
+- halı
+- lamba
+- dolap
+- bitki slotları
+- seçimler kalıcı
+
+## Mini oyunlar
+1. Pati Yakala
+2. Baloncuk Patlat
+3. Hafıza Kartları
+4. Yemek Yakala
+5. Labirent
+6. Topu Sepete At
+
+## Diğer
+- 6 yemek
+- sabun + köpük + duş
+- uyku odası + ışık
+- konuşma kaydı ve tekrar
+- XP/seviye/coin
+- günlük ödül
+- offline ihtiyaç azalması
+- fotoğraf çekip yerel albüme kaydetme
+- hafif seyahat haritası
 
 ## Derleme
 
 ```bash
-cd ~/projects/iPad1TalkingPet-v0.4
+cd ~/projects/iPad1TalkingPet-v0.5
 rm -rf .theos packages
 FINALPACKAGE=1 make package
 ```
@@ -52,6 +86,6 @@ FINALPACKAGE=1 make package
 scp \
   -o HostKeyAlgorithms=+ssh-rsa \
   -o PubkeyAcceptedAlgorithms=+ssh-rsa \
-  packages/com.olapteknoloji.ipad1talkingpet_0.4.0_iphoneos-arm.deb \
+  packages/com.olapteknoloji.ipad1talkingpet_0.5.0_iphoneos-arm.deb \
   root@192.168.1.2:/var/mobile/
 ```

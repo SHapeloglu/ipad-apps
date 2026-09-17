@@ -9,8 +9,8 @@ iPad1TalkingPet_FILES = main.m \
     src/PetNeedsManager.m \
     src/PetProgressManager.m \
     src/PetAudioManager.m \
-    src/PetAnimator.m \
-    src/PetAccessoryView.m \
+    src/RoomBackgroundView.m \
+    src/PetCharacterView.m \
     src/WardrobeViewController.m \
     src/RoomDecorViewController.m \
     src/FoodViewController.m \
@@ -20,7 +20,11 @@ iPad1TalkingPet_FILES = main.m \
     src/MiniGameViewController.m \
     src/BubbleGameViewController.m \
     src/MemoryGameViewController.m \
-    src/FoodCatchViewController.m
+    src/FoodCatchViewController.m \
+    src/MazeGameViewController.m \
+    src/BasketGameViewController.m \
+    src/PhotoAlbumViewController.m \
+    src/TravelViewController.m
 
 iPad1TalkingPet_FRAMEWORKS = UIKit Foundation QuartzCore CoreGraphics AVFoundation AudioToolbox
 iPad1TalkingPet_CFLAGS = -fno-objc-arc
