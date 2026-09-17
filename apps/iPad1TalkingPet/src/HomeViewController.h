@@ -5,6 +5,7 @@
 @class PetProgressManager;
 @class RoomBackgroundView;
 @class PetCharacterView;
+@class LivingPetManager;
 
 @interface HomeViewController : UIViewController <PetAudioManagerDelegate> {
     RoomBackgroundView *_roomView;
@@ -24,5 +25,6 @@
     UILabel *_speechLabel;
     UIButton *_talkButton;
     NSTimer *_decayTimer;
+    LivingPetManager *_livingPet;
 }
 @end

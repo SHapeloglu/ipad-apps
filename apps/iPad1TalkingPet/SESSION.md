@@ -1,16 +1,15 @@
 # SESSION
 
-Current version: 0.8.0
-Milestone: Wardrobe Fit Update
-Status: source prepared, physical iPad validation pending.
+Current version: 0.9.0
+Status: source prepared; physical verification pending.
 
 Immediate next action:
 FINALPACKAGE=1 make package
 
 Then test:
-- T-shirt Style 1/2
-- Pants Style 1/2
-- Crop Style 1/2
-- Skirt Style 1/2
-- combinations of top + bottom
-- animation clipping
+- Living Pet random animations
+- Event button/details
+- Food discount day logic
+- Wardrobe discount day logic
+- No crashes after 10+ minutes idle
+- Outfit alignment during random animations

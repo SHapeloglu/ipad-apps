@@ -1,36 +1,44 @@
-# iPad1TalkingPet v0.8 — Wardrobe Fit Update
+# iPad1TalkingPet v0.9 — Living Pet
 
-## Bu sürümde
-- Gardırop ekranı son onaylanan görsel yaklaşıma göre yenilendi
-- Tişört:
-  - Stil 1: mor kalpli
-  - Stil 2: pembe çiçekli
-- Pantolon/şort:
-  - Stil 1: koyu denim
-  - Stil 2: açık/distressed denim
-- Crop:
-  - Stil 1: pembe kalpli
-  - Stil 2: mor düğmeli
-- Etek:
-  - Stil 1: pembe pileli
-  - Stil 2: denim
-- Kıyafetler karakter gövdesine ayrı üst/alt slotlarla oturtuluyor
-- Üst ve alt kıyafet birbirinden bağımsız seçiliyor
-- Önceki şapka/gözlük/ayakkabı slotları korunuyor
-- Satın alma, seçim ve kalıcı kayıt korunuyor
+## Yeni
+- Spontane karakter davranışları:
+  - sola bak
+  - sağa bak
+  - el salla
+  - gül
+  - şaşır
+  - gerin
+  - dans et
+  - zıpla
+- LivingPetManager: belirli aralıklarla rastgele davranış
+- HighScoreManager:
+  - yerel high score
+  - combo çarpanı altyapısı
+- Haftalık offline etkinlik sistemi:
+  - Pazartesi: mini oyun coin 2x
+  - Salı: yemek indirimi
+  - Çarşamba: gardırop indirimi
+  - Perşembe: fotoğraf günü
+  - Cuma: gezi günü
+  - Cumartesi: bonus coin
+  - Pazar: bakım/uyku odaklı
+- Etkinlik ekranı
+- Mobilya içeriği genişletildi
+- v0.8 gardırop ve kıyafet fit sistemi korunuyor
+- v0.6/v0.7 sprite, ses, görev, başarımlar ve 8 mini oyun korunuyor
 
 ## Derleme
 ```bash
-cd ~/projects/iPad1TalkingPet-v0.8
+cd ~/projects/iPad1TalkingPet-v0.9
 rm -rf .theos packages
 FINALPACKAGE=1 make package
 ```
 
-## iPad'e gönderme
+## Gönderme
 ```bash
 scp \
   -o HostKeyAlgorithms=+ssh-rsa \
   -o PubkeyAcceptedAlgorithms=+ssh-rsa \
-  packages/com.olapteknoloji.ipad1talkingpet_0.8.0_iphoneos-arm.deb \
+  packages/com.olapteknoloji.ipad1talkingpet_0.9.0_iphoneos-arm.deb \
   root@192.168.1.2:/var/mobile/
 ```

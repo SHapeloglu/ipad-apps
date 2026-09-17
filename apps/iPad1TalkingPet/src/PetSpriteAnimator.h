@@ -18,4 +18,12 @@
 - (void)talkStop;
 - (void)chew;
 - (void)sleep;
+- (void)lookLeft;
+- (void)lookRight;
+- (void)wave;
+- (void)laugh;
+- (void)surprise;
+- (void)stretch;
+- (void)dance;
+- (void)jump;
 @end

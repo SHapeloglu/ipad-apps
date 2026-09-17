@@ -1,6 +1,7 @@
 #import "FoodViewController.h"
 #import "PetNeedsManager.h"
 #import "PetProgressManager.h"
+#import "WeeklyEventManager.h"
 #import <QuartzCore/QuartzCore.h>
 #import "AchievementManager.h"
 #import "SoundManager.h"
@@ -78,6 +79,8 @@
 - (void)foodDrop:(UIButton *)sender withEvent:(UIEvent *)event {
     if (CGRectIntersectsRect(sender.frame,_mouthTarget.frame)) {
         NSInteger costs[6]={5,6,5,12,18,7};
+        NSInteger discount=[[WeeklyEventManager sharedManager] foodDiscountPercent];
+        if(discount>0) costs[_selectedFood]=MAX(1,costs[_selectedFood]*(100-discount)/100);
         NSInteger xp[6]={3,3,3,5,6,3};
         if ([_progress spendCoins:costs[_selectedFood]]) {
             [_needs feed];

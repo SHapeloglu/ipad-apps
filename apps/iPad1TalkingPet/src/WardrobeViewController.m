@@ -1,5 +1,6 @@
 #import "WardrobeViewController.h"
 #import "PetProgressManager.h"
+#import "WeeklyEventManager.h"
 
 @implementation WardrobeViewController
 
@@ -65,6 +66,8 @@
     NSInteger style = raw % 10;
 
     NSInteger cost = 120 + (category * 25) + ((style - 1) * 20);
+    NSInteger discount=[[WeeklyEventManager sharedManager] wardrobeDiscountPercent];
+    if(discount>0) cost=MAX(1,cost*(100-discount)/100);
     NSString *ownedKey = [NSString stringWithFormat:@"wardrobe.v08.owned.%ld.%ld",
                           (long)category, (long)style];
 

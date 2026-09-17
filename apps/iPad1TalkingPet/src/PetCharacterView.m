@@ -109,6 +109,14 @@
 - (void)setTalking:(BOOL)t{if(t)[_sprite talkStart];else[_sprite talkStop];}
 - (void)chew{[_sprite chew];}
 - (void)sleep{[_sprite sleep];}
+- (void)lookLeft{[_sprite lookLeft];}
+- (void)lookRight{[_sprite lookRight];}
+- (void)wave{[_sprite wave];}
+- (void)laugh{[_sprite laugh];}
+- (void)surprise{[_sprite surprise];}
+- (void)stretch{[_sprite stretch];}
+- (void)dance{[_sprite dance];}
+- (void)jump{[_sprite jump];}
 
 - (void)dealloc {
     [_sprite release];

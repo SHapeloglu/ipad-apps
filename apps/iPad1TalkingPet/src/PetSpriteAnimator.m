@@ -67,6 +67,16 @@
     _busy=YES; [self playNamed:@"sleep" frameCount:4 duration:1.0 repeat:2];
     [self performSelector:@selector(endBusy) withObject:nil afterDelay:2.1];
 }
+
+- (void)lookLeft { if(_busy)return; _busy=YES; [self playNamed:@"look_left" frameCount:5 duration:0.7 repeat:1]; [self performSelector:@selector(endBusy) withObject:nil afterDelay:0.75]; }
+- (void)lookRight { if(_busy)return; _busy=YES; [self playNamed:@"look_right" frameCount:5 duration:0.7 repeat:1]; [self performSelector:@selector(endBusy) withObject:nil afterDelay:0.75]; }
+- (void)wave { if(_busy)return; _busy=YES; [self playNamed:@"wave" frameCount:5 duration:0.75 repeat:1]; [self performSelector:@selector(endBusy) withObject:nil afterDelay:0.80]; }
+- (void)laugh { if(_busy)return; _busy=YES; [self playNamed:@"laugh" frameCount:5 duration:0.75 repeat:1]; [self performSelector:@selector(endBusy) withObject:nil afterDelay:0.80]; }
+- (void)surprise { if(_busy)return; _busy=YES; [self playNamed:@"surprise" frameCount:5 duration:0.7 repeat:1]; [self performSelector:@selector(endBusy) withObject:nil afterDelay:0.75]; }
+- (void)stretch { if(_busy)return; _busy=YES; [self playNamed:@"stretch" frameCount:5 duration:0.85 repeat:1]; [self performSelector:@selector(endBusy) withObject:nil afterDelay:0.9]; }
+- (void)dance { if(_busy)return; _busy=YES; [self playNamed:@"dance" frameCount:5 duration:0.85 repeat:2]; [self performSelector:@selector(endBusy) withObject:nil afterDelay:1.75]; }
+- (void)jump { if(_busy)return; _busy=YES; [self playNamed:@"jump" frameCount:5 duration:0.65 repeat:1]; [self performSelector:@selector(endBusy) withObject:nil afterDelay:0.7]; }
+
 - (void)endBusy {
     _busy=NO;
     [self playNamed:@"idle" frameCount:6 duration:1.2 repeat:0];

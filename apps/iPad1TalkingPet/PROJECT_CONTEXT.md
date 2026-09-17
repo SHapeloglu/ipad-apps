@@ -1,31 +1,26 @@
 # PROJECT_CONTEXT
 
-Current version: 0.8.0
+Current version: 0.9.0
+Milestone: Living Pet
 
-Platform constraints unchanged:
+## Platform constraints
 iPad 1 / Apple A4 / 256 MB RAM / iOS 5.1.1 / armv7 / Objective-C / Theos / non-ARC.
 
-## Wardrobe architecture
-Top:
-- none
-- T-shirt style 1/2
-- Crop style 1/2
+## New architecture
+LivingPetManager:
+- spontaneous non-user-triggered pet animations
+- lightweight NSTimer scheduling
 
-Bottom:
-- none
-- Pants style 1/2
-- Skirt style 1/2
+WeeklyEventManager:
+- fully offline weekday-based event modifiers
 
-Head/face/shoes:
-- previous v0.7 slots retained
-
-The outfit layer remains separate from PetSpriteAnimator.
+HighScoreManager:
+- local high score and combo infrastructure
 
 ## Immediate next action
 Compile and test on real iPad 1.
 Focus on:
-- torso fit
-- hip/leg fit
-- skirt overlap
-- crop placement
-- no clipping during idle/touch/talk animations
+- spontaneous animations not colliding with talk/eat/sleep
+- wardrobe alignment while spontaneous animation runs
+- event discounts
+- memory usage after 10+ minutes

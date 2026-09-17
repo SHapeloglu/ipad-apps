@@ -11,6 +11,8 @@
 #import "GameMenuViewController.h"
 #import "PhotoAlbumViewController.h"
 #import "TravelViewController.h"
+#import "LivingPetManager.h"
+#import "WeeklyEventViewController.h"
 #import "AchievementsViewController.h"
 #import "AchievementManager.h"
 #import "SoundManager.h"
@@ -34,6 +36,8 @@
     _petView=[[PetCharacterView alloc] initWithFrame:CGRectMake(185,205,400,610)];
     [_roomView addSubview:_petView];
     [_petView startIdle];
+    _livingPet=[[LivingPetManager alloc] initWithPet:_petView];
+    [_livingPet start];
 
     [self buildStatus];
     [self buildTopActions];
@@ -114,6 +118,7 @@
     [self button:@"Albüm" frame:CGRectMake(570,195,80,42) selector:@selector(openAlbum)];
     [self button:@"Seyahat" frame:CGRectMake(655,195,80,42) selector:@selector(openTravel)];
     [self button:@"Görevler" frame:CGRectMake(570,242,165,42) selector:@selector(openAchievements)];
+    [self button:@"Etkinlik" frame:CGRectMake(570,289,165,42) selector:@selector(openWeeklyEvent)];
 }
 
 - (void)buildBottomMenu {
@@ -193,6 +198,11 @@
     PhotoAlbumViewController *v=[[[PhotoAlbumViewController alloc] init] autorelease];
     [self presentModalViewController:v animated:YES];
 }
+- (void)openWeeklyEvent {
+    WeeklyEventViewController *v=[[[WeeklyEventViewController alloc] init] autorelease];
+    [self presentModalViewController:v animated:YES];
+}
+
 - (void)openAchievements {
     AchievementsViewController *v=[[[AchievementsViewController alloc] init] autorelease];
     [self presentModalViewController:v animated:YES];
@@ -280,6 +290,7 @@
     [NSObject cancelPreviousPerformRequestsWithTarget:self];
     [[NSNotificationCenter defaultCenter] removeObserver:self];
     [_decayTimer invalidate]; [_decayTimer release];
+    [_livingPet stop]; [_livingPet release];
     [_petView stop]; [_petView release];
     [_audio stopAll]; [_audio release];
     [_needs release]; [_progress release];

@@ -1,8 +1,8 @@
 Package: com.olapteknoloji.ipad1talkingpet
 Name: iPad1TalkingPet
-Version: 0.8.0
+Version: 0.9.0
 Architecture: iphoneos-arm
-Description: Lightweight offline talking virtual pet for iPad 1 / iOS 5.1.1
+Description: Lightweight offline living talking pet for iPad 1 / iOS 5.1.1
 Maintainer: Olap Teknoloji
 Author: Olap Teknoloji
 Section: Games
