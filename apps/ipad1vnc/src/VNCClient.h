@@ -28,11 +28,16 @@ typedef enum {
     NSLock *_writeLock;
     VNCQualityProfile _qualityProfile;
     NSUInteger _serverBytesPerPixel;
+    BOOL _adaptiveQualityEnabled;
+    NSUInteger _slowFrames;
+    NSUInteger _fastFrames;
+    NSTimeInterval _lastQualityChange;
 }
 @property (nonatomic, assign) id<VNCClientDelegate> delegate;
 @property (nonatomic, readonly) NSUInteger framebufferWidth;
 @property (nonatomic, readonly) NSUInteger framebufferHeight;
 @property (nonatomic, assign) VNCQualityProfile qualityProfile;
+@property (nonatomic, assign) BOOL adaptiveQualityEnabled;
 - (id)initWithHost:(NSString *)host port:(NSInteger)port password:(NSString *)password;
 - (void)connect;
 - (void)disconnect;

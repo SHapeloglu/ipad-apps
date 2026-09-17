@@ -2,7 +2,7 @@
 @class VNCClient;
 @class VNCView;
 
-@interface AppDelegate : NSObject <UIApplicationDelegate, UITextFieldDelegate, UIWebViewDelegate> {
+@interface AppDelegate : NSObject <UIApplicationDelegate, UITextFieldDelegate, UITableViewDelegate, UITableViewDataSource, UIActionSheetDelegate, UIAlertViewDelegate> {
     UIWindow *_window;
     UIViewController *_controller;
     UIView *_connectionPanel;
@@ -13,7 +13,9 @@
     UILabel *_speedLabel;
     UISlider *_speedSlider;
     UISegmentedControl *_qualityControl;
+    UISegmentedControl *_inputModeControl;
     UIButton *_connectButton;
+    UIButton *_profilesButton;
     UIButton *_keyboardButton;
     UIButton *_filesButton;
     UIButton *_settingsButton;
@@ -31,11 +33,18 @@
     BOOL _controlsCollapsed;
     BOOL _fullScreen;
     BOOL _shouldAutoReconnect;
+    BOOL _savingProfilePrompt;
+    NSMutableArray *_profiles;
 
     UIView *_filesPanel;
     UITextField *_downloadURLField;
-    UIWebView *_remoteFilesWebView;
+    UITableView *_remoteFilesTable;
     UIButton *_browseFilesButton;
+    UIButton *_filesUpButton;
+    NSMutableArray *_remoteEntries;
+    NSURL *_remoteBaseURL;
+    NSURLConnection *_browseConnection;
+    NSMutableData *_browseData;
     UILabel *_downloadStatusLabel;
     UIProgressView *_downloadProgress;
     UITextView *_fileListView;

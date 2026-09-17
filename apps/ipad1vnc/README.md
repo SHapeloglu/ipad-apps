@@ -1,109 +1,45 @@
-# iPad1VNC 1.0
+# iPad1VNC v1.1.0
 
-A deliberately lightweight VNC thin-client for the first-generation iPad (armv7 / iOS 5.1.1) and a Linux desktop such as Ubuntu 24.04 + XFCE + TigerVNC.
+Legacy VNC thin-client for first-generation iPad / iOS 5.1.1.
 
-## 1.0 feature set
-
-- RFB/VNC 3.8 client with classic VNC password authentication
-- RAW framebuffer encoding for broad legacy compatibility
-- Fast (8-bit), Balanced (16-bit RGB565), and Quality (32-bit) display profiles
-- Direct touch pointer control and pointer-speed adjustment
-- Long-press right-click
-- Pinch zoom
-- Two-finger wheel scrolling
-- Portrait / landscape rotation
-- Full-screen mode with Menu button
-- Automatic reconnect after disconnect
-- On-screen keyboard input
-- Legacy-friendly special-key bar: Esc, Ctrl, Alt, Tab, arrows, Copy, Paste
-- Bidirectional text clipboard synchronization through VNC ClientCutText / ServerCutText
-- Streaming HTTP/HTTPS URL downloads without buffering the whole file in RAM
-- Downloaded-file list and collision-safe filenames
-- Connection settings remembered between launches
-
-## Download location
-
-The app first tries:
-
-`/var/mobile/Documents/iPad1VNC/`
-
-If that location is not writable it falls back to a temporary application directory.
-
-For modern HTTPS sites, iOS 5's old TLS/CA stack can prevent a download even when the URL works on newer devices. Plain HTTP or a compatible server can be used for trusted/private transfers.
+## v1.1.0 additions
+- **Direct / Trackpad mode**
+  - Direct: touch maps to the remote screen.
+  - Trackpad: the iPad surface behaves like a laptop touchpad; tap clicks and movement is relative.
+- **Auto quality**
+  - Quality selector is now `Auto / Fast / Balanced / Quality`.
+  - Auto starts at Balanced and can move down/up based on decode time.
+- **Hextile VNC encoding**
+  - Requests Hextile first and falls back to RAW.
+  - Reduces network traffic and CPU spent moving large RAW frames.
+- **Connection profiles**
+  - Save several host/port/password/quality/input/speed profiles.
+  - Load them from the Profiles button.
+- **Native remote Files browser**
+  - Compatible with `python3 -m http.server 8085`.
+  - Folder navigation, Up, tap-to-download.
+- Existing features preserved: rotation, fullscreen, reconnect, clipboard sync, Backspace, special keys, pinch zoom, two-finger scroll, pointer speed.
 
 ## Build
-
-The project is designed for the Theos setup already validated with this device:
-
-```make
-ARCHS = armv7
-TARGET = iphone:clang:6.1:5.1
-```
-
-Required working SDK path:
-
-`$THEOS/sdks/iPhoneOS6.1.sdk`
-
-Build:
-
 ```bash
-cd iPad1VNC
+cd ~/projects/ipad1vnc/iPad1VNC-v1.1.0
 make clean
 make package FINALPACKAGE=1
 ```
 
 Expected package:
+`packages/com.olap.ipad1vnc_1.1.0_iphoneos-arm.deb`
 
-`packages/com.olap.ipad1vnc_1.0.0_iphoneos-arm.deb`
-
-Copy to the iPad, then on the iPad as root:
-
+## Server
+VNC:
 ```bash
-dpkg -i /var/mobile/com.olap.ipad1vnc_1.0.0_iphoneos-arm.deb
-killall SpringBoard
-```
-
-## Ubuntu / TigerVNC
-
-Install:
-
-```bash
-sudo apt update
-sudo apt install -y tigervnc-standalone-server tigervnc-tools dbus-x11 xfce4
-vncpasswd
-mkdir -p ~/.vnc
-```
-
-`~/.vnc/xstartup`:
-
-```sh
-#!/bin/sh
-unset SESSION_MANAGER
-unset DBUS_SESSION_BUS_ADDRESS
-exec dbus-launch --exit-with-session startxfce4
-```
-
-Then:
-
-```bash
-chmod +x ~/.vnc/xstartup
 vncserver :1 -geometry 1024x768 -depth 24 -localhost no
 ```
 
-Display `:1` normally listens on TCP `5901`.
+Files:
+```bash
+python3 -m http.server 8085 --bind 0.0.0.0 --directory /home/desktop/Downloads
+```
 
-## Security
-
-Do not leave TCP 5901 open to the entire internet. Restrict it at the Contabo firewall to trusted source IP addresses, or place VNC behind a private network/VPN/SSH tunnel. Classic VNC authentication does not provide modern end-to-end transport security.
-
-## Scope
-
-The 1.0 build intentionally avoids heavyweight dependencies such as libssh2 and modern video codecs. That keeps the app realistic for 256 MB RAM and iOS 5.1.1. Native SSH tunnelling, SFTP browsing, audio streaming, and H.264-style remote-display codecs are candidates for a separate advanced branch rather than the legacy core.
-
-
-## v1.0.1 fixes
-- Backspace now has a dedicated `⌫` toolbar key.
-- iOS 5 on-screen keyboard deletion uses a sentinel character so Backspace keeps generating key events.
-- `Files` is now a remote browser instead of requiring a full file URL.
-- Enter a base address such as `http://95.111.242.96:8085/`, tap **Browse**, navigate folders, and tap a file to download it.
-- The file server address is remembered.
+## Deliberately not bundled yet
+SSH tunneling and a native SSH terminal are **not** faked in this release. A secure implementation needs a maintained SSH crypto/library layer (for example libssh2) compiled for armv7/iOS 5 and should be tested separately before opening it to production credentials.
