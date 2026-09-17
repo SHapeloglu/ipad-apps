@@ -33,7 +33,7 @@ class H(BaseHTTPRequestHandler):
                 if not p.is_dir():return self.json(404,{"error":"not directory"})
                 out=[]
                 for x in sorted(p.iterdir(),key=lambda z:(not z.is_dir(),z.name.lower())):
-                    out.append({"name":x.name,"dir":x.is_dir(),"size":(x.stat().st_size if x.is_file() else 0)})
+                    st=x.stat();out.append({"name":x.name,"dir":x.is_dir(),"size":(st.st_size if x.is_file() else 0),"mtime":int(st.st_mtime)})
                 return self.json(200,{"path":str(p.relative_to(ROOT)) if p!=ROOT else "","entries":out})
             return self.json(404,{"error":"not found"})
         if u.path=="/download":
@@ -58,6 +58,13 @@ class H(BaseHTTPRequestHandler):
                 d=json.loads(self.readbody() or b"{}");safe_path(d["from"]).rename(safe_path(d["to"]));return self.json(200,{"ok":True})
             if u.path=="/api/delete":
                 d=json.loads(self.readbody() or b"{}");p=safe_path(d["path"]);shutil.rmtree(p) if p.is_dir() else p.unlink();return self.json(200,{"ok":True})
+            if u.path=="/api/upload-chunk":
+                q=urllib.parse.parse_qs(u.query);p=safe_path(q.get("path",[""])[0]);offset=int(q.get("offset",["0"])[0]);total=int(q.get("total",["0"])[0]);p.parent.mkdir(parents=True,exist_ok=True)
+                mode="r+b" if p.exists() else "wb"
+                with p.open(mode) as f:
+                    f.seek(offset);data=self.readbody();f.write(data)
+                size=p.stat().st_size
+                return self.json(200,{"ok":True,"size":size,"total":total,"complete":bool(total and size>=total)})
             if u.path=="/api/upload":
                 q=urllib.parse.parse_qs(u.query);p=safe_path(q.get("path",[""])[0]);p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(self.readbody());return self.json(200,{"ok":True,"size":p.stat().st_size})
         except Exception as e:return self.json(400,{"error":str(e)})

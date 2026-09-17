@@ -5,7 +5,7 @@ INSTALL_TARGET_PROCESSES = SpringBoard
 include $(THEOS)/makefiles/common.mk
 
 APPLICATION_NAME = iPad1VNC
-iPad1VNC_FILES = src/main.m src/AppDelegate.m src/VNCClient.m src/VNCView.m src/TerminalSession.m
+iPad1VNC_FILES = src/main.m src/AppDelegate.m src/VNCClient.m src/VNCView.m src/TerminalSession.m src/LegacyTerminalBuffer.m src/KeychainStore.m
 iPad1VNC_FRAMEWORKS = UIKit Foundation CoreGraphics Security
 iPad1VNC_CFLAGS = -fno-objc-arc -Wall -Wextra -Wno-deprecated-declarations
 iPad1VNC_LDFLAGS = -Wl,-dead_strip -lz

@@ -1,79 +1,119 @@
-# iPad1VNC v2.0.0-beta4
+# iPad1VNC v2.1.0-rc1
 
-A feature-complete beta aimed at turning an iPad 1 / iOS 5.1.1 into a lightweight Linux thin client.
+This release candidate folds the planned "finish the fundamentals" roadmap into one branch for iPad 1 / iOS 5.1.1.
 
-## Included
-- VNC: RAW + Hextile + **experimental Tight** (copy/palette/JPEG; gradient filter intentionally falls back)
-- Auto quality + Fast/Balanced/Quality
-- Direct Touch + Trackpad
-- Connection stats: FPS, kbps, encoding, quality
-- Connection profiles + load/delete management
-- Fullscreen, reconnect, rotation, clipboard, special keys, Backspace, pinch zoom, two-finger scroll
-- SSH terminal using the jailbroken device's `/usr/bin/ssh`
-- Key-based SSH VNC tunnel
-- Native authenticated Files v2 client + Python API supporting:
-  - list/download
-  - upload
-  - rename
-  - delete
-  - new folder
-- Cleaner 1024x768 setup layout
+## What is included
 
-## Important beta constraints
-1. **SSH**
-   - `/usr/bin/ssh` must exist on the iPad (OpenSSH client).
-   - Tunnel mode intentionally requires an SSH key. Password automation is not embedded.
-2. **Tight**
-   - Tight is optional. Leave the switch OFF for Hextile if a server uses an unsupported Tight gradient filter.
-3. **Files v2**
-   - Replace plain `python3 -m http.server` with the bundled `scripts/ipad1vnc_fileserver.py`.
-   - The v2 API uses a token. The token is created in `/home/desktop/.ipad1vnc-files-token`.
-   - Upload/New Folder/Rename/Delete are wired to the authenticated API; validate them on device before exposing the API publicly.
-4. This is a jailbreak-targeted application, not an App Store build.
+### VNC / performance
+- RAW + Hextile
+- Reworked Tight decoder:
+  - four persistent zlib streams
+  - stream reset bits
+  - Copy filter
+  - Palette filter
+  - Gradient filter
+  - JPEG rectangles
+  - Fill rectangles
+- Tight uses a 24-bit true-color transport for interoperability.
+- Auto Quality 2.0 for Hextile/RAW:
+  - decode time
+  - framebuffer request/update RTT estimate
+  - hysteresis to avoid quality oscillation
+- Health HUD:
+  - RTT/latency estimate
+  - FPS
+  - kbps
+  - encoding
+  - quality
+  - uptime
+  - reconnect count
+
+### Security
+- VNC password and Files API token migrate out of NSUserDefaults into iOS Keychain.
+- Profile-specific VNC password and Files token are stored in Keychain.
+- SSH interactive sessions use `StrictHostKeyChecking=ask`.
+- SSH tunnel uses `StrictHostKeyChecking=yes`; trust the server once in Terminal before enabling the tunnel.
+- Private keys remain files under `/var/mobile/.ssh/` and are created with restrictive permissions.
+
+### Profiles 2.0
+Profiles can retain:
+- VNC host/port
+- quality/input/speed
+- SSH user/port/key/tunnel
+- Files URL
+- WOL MAC/broadcast
+- remote DISPLAY
+- auto-resolution preference
+
+Profile management includes:
+- Load
+- Duplicate
+- Delete
+- Set Default
+- Toggle Auto Connect
+
+### Terminal 2.0
+- explicit Connect / Stop
+- RSA key generation through jailbroken `/usr/bin/ssh-keygen`
+- 5,000-line bounded scrollback
+- lightweight VT100/ANSI screen interpretation
+- terminal toolbar: Esc, Ctrl-C, Tab, Home, End, PgUp/PgDn and arrows
+
+This is intentionally a small VT100-like compatibility layer, not a full modern xterm implementation.
+
+### Files 2.1
+Authenticated API:
+- list
+- download
+- new folder
+- rename
+- delete
+- file size + modified timestamp from server
+- chunked 64 KB upload so large files are not loaded fully into the iPad's 256 MB RAM
+- upload progress and cancel state
+
+### Tools
+- Wake-on-LAN
+- Match remote XFCE/VNC framebuffer to current iPad orientation using SSH + `xrandr --fb`
+- optional auto-resolution on orientation changes
+- connection diagnostics panel
+
+## Important rollout order
+
+1. Build/install rc1.
+2. Leave Tight OFF and verify the existing Hextile path.
+3. Verify Keychain migration did not lose the VNC password/Files token.
+4. Test Terminal and accept the SSH host fingerprint.
+5. Test SSH tunnel; only after that close public VNC port 5901.
+6. Upgrade the server Files API with the included Python script before testing chunked upload.
+7. Test Tight separately. If TigerVNC still sends a Tight variant not handled correctly, switch Tight OFF and keep Hextile as the safe fallback.
+8. Test Dynamic Resolution manually before enabling Auto Resolution.
 
 ## Build
+
 ```bash
-cd ~/projects/ipad1vnc/iPad1VNC-v2.0.0-beta
+cd ~/projects/ipad1vnc/iPad1VNC-v2.1.0-rc1
 make clean
 make package FINALPACKAGE=1
 ```
 
-Expected package:
-`packages/com.olap.ipad1vnc_2.0.0-beta1_iphoneos-arm.deb`
+Expected:
+`packages/com.olap.ipad1vnc_2.1.0-rc1_iphoneos-arm.deb`
 
-## Server: install Files v2 API
+## Server Files API upgrade
+
+Copy:
+`./scripts/ipad1vnc_fileserver.py`
+
+to:
+`/opt/ipad1vnc/ipad1vnc_fileserver.py`
+
+then:
+
 ```bash
-sudo mkdir -p /opt/ipad1vnc
-sudo cp scripts/ipad1vnc_fileserver.py /opt/ipad1vnc/
 sudo chmod 755 /opt/ipad1vnc/ipad1vnc_fileserver.py
-sudo cp scripts/ipad1vnc-fileserver.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable --now ipad1vnc-fileserver
-sudo cat /home/desktop/.ipad1vnc-files-token
+sudo systemctl restart ipad1vnc-fileserver
+sudo systemctl status ipad1vnc-fileserver --no-pager
 ```
 
-Do not expose port 8085 broadly until the app token field is tested. SSH tunneling is the preferred final security model for VNC.
-
-
-## beta2 compile fix
-- Closes the private `AppDelegate` class extension before the first method body.
-- Adds the missing `@implementation AppDelegate` and `@synthesize window = _window`.
-- Moves stray method prototypes (`keyboardTapped`, `filesTapped`, Files helpers) back into the private interface.
-- Fixes beta1's `expected ';' after method prototype` errors.
-- No v2 feature was removed.
-
-
-## beta3 compile fixes
-- Removed duplicate `settingsTapped`.
-- Removed unused `manageProfilesTapped` declaration.
-- Restored missing `startDownloadFromURL:` implementation.
-- Restored missing `refreshFileList` implementation.
-- Added private declarations for Files/download helper methods so the iOS 5 compiler does not treat them as unknown selectors.
-- No v2 feature was removed.
-
-
-## beta4 connection fix
-- Fixes a regression where beta3 advertised experimental Tight encoding even when the Tight switch was OFF.
-- With Tight OFF, the client now advertises only Hextile + RAW + DesktopSize.
-- Tight is advertised only when explicitly enabled.
-- This restores the stable v1.1.x Hextile connection path by default.
+The existing token file remains valid.

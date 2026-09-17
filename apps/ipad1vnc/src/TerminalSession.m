@@ -86,8 +86,14 @@
     [a addObject:@"-tt"]; [a addObject:@"-p"]; [a addObject:[NSString stringWithFormat:@"%ld",(long)port]];
     [a addObject:@"-o"]; [a addObject:@"ServerAliveInterval=30"];
     [a addObject:@"-o"]; [a addObject:@"ServerAliveCountMax=3"];
+    [a addObject:@"-o"]; [a addObject:@"StrictHostKeyChecking=ask"];
+    [a addObject:@"-o"]; [a addObject:@"UserKnownHostsFile=/var/mobile/.ssh/known_hosts"];
     if([keyPath length]){[a addObject:@"-i"];[a addObject:keyPath];}
-    NSString *target=([user length]?[NSString stringWithFormat:@"%@@%@",user,host]:host);
+    if(![user length]){
+        [self deliver:@"ERROR: SSH username is required.\n"];
+        return NO;
+    }
+    NSString *target=[NSString stringWithFormat:@"%@@%@",user,host];
     [a addObject:target];
     if([command length])[a addObject:command];
     return [self spawnSSHArguments:a];
@@ -98,12 +104,24 @@
         [self deliver:@"SSH tunnel requires a key file in this beta (password automation is intentionally disabled).\n"];
         return NO;
     }
+    if(![user length]){
+        [self deliver:@"SSH tunnel requires an SSH username.\n"];
+        return NO;
+    }
     NSMutableArray *a=[NSMutableArray arrayWithObjects:@"-N",@"-p",[NSString stringWithFormat:@"%ld",(long)sshPort],
                        @"-o",@"ExitOnForwardFailure=yes",@"-o",@"ServerAliveInterval=30",@"-o",@"ServerAliveCountMax=3",
+                       @"-o",@"StrictHostKeyChecking=yes",@"-o",@"UserKnownHostsFile=/var/mobile/.ssh/known_hosts",
                        @"-i",keyPath,
                        @"-L",[NSString stringWithFormat:@"%ld:%@:%ld",(long)localPort,remoteHost,(long)remotePort],
                        ([user length]?[NSString stringWithFormat:@"%@@%@",user,host]:host),nil];
     return [self spawnSSHArguments:a];
+}
+- (BOOL)generateRSAKeyAtPath:(NSString*)path {
+    if(![path length]||![[NSFileManager defaultManager] isExecutableFileAtPath:@"/usr/bin/ssh-keygen"])return NO;
+    NSString *dir=[path stringByDeletingLastPathComponent];
+    [[NSFileManager defaultManager] createDirectoryAtPath:dir withIntermediateDirectories:YES attributes:[NSDictionary dictionaryWithObject:[NSNumber numberWithUnsignedLong:0700] forKey:NSFilePosixPermissions] error:nil];
+    pid_t p=fork();if(p<0)return NO;if(p==0){execl("/usr/bin/ssh-keygen","ssh-keygen","-t","rsa","-b","2048","-N","","-f",[path UTF8String],(char*)NULL);_exit(127);}
+    int status=0;waitpid(p,&status,0);if(WIFEXITED(status)&&WEXITSTATUS(status)==0){chmod([path fileSystemRepresentation],0600);return YES;}return NO;
 }
 - (void)sendText:(NSString*)text { if(!_running||_masterFD<0||![text length])return;NSData*d=[text dataUsingEncoding:NSUTF8StringEncoding allowLossyConversion:YES];write(_masterFD,[d bytes],[d length]);}
 - (void)stop {

@@ -1,5 +1,6 @@
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
+#import <zlib.h>
 
 typedef enum {
     VNCQualityFast = 0,
@@ -13,7 +14,7 @@ typedef enum {
 - (void)vncClientDisconnected:(NSString *)reason;
 @optional
 - (void)vncClientClipboardText:(NSString *)text;
-- (void)vncClientStatsFPS:(CGFloat)fps kbps:(CGFloat)kbps encoding:(NSString *)encoding quality:(NSString *)quality;
+- (void)vncClientStatsFPS:(CGFloat)fps kbps:(CGFloat)kbps latency:(CGFloat)latency encoding:(NSString *)encoding quality:(NSString *)quality uptime:(NSTimeInterval)uptime;
 @end
 
 @interface VNCClient : NSObject {
@@ -23,28 +24,31 @@ typedef enum {
     id<VNCClientDelegate> _delegate;
     int _sock;
     BOOL _running;
-    NSUInteger _fbWidth;
-    NSUInteger _fbHeight;
+    NSUInteger _fbWidth,_fbHeight;
     NSMutableData *_framebuffer;
     NSLock *_writeLock;
     VNCQualityProfile _qualityProfile;
     NSUInteger _serverBytesPerPixel;
     BOOL _adaptiveQualityEnabled;
-    NSUInteger _slowFrames;
-    NSUInteger _fastFrames;
-    NSTimeInterval _lastQualityChange;
     BOOL _preferTight;
-    NSTimeInterval _statsStart;
+    NSUInteger _slowFrames,_fastFrames;
+    NSTimeInterval _lastQualityChange;
+
+    NSTimeInterval _statsStart,_connectedAt,_lastUpdateRequestAt;
     NSUInteger _statsFrames;
     unsigned long long _statsBytes;
+    CGFloat _latencyEMA;
     NSString *_lastEncoding;
+
+    z_stream _tightZ[4];
+    BOOL _tightZInit[4];
 }
-@property (nonatomic, assign) id<VNCClientDelegate> delegate;
-@property (nonatomic, readonly) NSUInteger framebufferWidth;
-@property (nonatomic, readonly) NSUInteger framebufferHeight;
-@property (nonatomic, assign) VNCQualityProfile qualityProfile;
-@property (nonatomic, assign) BOOL adaptiveQualityEnabled;
-@property (nonatomic, assign) BOOL preferTight;
+@property(nonatomic,assign) id<VNCClientDelegate> delegate;
+@property(nonatomic,readonly) NSUInteger framebufferWidth;
+@property(nonatomic,readonly) NSUInteger framebufferHeight;
+@property(nonatomic,assign) VNCQualityProfile qualityProfile;
+@property(nonatomic,assign) BOOL adaptiveQualityEnabled;
+@property(nonatomic,assign) BOOL preferTight;
 - (id)initWithHost:(NSString *)host port:(NSInteger)port password:(NSString *)password;
 - (void)connect;
 - (void)disconnect;

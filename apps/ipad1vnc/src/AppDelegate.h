@@ -2,6 +2,7 @@
 @class VNCClient;
 @class VNCView;
 @class TerminalSession;
+@class LegacyTerminalBuffer;
 
 @interface AppDelegate : NSObject <UIApplicationDelegate, UITextFieldDelegate, UITableViewDelegate, UITableViewDataSource, UIActionSheetDelegate, UIAlertViewDelegate> {
     UIWindow *_window;
@@ -22,6 +23,15 @@
     UIButton *_settingsButton;
     UIButton *_terminalButton;
     UILabel *_statsLabel;
+    UIButton *_toolsButton;
+    UIView *_toolsPanel;
+    UITextField *_wolMACField;
+    UITextField *_broadcastField;
+    UITextField *_remoteDisplayField;
+    UISwitch *_autoResolutionSwitch;
+    UIButton *_matchResolutionButton;
+    UILabel *_diagnosticsLabel;
+    NSUInteger _reconnectCount;
     UISwitch *_tightSwitch;
     UIButton *_fullScreenButton;
     UIButton *_exitFullScreenButton;
@@ -68,6 +78,8 @@
     UITextField *_sshKeyField;
     UISwitch *_sshTunnelSwitch;
     TerminalSession *_terminalSession;
+    LegacyTerminalBuffer *_terminalBuffer;
+    UIView *_terminalKeyBar;
     TerminalSession *_tunnelSession;
     NSInteger _tunnelLocalPort;
 
@@ -75,6 +87,7 @@
     UITextField *_filesTokenField;
     NSString *_remoteRelativePath;
     NSInteger _selectedRemoteIndex;
+    BOOL _uploading;
 }
 @property (nonatomic, retain) UIWindow *window;
 @end

@@ -2,6 +2,10 @@
 #import "VNCClient.h"
 #import "VNCView.h"
 #import "TerminalSession.h"
+#import "LegacyTerminalBuffer.h"
+#import "KeychainStore.h"
+#import <arpa/inet.h>
+#import <sys/socket.h>
 
 @interface RotationViewController : UIViewController
 @end
@@ -17,20 +21,26 @@
 - (void)terminalTapped;
 - (void)closeTerminalTapped;
 - (void)terminalSendTapped;
+- (void)terminalConnectTapped;
+- (void)terminalDisconnectTapped;
+- (void)terminalSpecialKeyTapped:(UIButton*)sender;
+- (void)generateSSHKeyTapped;
 - (void)buildTerminalPanel;
 - (void)tightChanged;
+- (void)profilesTapped;
 - (void)deleteProfileAtIndex:(NSInteger)index;
 - (void)renameRemoteEntry:(NSDictionary *)entry;
 - (void)deleteRemoteEntry:(NSDictionary *)entry;
 - (void)mkdirRemote;
 - (void)uploadLocalFile;
+- (void)streamUploadInfo:(NSDictionary*)info;
+- (void)uploadProgressMain:(NSNumber*)n;
+- (void)uploadFinishedMain:(NSString*)s;
 - (void)performFileAPIPath:(NSString *)path method:(NSString *)method body:(NSData *)body contentType:(NSString *)contentType;
-
 - (void)keyboardTapped;
 - (void)filesTapped;
 - (NSString*)remotePathForEntry:(NSDictionary*)e;
 - (NSURL*)downloadURLForEntry:(NSDictionary*)e;
-
 - (void)startDownloadFromURL:(NSURL *)url;
 - (void)refreshFileList;
 - (NSString *)downloadsDirectory;
@@ -43,15 +53,25 @@
 - (void)filesUpTapped;
 - (void)saveConnectionSettings;
 - (void)setControlsCollapsed:(BOOL)collapsed animated:(BOOL)animated;
+- (void)toolsTapped;
+- (void)closeToolsTapped;
+- (void)wakeTapped;
+- (void)matchResolutionTapped;
+- (void)orientationChanged:(NSNotification*)note;
+- (BOOL)sendWakePacketMAC:(NSString*)mac broadcast:(NSString*)broadcast;
+- (NSString*)currentProfileID;
+- (void)migrateSecretsToKeychain;
 @end
 
 @implementation AppDelegate
 @synthesize window = _window;
 
 
-- (void)tightChanged { [self saveConnectionSettings]; _statusLabel.text=@"Tight preference saved — reconnect to apply"; }
-- (void)vncClientStatsFPS:(CGFloat)fps kbps:(CGFloat)kbps encoding:(NSString*)encoding quality:(NSString*)quality {
-    _statsLabel.text=[NSString stringWithFormat:@"%.1f FPS | %.0f kbps | %@ | %@",fps,kbps,encoding,quality];
+- (void)tightChanged { [self saveConnectionSettings]; _statusLabel.text=(_tightSwitch.on?@"Tight ON: 24-bit transport; reconnect":@"Hextile/RAW mode; reconnect"); }
+- (void)vncClientStatsFPS:(CGFloat)fps kbps:(CGFloat)kbps latency:(CGFloat)latency encoding:(NSString*)encoding quality:(NSString*)quality uptime:(NSTimeInterval)uptime {
+    NSInteger sec=(NSInteger)uptime;NSInteger hh=sec/3600,mm=(sec%3600)/60;
+    _statsLabel.text=[NSString stringWithFormat:@"%.0fms | %.1f FPS | %.0f kbps | %@",latency,fps,kbps,encoding];
+    if(_diagnosticsLabel)_diagnosticsLabel.text=[NSString stringWithFormat:@"Latency %.0f ms\nFPS %.1f\nTraffic %.0f kbps\nEncoding %@\nQuality %@\nUptime %02ld:%02ld\nReconnects %lu",latency,fps,kbps,encoding,quality,(long)hh,(long)mm,(unsigned long)_reconnectCount];
 }
 
 - (void)buildTerminalPanel {
@@ -60,7 +80,9 @@
     _terminalPanel=[[UIView alloc] initWithFrame:CGRectMake((w-pw)/2,(h-ph)/2,pw,ph)];
     _terminalPanel.autoresizingMask=(UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight);_terminalPanel.backgroundColor=[UIColor colorWithWhite:0.06 alpha:0.98];_terminalPanel.hidden=YES;
     UILabel *title=[[[UILabel alloc] initWithFrame:CGRectMake(14,8,180,30)] autorelease];title.backgroundColor=[UIColor clearColor];title.textColor=[UIColor whiteColor];title.text=@"SSH Terminal";title.font=[UIFont boldSystemFontOfSize:16];[_terminalPanel addSubview:title];
-    UIButton *close=[UIButton buttonWithType:UIButtonTypeRoundedRect];close.frame=CGRectMake(pw-90,6,76,32);[close setTitle:@"Close" forState:UIControlStateNormal];[close addTarget:self action:@selector(closeTerminalTapped) forControlEvents:UIControlEventTouchUpInside];[_terminalPanel addSubview:close];
+    UIButton *connectSSH=[UIButton buttonWithType:UIButtonTypeRoundedRect];connectSSH.frame=CGRectMake(pw-270,6,80,32);[connectSSH setTitle:@"Connect" forState:UIControlStateNormal];[connectSSH addTarget:self action:@selector(terminalConnectTapped) forControlEvents:UIControlEventTouchUpInside];[_terminalPanel addSubview:connectSSH];
+    UIButton *disconnectSSH=[UIButton buttonWithType:UIButtonTypeRoundedRect];disconnectSSH.frame=CGRectMake(pw-185,6,80,32);[disconnectSSH setTitle:@"Stop" forState:UIControlStateNormal];[disconnectSSH addTarget:self action:@selector(terminalDisconnectTapped) forControlEvents:UIControlEventTouchUpInside];[_terminalPanel addSubview:disconnectSSH];
+    UIButton *close=[UIButton buttonWithType:UIButtonTypeRoundedRect];close.frame=CGRectMake(pw-100,6,86,32);[close setTitle:@"Close" forState:UIControlStateNormal];[close addTarget:self action:@selector(closeTerminalTapped) forControlEvents:UIControlEventTouchUpInside];[_terminalPanel addSubview:close];
 
     _sshUserField=[[UITextField alloc] initWithFrame:CGRectMake(14,44,120,34)];_sshUserField.borderStyle=UITextBorderStyleRoundedRect;_sshUserField.placeholder=@"SSH user";_sshUserField.text=[[NSUserDefaults standardUserDefaults] stringForKey:@"sshUser"];[_terminalPanel addSubview:_sshUserField];
     _sshPortField=[[UITextField alloc] initWithFrame:CGRectMake(140,44,70,34)];_sshPortField.borderStyle=UITextBorderStyleRoundedRect;_sshPortField.keyboardType=UIKeyboardTypeNumberPad;_sshPortField.placeholder=@"22";NSString*sp=[[NSUserDefaults standardUserDefaults]stringForKey:@"sshPort"];_sshPortField.text=([sp length]?sp:@"22");[_terminalPanel addSubview:_sshPortField];
@@ -69,78 +91,118 @@
     _sshTunnelSwitch=[[UISwitch alloc]initWithFrame:CGRectMake(pw-105,44,90,30)];_sshTunnelSwitch.on=[[NSUserDefaults standardUserDefaults] boolForKey:@"sshTunnel"];[_terminalPanel addSubview:_sshTunnelSwitch];
 
     _terminalView=[[UITextView alloc] initWithFrame:CGRectMake(14,84,pw-28,ph-150)];_terminalView.backgroundColor=[UIColor blackColor];_terminalView.textColor=[UIColor whiteColor];_terminalView.font=[UIFont fontWithName:@"Courier" size:13];_terminalView.editable=NO;[_terminalPanel addSubview:_terminalView];
+    UIButton *gen=[UIButton buttonWithType:UIButtonTypeRoundedRect];gen.frame=CGRectMake(pw-365,6,90,32);[gen setTitle:@"Gen Key" forState:UIControlStateNormal];[gen addTarget:self action:@selector(generateSSHKeyTapped) forControlEvents:UIControlEventTouchUpInside];[_terminalPanel addSubview:gen];
+
+    _terminalKeyBar=[[UIView alloc] initWithFrame:CGRectMake(14,ph-100,pw-28,34)];
+    NSArray *kt=[NSArray arrayWithObjects:@"Esc",@"Ctrl-C",@"Tab",@"Home",@"End",@"PgUp",@"PgDn",@"←",@"↑",@"↓",@"→",nil];
+    CGFloat kbw=(pw-28)/(CGFloat)[kt count];
+    for(NSUInteger i=0;i<[kt count];i++){UIButton*b=[UIButton buttonWithType:UIButtonTypeRoundedRect];b.frame=CGRectMake(i*kbw,0,kbw-2,32);b.tag=600+i;[b setTitle:[kt objectAtIndex:i] forState:UIControlStateNormal];[b addTarget:self action:@selector(terminalSpecialKeyTapped:) forControlEvents:UIControlEventTouchUpInside];[_terminalKeyBar addSubview:b];}
+    [_terminalPanel addSubview:_terminalKeyBar];
+    _terminalView.frame=CGRectMake(14,84,pw-28,ph-190);
+
     _terminalInput=[[UITextField alloc] initWithFrame:CGRectMake(14,ph-58,pw-110,40)];_terminalInput.borderStyle=UITextBorderStyleRoundedRect;_terminalInput.placeholder=@"Command…";_terminalInput.delegate=self;[_terminalPanel addSubview:_terminalInput];
     UIButton *send=[UIButton buttonWithType:UIButtonTypeRoundedRect];send.frame=CGRectMake(pw-90,ph-58,76,40);[send setTitle:@"Send" forState:UIControlStateNormal];[send addTarget:self action:@selector(terminalSendTapped) forControlEvents:UIControlEventTouchUpInside];[_terminalPanel addSubview:send];
     [_controller.view addSubview:_terminalPanel];
 }
+- (void)terminalSpecialKeyTapped:(UIButton*)sender {
+    NSArray *s=[NSArray arrayWithObjects:@"\033",@"\003",@"\t",@"\033[H",@"\033[F",@"\033[5~",@"\033[6~",@"\033[D",@"\033[A",@"\033[B",@"\033[C",nil];
+    NSInteger i=sender.tag-600;if(i>=0&&i<(NSInteger)[s count])[_terminalSession sendText:[s objectAtIndex:i]];
+}
+- (void)generateSSHKeyTapped {
+    NSString *path=[_sshKeyField.text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    if(![path length]){path=@"/var/mobile/.ssh/ipad1vnc_rsa";_sshKeyField.text=path;}
+    if(!_terminalSession)_terminalSession=[[TerminalSession alloc]init];
+    BOOL ok=[_terminalSession generateRSAKeyAtPath:path];
+    _terminalView.text=[_terminalView.text stringByAppendingString:(ok?@"\n[SSH RSA key generated]\n":@"\n[ssh-keygen failed]\n")];
+}
 - (void)terminalTapped {
-    [self buildTerminalPanel];_terminalPanel.hidden=NO;[_controller.view bringSubviewToFront:_terminalPanel];
-    if(!_terminalSession)_terminalSession=[[TerminalSession alloc] init];_terminalSession.delegate=self;
-    if(!_terminalSession.running && [_hostField.text length]){
-        NSInteger port=[_sshPortField.text integerValue];if(port<=0)port=22;
-        [[NSUserDefaults standardUserDefaults] setObject:_sshUserField.text forKey:@"sshUser"];
-        [[NSUserDefaults standardUserDefaults] setObject:_sshPortField.text forKey:@"sshPort"];
-        [[NSUserDefaults standardUserDefaults] setObject:_sshKeyField.text forKey:@"sshKey"];
-        [[NSUserDefaults standardUserDefaults] setBool:_sshTunnelSwitch.on forKey:@"sshTunnel"];
-        [[NSUserDefaults standardUserDefaults] synchronize];
-        [_terminalSession startSSHHost:_hostField.text port:port user:_sshUserField.text keyPath:_sshKeyField.text command:nil];
+    [self buildTerminalPanel];
+    _terminalPanel.hidden=NO;
+    [_controller.view bringSubviewToFront:_terminalPanel];
+    if(!_terminalSession){_terminalSession=[[TerminalSession alloc] init];_terminalSession.delegate=self;}
+    if(!_terminalSession.running)_terminalView.text=[_terminalView.text stringByAppendingString:@"Enter SSH user/port/key, then tap Connect.\n"];
+}
+- (void)terminalConnectTapped {
+    if(!_terminalSession){
+        _terminalSession=[[TerminalSession alloc] init];
+        _terminalSession.delegate=self;
+    }
+    if(_terminalSession.running){
+        _terminalView.text=[_terminalView.text stringByAppendingString:@"\n[SSH already connected]\n"];
+        return;
+    }
+
+    NSString *host=[_hostField.text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    NSString *user=[_sshUserField.text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    NSString *key=[_sshKeyField.text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    NSInteger port=[_sshPortField.text integerValue]; if(port<=0)port=22;
+
+    if(![host length]){
+        _terminalView.text=[_terminalView.text stringByAppendingString:@"\n[Host is empty]\n"];
+        return;
+    }
+    if(![user length]){
+        _terminalView.text=[_terminalView.text stringByAppendingString:@"\n[SSH User is required]\n"];
+        return;
+    }
+
+    [[NSUserDefaults standardUserDefaults] setObject:user forKey:@"sshUser"];
+    [[NSUserDefaults standardUserDefaults] setObject:[NSString stringWithFormat:@"%ld",(long)port] forKey:@"sshPort"];
+    [[NSUserDefaults standardUserDefaults] setObject:(key?:@"") forKey:@"sshKey"];
+    [[NSUserDefaults standardUserDefaults] setBool:_sshTunnelSwitch.on forKey:@"sshTunnel"];
+    [[NSUserDefaults standardUserDefaults] synchronize];
+
+    _terminalView.text=[_terminalView.text stringByAppendingFormat:@"\nConnecting as %@@%@:%ld …\n",user,host,(long)port];
+    BOOL ok=[_terminalSession startSSHHost:host port:port user:user keyPath:key command:nil];
+    if(!ok){
+        _terminalView.text=[_terminalView.text stringByAppendingString:@"[Could not start SSH]\n"];
     }
 }
+- (void)terminalDisconnectTapped {
+    if(_terminalSession && _terminalSession.running)[_terminalSession stop];
+    _terminalView.text=[_terminalView.text stringByAppendingString:@"\n[SSH stopped]\n"];
+}
+
 - (void)closeTerminalTapped {_terminalPanel.hidden=YES;}
 - (void)terminalSendTapped {NSString *s=_terminalInput.text;if(![s length])return;[_terminalSession sendText:[s stringByAppendingString:@"\n"]];_terminalInput.text=@"";}
-- (void)terminalSessionOutput:(NSString*)text {if(![text length])return;_terminalView.text=[_terminalView.text stringByAppendingString:text];NSRange r=NSMakeRange([_terminalView.text length],0);[_terminalView scrollRangeToVisible:r];}
-- (void)terminalSessionEnded:(NSString*)reason {if(_terminalView)_terminalView.text=[_terminalView.text stringByAppendingFormat:@"\n[%@]\n",reason];}
-
-- (void)actionSheet:(UIActionSheet *)actionSheet clickedButtonAtIndex:(NSInteger)buttonIndex {
+- (void)terminalSessionOutput:(NSString*)text {
+    if(![text length])return;
+    if(!_terminalBuffer)_terminalBuffer=[[LegacyTerminalBuffer alloc] initWithColumns:100 rows:32];
+    [_terminalBuffer appendTerminalText:text];
+    _terminalView.text=[_terminalBuffer renderString];
+    NSRange r=NSMakeRange([_terminalView.text length],0);[_terminalView scrollRangeToVisible:r];
+}
+- (void)profilesTapped {
+    if(!_profiles){NSArray*s=[[NSUserDefaults standardUserDefaults]arrayForKey:@"profiles"];_profiles=[[NSMutableArray alloc]initWithArray:(s?s:[NSArray array])];}
+    UIActionSheet *sheet=[[[UIActionSheet alloc]initWithTitle:@"Connection Profiles" delegate:self cancelButtonTitle:nil destructiveButtonTitle:nil otherButtonTitles:nil]autorelease];
+    for(NSDictionary*p in _profiles)[sheet addButtonWithTitle:[p objectForKey:@"name"]];
+    [sheet addButtonWithTitle:@"Save Current…"];
+    [sheet addButtonWithTitle:@"Manage…"];
+    sheet.cancelButtonIndex=[sheet addButtonWithTitle:@"Cancel"];
+    [sheet showInView:_controller.view];
+}
+- (void)actionSheet:(UIActionSheet*)actionSheet clickedButtonAtIndex:(NSInteger)buttonIndex {
     if(buttonIndex<0)return;
     if(actionSheet.tag==920){
-        if(_selectedRemoteIndex<0||_selectedRemoteIndex>=(NSInteger)[_remoteEntries count])return;
-        NSDictionary *e=[_remoteEntries objectAtIndex:_selectedRemoteIndex];
-        if(buttonIndex==0){[self deleteRemoteEntry:e];return;}
-        if(buttonIndex==1){[self startDownloadFromURL:[self downloadURLForEntry:e]];return;}
-        if(buttonIndex==2){[self renameRemoteEntry:e];return;}
-        return;
+        if(_selectedRemoteIndex<0||_selectedRemoteIndex>=(NSInteger)[_remoteEntries count])return;NSDictionary*e=[_remoteEntries objectAtIndex:_selectedRemoteIndex];
+        if(buttonIndex==0){[self deleteRemoteEntry:e];return;}if(buttonIndex==1){[self startDownloadFromURL:[self downloadURLForEntry:e]];return;}if(buttonIndex==2){[self renameRemoteEntry:e];return;}return;
     }
     if(actionSheet.tag==921){
-        NSArray *files=[[NSFileManager defaultManager] contentsOfDirectoryAtPath:[self downloadsDirectory] error:nil];
-        if(buttonIndex>=0&&buttonIndex<(NSInteger)[files count]){
-            NSString *name=[files objectAtIndex:buttonIndex],*lp=[[self downloadsDirectory] stringByAppendingPathComponent:name];
-            NSData *body=[NSData dataWithContentsOfFile:lp];if(!body)return;
-            NSString *rp=([_remoteRelativePath length]?[_remoteRelativePath stringByAppendingPathComponent:name]:name);
-            NSString *esc=[rp stringByAddingPercentEscapesUsingEncoding:NSUTF8StringEncoding];
-            [self performFileAPIPath:[NSString stringWithFormat:@"/api/upload?path=%@",esc] method:@"POST" body:body contentType:@"application/octet-stream"];
-        }
-        return;
-    }
-    (void)actionSheet;
-    if(buttonIndex<(NSInteger)[_profiles count]){[self loadProfileAtIndex:buttonIndex];return;}
-    if(_profileManageMode){
-        _profileManageMode=NO;
-        if(buttonIndex<(NSInteger)[_profiles count]){
-            _selectedProfileIndex=buttonIndex;
-            UIActionSheet *m=[[[UIActionSheet alloc] initWithTitle:[[ _profiles objectAtIndex:buttonIndex] objectForKey:@"name"] delegate:self cancelButtonTitle:@"Cancel" destructiveButtonTitle:@"Delete" otherButtonTitles:@"Load",nil] autorelease];
-            m.tag=901;[m showInView:_controller.view];
-        }
-        return;
+        NSArray*files=[[NSFileManager defaultManager]contentsOfDirectoryAtPath:[self downloadsDirectory] error:nil];if(buttonIndex>=0&&buttonIndex<(NSInteger)[files count]){NSString*name=[files objectAtIndex:buttonIndex],*lp=[[self downloadsDirectory]stringByAppendingPathComponent:name];NSString*rp=([_remoteRelativePath length]?[_remoteRelativePath stringByAppendingPathComponent:name]:name);NSDictionary*info=[NSDictionary dictionaryWithObjectsAndKeys:lp,@"local",rp,@"remote",nil];[NSThread detachNewThreadSelector:@selector(streamUploadInfo:) toTarget:self withObject:info];}return;
     }
     if(actionSheet.tag==901){
         if(buttonIndex==0){[self deleteProfileAtIndex:_selectedProfileIndex];return;}
         if(buttonIndex==1){[self loadProfileAtIndex:_selectedProfileIndex];return;}
-        return;
+        if(buttonIndex==2){NSDictionary*src=[_profiles objectAtIndex:_selectedProfileIndex];[self loadProfileAtIndex:_selectedProfileIndex];[self saveProfileNamed:[NSString stringWithFormat:@"%@ Copy",[src objectForKey:@"name"]]];return;}
+        if(buttonIndex==3){NSDictionary*pr=[_profiles objectAtIndex:_selectedProfileIndex];[[NSUserDefaults standardUserDefaults]setObject:[pr objectForKey:@"id"] forKey:@"defaultProfileID"];[[NSUserDefaults standardUserDefaults]synchronize];_statusLabel.text=@"Default profile set";return;}
+        if(buttonIndex==4){NSMutableDictionary*pr=[NSMutableDictionary dictionaryWithDictionary:[_profiles objectAtIndex:_selectedProfileIndex]];BOOL v=![[pr objectForKey:@"autoConnect"]boolValue];[pr setObject:[NSNumber numberWithBool:v] forKey:@"autoConnect"];[_profiles replaceObjectAtIndex:_selectedProfileIndex withObject:pr];[[NSUserDefaults standardUserDefaults]setObject:_profiles forKey:@"profiles"];[[NSUserDefaults standardUserDefaults]synchronize];_statusLabel.text=(v?@"Auto Connect ON":@"Auto Connect OFF");return;}return;
     }
-    if(buttonIndex==(NSInteger)[_profiles count]){
-        _savingProfilePrompt=YES;
-        UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"Save Profile" message:@"Profile name" delegate:self cancelButtonTitle:@"Cancel" otherButtonTitles:@"Save",nil] autorelease];
-        a.alertViewStyle=UIAlertViewStylePlainTextInput;[[a textFieldAtIndex:0] setText:_hostField.text];[a show];
-        return;
-    }
-    if(buttonIndex==(NSInteger)[_profiles count]+1){
-        _profileManageMode=YES;
-        UIActionSheet *s=[[[UIActionSheet alloc] initWithTitle:@"Choose profile to manage" delegate:self cancelButtonTitle:nil destructiveButtonTitle:nil otherButtonTitles:nil] autorelease];
-        for(NSDictionary *p in _profiles)[s addButtonWithTitle:[p objectForKey:@"name"]];
-        s.cancelButtonIndex=[s addButtonWithTitle:@"Cancel"];[s showInView:_controller.view];
-    }
+    if(_profileManageMode){_profileManageMode=NO;if(buttonIndex<(NSInteger)[_profiles count]){_selectedProfileIndex=buttonIndex;UIActionSheet*m=[[[UIActionSheet alloc]initWithTitle:[[_profiles objectAtIndex:buttonIndex]objectForKey:@"name"] delegate:self cancelButtonTitle:@"Cancel" destructiveButtonTitle:@"Delete" otherButtonTitles:@"Load",@"Duplicate",@"Set Default",@"Toggle Auto Connect",nil]autorelease];m.tag=901;[m showInView:_controller.view];}return;}
+    if(buttonIndex<(NSInteger)[_profiles count]){[self loadProfileAtIndex:buttonIndex];return;}
+    if(buttonIndex==(NSInteger)[_profiles count]){_savingProfilePrompt=YES;UIAlertView*a=[[[UIAlertView alloc]initWithTitle:@"Save Profile" message:@"Profile name" delegate:self cancelButtonTitle:@"Cancel" otherButtonTitles:@"Save",nil]autorelease];a.alertViewStyle=UIAlertViewStylePlainTextInput;[[a textFieldAtIndex:0]setText:_hostField.text];[a show];return;}
+    if(buttonIndex==(NSInteger)[_profiles count]+1){_profileManageMode=YES;UIActionSheet*s=[[[UIActionSheet alloc]initWithTitle:@"Choose profile to manage" delegate:self cancelButtonTitle:nil destructiveButtonTitle:nil otherButtonTitles:nil]autorelease];for(NSDictionary*p in _profiles)[s addButtonWithTitle:[p objectForKey:@"name"]];s.cancelButtonIndex=[s addButtonWithTitle:@"Cancel"];[s showInView:_controller.view];return;}
 }
+
 - (void)alertView:(UIAlertView *)alertView clickedButtonAtIndex:(NSInteger)buttonIndex {
     if(alertView.tag==930){
         if(buttonIndex==alertView.cancelButtonIndex)return;NSString *name=[[[alertView textFieldAtIndex:0] text] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];if(![name length])return;
@@ -157,22 +219,38 @@
     if(![name length])name=@"Server";[self saveProfileNamed:name];
 }
 - (void)saveProfileNamed:(NSString *)name {
-    if(!_profiles)_profiles=[[NSMutableArray alloc] init];
-    NSDictionary *p=[NSDictionary dictionaryWithObjectsAndKeys:name,@"name",(_hostField.text?:@""),@"host",(_portField.text?:@"5901"),@"port",(_passwordField.text?:@""),@"password",[NSNumber numberWithInteger:_qualityControl.selectedSegmentIndex],@"quality",[NSNumber numberWithInteger:_inputModeControl.selectedSegmentIndex],@"input",[NSNumber numberWithFloat:_speedSlider.value],@"speed",nil];
-    [_profiles addObject:p];[[NSUserDefaults standardUserDefaults] setObject:_profiles forKey:@"profiles"];[[NSUserDefaults standardUserDefaults] synchronize];_statusLabel.text=@"Profile saved";
+    if(!_profiles)_profiles=[[NSMutableArray alloc]init];
+    NSString *pid=[NSString stringWithFormat:@"%0.f",[[NSDate date] timeIntervalSince1970]*1000.0];
+    NSDictionary *p=[NSDictionary dictionaryWithObjectsAndKeys:
+        name,@"name",pid,@"id",(_hostField.text?:@""),@"host",(_portField.text?:@"5901"),@"port",
+        [NSNumber numberWithInteger:_qualityControl.selectedSegmentIndex],@"quality",
+        [NSNumber numberWithInteger:_inputModeControl.selectedSegmentIndex],@"input",
+        [NSNumber numberWithFloat:_speedSlider.value],@"speed",
+        (_sshUserField.text?:@""),@"sshUser",(_sshPortField.text?:@"22"),@"sshPort",(_sshKeyField.text?:@""),@"sshKey",
+        [NSNumber numberWithBool:_sshTunnelSwitch.on],@"sshTunnel",
+        (_downloadURLField.text?:@""),@"filesURL",
+        (_wolMACField.text?:@""),@"wolMAC",(_broadcastField.text?:@"255.255.255.255"),@"broadcast",
+        (_remoteDisplayField.text?:@":1"),@"display",[NSNumber numberWithBool:_autoResolutionSwitch.on],@"autoResolution",
+        [NSNumber numberWithBool:NO],@"autoConnect",nil];
+    [_profiles addObject:p];
+    [KeychainStore setString:(_passwordField.text?:@"") service:@"com.olap.ipad1vnc.profile.vnc" account:pid];
+    [KeychainStore setString:(_filesTokenField.text?:@"") service:@"com.olap.ipad1vnc.profile.files" account:pid];
+    [[NSUserDefaults standardUserDefaults]setObject:_profiles forKey:@"profiles"];[[NSUserDefaults standardUserDefaults]synchronize];_statusLabel.text=@"Profile saved securely";
 }
 - (void)loadProfileAtIndex:(NSInteger)index {
-    if(index<0||index>=(NSInteger)[_profiles count])return;NSDictionary *p=[_profiles objectAtIndex:index];
-    _hostField.text=[p objectForKey:@"host"];_portField.text=[p objectForKey:@"port"];_passwordField.text=[p objectForKey:@"password"];
-    NSInteger q=[[p objectForKey:@"quality"] integerValue];if(q>=0&&q<=3)_qualityControl.selectedSegmentIndex=q;
-    NSInteger im=[[p objectForKey:@"input"] integerValue];if(im>=0&&im<=1)_inputModeControl.selectedSegmentIndex=im;
-    CGFloat sp=[[p objectForKey:@"speed"] floatValue];if(sp>=0.5&&sp<=1.5){_speedSlider.value=sp;_vncView.pointerSensitivity=sp;}
+    if(index<0||index>=(NSInteger)[_profiles count])return;NSDictionary*p=[_profiles objectAtIndex:index];NSString*pid=[p objectForKey:@"id"];
+    _hostField.text=[p objectForKey:@"host"];_portField.text=[p objectForKey:@"port"];_passwordField.text=([pid length]?[KeychainStore stringForService:@"com.olap.ipad1vnc.profile.vnc" account:pid]:@"");
+    NSInteger q=[[p objectForKey:@"quality"]integerValue];if(q>=0&&q<=3)_qualityControl.selectedSegmentIndex=q;NSInteger im=[[p objectForKey:@"input"]integerValue];if(im>=0&&im<=1)_inputModeControl.selectedSegmentIndex=im;
+    CGFloat sp=[[p objectForKey:@"speed"]floatValue];if(sp>=.5&&sp<=1.5){_speedSlider.value=sp;_vncView.pointerSensitivity=sp;}
+    _sshUserField.text=[p objectForKey:@"sshUser"];_sshPortField.text=[p objectForKey:@"sshPort"];_sshKeyField.text=[p objectForKey:@"sshKey"];_sshTunnelSwitch.on=[[p objectForKey:@"sshTunnel"]boolValue];
+    _downloadURLField.text=[p objectForKey:@"filesURL"];_filesTokenField.text=([pid length]?[KeychainStore stringForService:@"com.olap.ipad1vnc.profile.files" account:pid]:@"");
+    if(_wolMACField)_wolMACField.text=[p objectForKey:@"wolMAC"];if(_broadcastField)_broadcastField.text=[p objectForKey:@"broadcast"];if(_remoteDisplayField)_remoteDisplayField.text=[p objectForKey:@"display"];if(_autoResolutionSwitch)_autoResolutionSwitch.on=[[p objectForKey:@"autoResolution"]boolValue];
     _vncView.inputMode=(VNCInputMode)_inputModeControl.selectedSegmentIndex;[self saveConnectionSettings];_statusLabel.text=[NSString stringWithFormat:@"Loaded %@",[p objectForKey:@"name"]];
 }
-
 - (void)deleteProfileAtIndex:(NSInteger)index {
     if(index<0||index>=(NSInteger)[_profiles count])return;
-    NSString *name=[[_profiles objectAtIndex:index] objectForKey:@"name"];
+    NSDictionary *pr=[_profiles objectAtIndex:index];NSString *name=[pr objectForKey:@"name"];NSString *pid=[pr objectForKey:@"id"];
+    if([pid length]){[KeychainStore deleteService:@"com.olap.ipad1vnc.profile.vnc" account:pid];[KeychainStore deleteService:@"com.olap.ipad1vnc.profile.files" account:pid];}
     [_profiles removeObjectAtIndex:index];
     [[NSUserDefaults standardUserDefaults] setObject:_profiles forKey:@"profiles"];
     [[NSUserDefaults standardUserDefaults] synchronize];
@@ -197,6 +275,8 @@
     [_controller.view addSubview:_connectionPanel];
 
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    [self migrateSecretsToKeychain];
+    NSArray *savedProfiles=[defaults arrayForKey:@"profiles"];_profiles=[[NSMutableArray alloc] initWithArray:(savedProfiles?savedProfiles:[NSArray array])];
 
     _hostField = [[UITextField alloc] initWithFrame:CGRectMake(20,20,w-230,38)];
     _hostField.autoresizingMask = UIViewAutoresizingFlexibleWidth;
@@ -220,7 +300,8 @@
     _passwordField.borderStyle = UITextBorderStyleRoundedRect;
     _passwordField.placeholder = @"VNC password";
     _passwordField.secureTextEntry = YES;
-    _passwordField.text = [defaults stringForKey:@"password"];
+    _passwordField.text = [KeychainStore stringForService:@"com.olap.ipad1vnc" account:@"vnc.default"];
+    if(![_passwordField.text length])_passwordField.text=[defaults stringForKey:@"password"];
     [_connectionPanel addSubview:_passwordField];
 
     _profilesButton = [[UIButton buttonWithType:UIButtonTypeRoundedRect] retain];
@@ -331,8 +412,13 @@
     [_fullScreenButton addTarget:self action:@selector(fullScreenTapped) forControlEvents:UIControlEventTouchUpInside];
     [_connectionPanel addSubview:_fullScreenButton];
 
+
+    _toolsButton=[[UIButton buttonWithType:UIButtonTypeRoundedRect] retain];
+    _toolsButton.frame=CGRectMake(w-245,248,80,34);_toolsButton.autoresizingMask=UIViewAutoresizingFlexibleLeftMargin;
+    [_toolsButton setTitle:@"Tools" forState:UIControlStateNormal];[_toolsButton addTarget:self action:@selector(toolsTapped) forControlEvents:UIControlEventTouchUpInside];[_connectionPanel addSubview:_toolsButton];
+
     _settingsButton = [[UIButton buttonWithType:UIButtonTypeRoundedRect] retain];
-    _settingsButton.frame = CGRectMake(w-245,248,225,34);
+    _settingsButton.frame = CGRectMake(w-155,248,135,34);
     _settingsButton.autoresizingMask = UIViewAutoresizingFlexibleLeftMargin;
     [_settingsButton setTitle:@"Hide Setup" forState:UIControlStateNormal];
     [_settingsButton addTarget:self action:@selector(settingsTapped) forControlEvents:UIControlEventTouchUpInside];
@@ -362,7 +448,7 @@
     _keyBar.autoresizingMask = UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleTopMargin;
     _keyBar.backgroundColor = [UIColor colorWithWhite:0.08 alpha:0.94];
     _keyBar.hidden = YES;
-    NSArray *titles = [NSArray arrayWithObjects:@"Esc",@"Ctrl",@"Alt",@"Tab",@"←",@"↑",@"↓",@"→",@"⌫",@"Copy",@"Paste",nil];
+    NSArray *titles = [NSArray arrayWithObjects:@"Esc",@"Ctrl",@"Alt",@"Tab",@"←",@"↑",@"↓",@"→",@"⌫",@"Home",@"End",@"PgUp",@"PgDn",@"F1",@"F2",@"F3",@"F4",@"Copy",@"Paste",nil];
     for (NSUInteger i=0;i<[titles count];i++) {
         UIButton *b=[UIButton buttonWithType:UIButtonTypeRoundedRect];
         b.tag=100+(NSInteger)i;
@@ -374,9 +460,14 @@
 
     [self buildFilesPanel];
     [self buildTerminalPanel];
+    [self toolsTapped]; _toolsPanel.hidden=YES;
+    NSString *defID=[defaults stringForKey:@"defaultProfileID"];
+    if([defID length])for(NSUInteger i=0;i<[_profiles count];i++){NSDictionary*pr=[_profiles objectAtIndex:i];if([[pr objectForKey:@"id"] isEqualToString:defID]){[self loadProfileAtIndex:i];if([[pr objectForKey:@"autoConnect"]boolValue])[self performSelector:@selector(connectTapped) withObject:nil afterDelay:0.8];break;}}
 
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(keyboardWillShow:) name:UIKeyboardWillShowNotification object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(keyboardWillHide:) name:UIKeyboardWillHideNotification object:nil];
+    [[UIDevice currentDevice] beginGeneratingDeviceOrientationNotifications];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(orientationChanged:) name:UIDeviceOrientationDidChangeNotification object:nil];
 
     self.window.rootViewController = _controller;
     [self.window makeKeyAndVisible];
@@ -398,7 +489,8 @@
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
     [defaults setObject:(_hostField.text ?: @"") forKey:@"host"];
     [defaults setObject:(_portField.text ?: @"5901") forKey:@"port"];
-    [defaults setObject:(_passwordField.text ?: @"") forKey:@"password"];
+    [KeychainStore setString:(_passwordField.text?:@"") service:@"com.olap.ipad1vnc" account:@"vnc.default"];
+    [defaults removeObjectForKey:@"password"];
     [defaults setFloat:_speedSlider.value forKey:@"pointerSpeed"];
     [defaults setInteger:_qualityControl.selectedSegmentIndex forKey:@"qualityMode"];
     [defaults setInteger:_inputModeControl.selectedSegmentIndex forKey:@"inputMode"];
@@ -453,8 +545,52 @@
     _statusLabel.text=@"Disconnected — reconnecting in 3s…";
     _reconnectTimer=[[NSTimer scheduledTimerWithTimeInterval:3.0 target:self selector:@selector(reconnectTimerFired:) userInfo:nil repeats:NO] retain];
 }
-- (void)reconnectTimerFired:(NSTimer *)timer { (void)timer; [_reconnectTimer release]; _reconnectTimer=nil; if(_shouldAutoReconnect)[self startConnection]; }
+- (void)reconnectTimerFired:(NSTimer *)timer { (void)timer; _reconnectCount++; [_reconnectTimer release]; _reconnectTimer=nil; if(_shouldAutoReconnect)[self startConnection]; }
 
+- (void)toolsTapped {
+    if(!_toolsPanel){
+        CGFloat w=_controller.view.bounds.size.width,h=_controller.view.bounds.size.height,pw=MIN(620.0,w-20),ph=410;
+        _toolsPanel=[[UIView alloc]initWithFrame:CGRectMake((w-pw)/2,(h-ph)/2,pw,ph)];_toolsPanel.backgroundColor=[UIColor colorWithWhite:.08 alpha:.98];_toolsPanel.autoresizingMask=(UIViewAutoresizingFlexibleLeftMargin|UIViewAutoresizingFlexibleRightMargin|UIViewAutoresizingFlexibleTopMargin|UIViewAutoresizingFlexibleBottomMargin);
+        UILabel *title=[[[UILabel alloc]initWithFrame:CGRectMake(14,8,pw-110,32)]autorelease];title.text=@"Tools / Diagnostics";title.textColor=[UIColor whiteColor];title.backgroundColor=[UIColor clearColor];title.font=[UIFont boldSystemFontOfSize:16];[_toolsPanel addSubview:title];
+        UIButton *close=[UIButton buttonWithType:UIButtonTypeRoundedRect];close.frame=CGRectMake(pw-90,6,76,32);[close setTitle:@"Close" forState:UIControlStateNormal];[close addTarget:self action:@selector(closeToolsTapped) forControlEvents:UIControlEventTouchUpInside];[_toolsPanel addSubview:close];
+        _wolMACField=[[UITextField alloc]initWithFrame:CGRectMake(14,50,210,34)];_wolMACField.borderStyle=UITextBorderStyleRoundedRect;_wolMACField.placeholder=@"Wake MAC 00:11:22:33:44:55";_wolMACField.text=[[NSUserDefaults standardUserDefaults]stringForKey:@"wolMAC"];[_toolsPanel addSubview:_wolMACField];
+        _broadcastField=[[UITextField alloc]initWithFrame:CGRectMake(230,50,170,34)];_broadcastField.borderStyle=UITextBorderStyleRoundedRect;_broadcastField.placeholder=@"255.255.255.255";NSString*b=[[NSUserDefaults standardUserDefaults]stringForKey:@"broadcast"];_broadcastField.text=([b length]?b:@"255.255.255.255");[_toolsPanel addSubview:_broadcastField];
+        UIButton *wake=[UIButton buttonWithType:UIButtonTypeRoundedRect];wake.frame=CGRectMake(410,50,90,34);[wake setTitle:@"Wake" forState:UIControlStateNormal];[wake addTarget:self action:@selector(wakeTapped) forControlEvents:UIControlEventTouchUpInside];[_toolsPanel addSubview:wake];
+        _remoteDisplayField=[[UITextField alloc]initWithFrame:CGRectMake(14,94,100,34)];_remoteDisplayField.borderStyle=UITextBorderStyleRoundedRect;_remoteDisplayField.placeholder=@":1";NSString*d=[[NSUserDefaults standardUserDefaults]stringForKey:@"remoteDisplay"];_remoteDisplayField.text=([d length]?d:@":1");[_toolsPanel addSubview:_remoteDisplayField];
+        UILabel *ar=[[[UILabel alloc]initWithFrame:CGRectMake(125,96,135,30)]autorelease];ar.text=@"Auto Resolution";ar.textColor=[UIColor whiteColor];ar.backgroundColor=[UIColor clearColor];[_toolsPanel addSubview:ar];
+        _autoResolutionSwitch=[[UISwitch alloc]initWithFrame:CGRectMake(260,94,80,30)];_autoResolutionSwitch.on=[[NSUserDefaults standardUserDefaults]boolForKey:@"autoResolution"];[_toolsPanel addSubview:_autoResolutionSwitch];
+        _matchResolutionButton=[UIButton buttonWithType:UIButtonTypeRoundedRect];_matchResolutionButton.frame=CGRectMake(350,94,150,34);[_matchResolutionButton setTitle:@"Match iPad" forState:UIControlStateNormal];[_matchResolutionButton addTarget:self action:@selector(matchResolutionTapped) forControlEvents:UIControlEventTouchUpInside];[_toolsPanel addSubview:_matchResolutionButton];
+        _diagnosticsLabel=[[UILabel alloc]initWithFrame:CGRectMake(14,145,pw-28,245)];_diagnosticsLabel.numberOfLines=0;_diagnosticsLabel.textColor=[UIColor whiteColor];_diagnosticsLabel.backgroundColor=[UIColor colorWithWhite:.12 alpha:1];_diagnosticsLabel.font=[UIFont fontWithName:@"Courier" size:13];_diagnosticsLabel.text=@"No active diagnostics yet.";[_toolsPanel addSubview:_diagnosticsLabel];
+        [_controller.view addSubview:_toolsPanel];
+    }
+    _toolsPanel.hidden=NO;[_controller.view bringSubviewToFront:_toolsPanel];
+}
+- (void)closeToolsTapped {_toolsPanel.hidden=YES;}
+- (BOOL)sendWakePacketMAC:(NSString*)mac broadcast:(NSString*)broadcast {
+    NSArray *parts=[[mac stringByReplacingOccurrencesOfString:@"-" withString:@":"] componentsSeparatedByString:@":"];if([parts count]!=6)return NO;
+    uint8_t m[6];for(int i=0;i<6;i++){unsigned int v=0;NSScanner*s=[NSScanner scannerWithString:[parts objectAtIndex:i]];if(![s scanHexInt:&v])return NO;m[i]=(uint8_t)v;}
+    uint8_t pkt[102];memset(pkt,0xFF,6);for(int i=0;i<16;i++)memcpy(pkt+6+i*6,m,6);
+    int fd=socket(AF_INET,SOCK_DGRAM,0);if(fd<0)return NO;int yes=1;setsockopt(fd,SOL_SOCKET,SO_BROADCAST,&yes,sizeof(yes));struct sockaddr_in a;memset(&a,0,sizeof(a));a.sin_family=AF_INET;a.sin_port=htons(9);a.sin_addr.s_addr=inet_addr([broadcast UTF8String]);BOOL ok=sendto(fd,pkt,sizeof(pkt),0,(struct sockaddr*)&a,sizeof(a))==sizeof(pkt);close(fd);return ok;
+}
+- (void)wakeTapped {
+    BOOL ok=[self sendWakePacketMAC:_wolMACField.text broadcast:_broadcastField.text];_diagnosticsLabel.text=(ok?@"Wake-on-LAN packet sent.":@"Invalid MAC/broadcast or UDP send failed.");
+    [[NSUserDefaults standardUserDefaults]setObject:_wolMACField.text forKey:@"wolMAC"];[[NSUserDefaults standardUserDefaults]setObject:_broadcastField.text forKey:@"broadcast"];[[NSUserDefaults standardUserDefaults]synchronize];
+}
+- (void)matchResolutionTapped {
+    NSString *user=[_sshUserField.text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]],*key=[_sshKeyField.text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]],*host=[_hostField.text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    if(![user length]||![key length]||![host length]){_diagnosticsLabel.text=@"Match Resolution needs Host + SSH User + Key.";return;}
+    NSInteger port=[_sshPortField.text integerValue];if(port<=0)port=22;CGSize s=_controller.view.bounds.size;NSInteger rw=(NSInteger)MAX(s.width,s.height),rh=(NSInteger)MIN(s.width,s.height);if(UIInterfaceOrientationIsPortrait(_controller.interfaceOrientation)){rw=(NSInteger)MIN(s.width,s.height);rh=(NSInteger)MAX(s.width,s.height);}
+    NSString *disp=([_remoteDisplayField.text length]?_remoteDisplayField.text:@":1");
+    NSString *cmd=[NSString stringWithFormat:@"DISPLAY=%@ xrandr --fb %ldx%ld",disp,(long)rw,(long)rh];
+    TerminalSession *tmp=[[[TerminalSession alloc]init]autorelease];tmp.delegate=self;BOOL ok=[tmp startSSHHost:host port:port user:user keyPath:key command:cmd];_diagnosticsLabel.text=(ok?[NSString stringWithFormat:@"Requested remote framebuffer %ldx%ld",(long)rw,(long)rh]:@"Could not start resolution command.");
+    [[NSUserDefaults standardUserDefaults]setObject:disp forKey:@"remoteDisplay"];[[NSUserDefaults standardUserDefaults]setBool:_autoResolutionSwitch.on forKey:@"autoResolution"];[[NSUserDefaults standardUserDefaults]synchronize];
+}
+- (void)orientationChanged:(NSNotification*)note {(void)note;if(_autoResolutionSwitch&&_autoResolutionSwitch.on)[self performSelector:@selector(matchResolutionTapped) withObject:nil afterDelay:1.0];}
+- (void)migrateSecretsToKeychain {
+    NSUserDefaults*d=[NSUserDefaults standardUserDefaults];NSString*p=[d stringForKey:@"password"];if([p length]&&![KeychainStore stringForService:@"com.olap.ipad1vnc" account:@"vnc.default"])[KeychainStore setString:p service:@"com.olap.ipad1vnc" account:@"vnc.default"];[d removeObjectForKey:@"password"];
+    NSString*f=[d stringForKey:@"filesToken"];if([f length]&&![KeychainStore stringForService:@"com.olap.ipad1vnc" account:@"files.default"])[KeychainStore setString:f service:@"com.olap.ipad1vnc" account:@"files.default"];[d removeObjectForKey:@"filesToken"];[d synchronize];
+}
+- (NSString*)currentProfileID {return @"default";}
 - (void)keyboardTapped {
     if ([_keyboardField isFirstResponder]) { [_keyboardField resignFirstResponder]; [_keyboardButton setTitle:@"Keyboard" forState:UIControlStateNormal]; }
     else { _keyboardField.text=@" "; [_keyboardField becomeFirstResponder]; [_keyboardButton setTitle:@"Hide KB" forState:UIControlStateNormal]; }
@@ -511,15 +647,14 @@
 }
 - (void)sendKey:(uint32_t)keysym { [self sendChordKey:keysym ctrl:_ctrlArmed alt:_altArmed]; _ctrlArmed=NO;_altArmed=NO;[self refreshModifierButtons]; }
 - (void)specialKeyTapped:(UIButton *)sender {
-    switch(sender.tag){
-        case 100:[self sendKey:0xFF1B];break; case 101:_ctrlArmed=!_ctrlArmed;[self refreshModifierButtons];break; case 102:_altArmed=!_altArmed;[self refreshModifierButtons];break;
-        case 103:[self sendKey:0xFF09];break; case 104:[self sendKey:0xFF51];break; case 105:[self sendKey:0xFF52];break; case 106:[self sendKey:0xFF54];break; case 107:[self sendKey:0xFF53];break;
-        case 108:[self sendKey:0xFF08];break;
-        case 109:[self sendChordKey:'c' ctrl:YES alt:NO];break;
-        case 110:{ NSString *clip=[[UIPasteboard generalPasteboard] string]; if([clip length])[_client sendClipboardText:clip]; [self sendChordKey:'v' ctrl:YES alt:NO]; break; }
-    }
+    NSInteger i=sender.tag-100;
+    if(i==1){_ctrlArmed=!_ctrlArmed;[self refreshModifierButtons];return;}
+    if(i==2){_altArmed=!_altArmed;[self refreshModifierButtons];return;}
+    if(i==17){UIPasteboard.generalPasteboard.string=UIPasteboard.generalPasteboard.string?:@"";return;}
+    if(i==18){NSString*s=UIPasteboard.generalPasteboard.string;if([s length])[_client sendClipboardText:s];return;}
+    uint32_t keys[]={0xff1b,0,0,0xff09,0xff51,0xff52,0xff54,0xff53,0xff08,0xff50,0xff57,0xff55,0xff56,0xffbe,0xffbf,0xffc0,0xffc1};
+    if(i<0||i>16)return;uint32_t k=keys[i];if(_ctrlArmed)[_client sendKeySym:0xffe3 down:YES];if(_altArmed)[_client sendKeySym:0xffe9 down:YES];[_client sendKeySym:k down:YES];[_client sendKeySym:k down:NO];if(_ctrlArmed)[_client sendKeySym:0xffe3 down:NO];if(_altArmed)[_client sendKeySym:0xffe9 down:NO];_ctrlArmed=_altArmed=NO;[self refreshModifierButtons];
 }
-
 - (BOOL)textField:(UITextField *)textField shouldChangeCharactersInRange:(NSRange)range replacementString:(NSString *)string {
     (void)range; if(textField!=_keyboardField||!_client)return YES;
     if([string length]==0){
@@ -578,7 +713,8 @@
     UIButton *close=[UIButton buttonWithType:UIButtonTypeRoundedRect];close.frame=CGRectMake(pw-85,6,70,32);[close setTitle:@"Close" forState:UIControlStateNormal];[close addTarget:self action:@selector(closeFilesTapped) forControlEvents:UIControlEventTouchUpInside];[_filesPanel addSubview:close];
 
     _downloadURLField=[[UITextField alloc] initWithFrame:CGRectMake(15,44,pw-230,34)];_downloadURLField.borderStyle=UITextBorderStyleRoundedRect;_downloadURLField.placeholder=@"http://server:8085";_downloadURLField.autocorrectionType=UITextAutocorrectionTypeNo;_downloadURLField.autocapitalizationType=UITextAutocapitalizationTypeNone;NSString *saved=[[NSUserDefaults standardUserDefaults] stringForKey:@"filesBaseURL"];if([saved length])_downloadURLField.text=saved;[_filesPanel addSubview:_downloadURLField];
-    _filesTokenField=[[UITextField alloc] initWithFrame:CGRectMake(pw-210,44,120,34)];_filesTokenField.borderStyle=UITextBorderStyleRoundedRect;_filesTokenField.placeholder=@"API token";_filesTokenField.secureTextEntry=YES;_filesTokenField.text=[[NSUserDefaults standardUserDefaults] stringForKey:@"filesToken"];[_filesPanel addSubview:_filesTokenField];
+    _filesTokenField=[[UITextField alloc] initWithFrame:CGRectMake(pw-210,44,120,34)];_filesTokenField.borderStyle=UITextBorderStyleRoundedRect;_filesTokenField.placeholder=@"API token";_filesTokenField.secureTextEntry=YES;_filesTokenField.text=[KeychainStore stringForService:@"com.olap.ipad1vnc" account:@"files.default"];
+    if(![_filesTokenField.text length])_filesTokenField.text=[[NSUserDefaults standardUserDefaults] stringForKey:@"filesToken"];[_filesPanel addSubview:_filesTokenField];
     _browseFilesButton=[[UIButton buttonWithType:UIButtonTypeRoundedRect] retain];_browseFilesButton.frame=CGRectMake(pw-85,44,70,34);[_browseFilesButton setTitle:@"Browse" forState:UIControlStateNormal];[_browseFilesButton addTarget:self action:@selector(browseFilesTapped) forControlEvents:UIControlEventTouchUpInside];[_filesPanel addSubview:_browseFilesButton];
 
     _remoteEntries=[[NSMutableArray alloc] init];_selectedRemoteIndex=-1;
@@ -596,7 +732,8 @@
     while([u hasSuffix:@"/"])u=[u substringToIndex:[u length]-1];
     NSURL*url=[NSURL URLWithString:u];if(!url){_downloadStatusLabel.text=@"Invalid server address";return;}
     _downloadURLField.text=u;[_filesToken release];_filesToken=[_filesTokenField.text copy];
-    [[NSUserDefaults standardUserDefaults] setObject:u forKey:@"filesBaseURL"];[[NSUserDefaults standardUserDefaults] setObject:(_filesToken?:@"") forKey:@"filesToken"];[[NSUserDefaults standardUserDefaults] synchronize];
+    [[NSUserDefaults standardUserDefaults] setObject:u forKey:@"filesBaseURL"];[KeychainStore setString:(_filesToken?:@"") service:@"com.olap.ipad1vnc" account:@"files.default"];
+    [[NSUserDefaults standardUserDefaults] removeObjectForKey:@"filesToken"];[[NSUserDefaults standardUserDefaults] synchronize];
     [_downloadURLField resignFirstResponder];[_filesTokenField resignFirstResponder];
     [_remoteRelativePath release];_remoteRelativePath=[@"" copy];
     [self startBrowseURL:url];
@@ -633,7 +770,7 @@
 }
 
 - (NSInteger)tableView:(UITableView*)tableView numberOfRowsInSection:(NSInteger)section {(void)section;return(tableView==_remoteFilesTable?[_remoteEntries count]:0);}
-- (UITableViewCell*)tableView:(UITableView*)tableView cellForRowAtIndexPath:(NSIndexPath*)indexPath {static NSString*CID=@"RemoteFile";UITableViewCell*cell=[tableView dequeueReusableCellWithIdentifier:CID];if(!cell)cell=[[[UITableViewCell alloc]initWithStyle:UITableViewCellStyleDefault reuseIdentifier:CID]autorelease];NSDictionary*e=[_remoteEntries objectAtIndex:indexPath.row];BOOL dir=[[e objectForKey:@"dir"] boolValue];cell.textLabel.text=[NSString stringWithFormat:@"%@ %@",dir?@"[DIR]":@"↓",[e objectForKey:@"name"]];cell.accessoryType=dir?UITableViewCellAccessoryDisclosureIndicator:UITableViewCellAccessoryNone;return cell;}
+- (UITableViewCell*)tableView:(UITableView*)tableView cellForRowAtIndexPath:(NSIndexPath*)indexPath {static NSString*CID=@"RemoteFile";UITableViewCell*cell=[tableView dequeueReusableCellWithIdentifier:CID];if(!cell)cell=[[[UITableViewCell alloc]initWithStyle:UITableViewCellStyleDefault reuseIdentifier:CID]autorelease];NSDictionary*e=[_remoteEntries objectAtIndex:indexPath.row];BOOL dir=[[e objectForKey:@"dir"] boolValue];unsigned long long sz=[[e objectForKey:@"size"] unsignedLongLongValue];NSString *detail=(dir?@"":[NSString stringWithFormat:@"  %.1f KB",(double)sz/1024.0]);cell.textLabel.text=[NSString stringWithFormat:@"%@ %@%@",dir?@"[DIR]":@"↓",[e objectForKey:@"name"],detail];cell.accessoryType=dir?UITableViewCellAccessoryDisclosureIndicator:UITableViewCellAccessoryNone;return cell;}
 - (void)tableView:(UITableView*)tableView didSelectRowAtIndexPath:(NSIndexPath*)indexPath {
     if(tableView!=_remoteFilesTable)return;[tableView deselectRowAtIndexPath:indexPath animated:YES];NSDictionary*e=[_remoteEntries objectAtIndex:indexPath.row];
     if([[e objectForKey:@"dir"] boolValue]){
@@ -672,8 +809,17 @@
     NSString *u=[_downloadURLField.text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
     [self startDownloadFromURL:[NSURL URLWithString:u]];
 }
-- (void)cancelDownloadTapped { if(_downloadConnection){[_downloadConnection cancel];[_downloadConnection release];_downloadConnection=nil;}if(_downloadHandle){[_downloadHandle closeFile];[_downloadHandle release];_downloadHandle=nil;}if(_downloadPath){[[NSFileManager defaultManager] removeItemAtPath:_downloadPath error:nil];[_downloadPath release];_downloadPath=nil;}_downloadStatusLabel.text=@"Cancelled";_downloadProgress.progress=0; }
+- (void)cancelDownloadTapped {_uploading=NO; if(_downloadConnection){[_downloadConnection cancel];[_downloadConnection release];_downloadConnection=nil;}if(_downloadHandle){[_downloadHandle closeFile];[_downloadHandle release];_downloadHandle=nil;}if(_downloadPath){[[NSFileManager defaultManager] removeItemAtPath:_downloadPath error:nil];[_downloadPath release];_downloadPath=nil;}_downloadStatusLabel.text=@"Cancelled";_downloadProgress.progress=0; }
 - (void)closeFilesTapped { [_downloadURLField resignFirstResponder]; _filesPanel.hidden=YES; }
+
+- (void)streamUploadInfo:(NSDictionary*)info {
+    NSAutoreleasePool*pool=[[NSAutoreleasePool alloc]init];NSString*lp=[info objectForKey:@"local"],*rp=[info objectForKey:@"remote"];NSDictionary*a=[[NSFileManager defaultManager]attributesOfItemAtPath:lp error:nil];unsigned long long total=[[a objectForKey:NSFileSize]unsignedLongLongValue];NSFileHandle*f=[NSFileHandle fileHandleForReadingAtPath:lp];if(!f){[pool drain];return;}
+    unsigned long long off=0;_uploading=YES;
+    while(_uploading&&off<total){NSData*chunk=[f readDataOfLength:64*1024];if(![chunk length])break;NSString*esc=[rp stringByAddingPercentEscapesUsingEncoding:NSUTF8StringEncoding];NSString*u=[NSString stringWithFormat:@"%@/api/upload-chunk?path=%@&offset=%llu&total=%llu",[_remoteBaseURL absoluteString],esc,off,total];NSMutableURLRequest*r=[NSMutableURLRequest requestWithURL:[NSURL URLWithString:u] cachePolicy:NSURLRequestReloadIgnoringLocalCacheData timeoutInterval:30];[r setHTTPMethod:@"POST"];[r setHTTPBody:chunk];[r setValue:@"application/octet-stream" forHTTPHeaderField:@"Content-Type"];if([_filesToken length])[r setValue:_filesToken forHTTPHeaderField:@"X-iPad1VNC-Token"];NSURLResponse*resp=nil;NSError*err=nil;[NSURLConnection sendSynchronousRequest:r returningResponse:&resp error:&err];if(err)break;off+=[chunk length];NSNumber*pct=[NSNumber numberWithDouble:(total?(double)off/(double)total:0)];[self performSelectorOnMainThread:@selector(uploadProgressMain:) withObject:pct waitUntilDone:NO];}
+    [f closeFile];_uploading=NO;[self performSelectorOnMainThread:@selector(uploadFinishedMain:) withObject:(off>=total?@"Upload complete":@"Upload failed/cancelled") waitUntilDone:NO];[pool drain];
+}
+- (void)uploadProgressMain:(NSNumber*)n {_downloadProgress.progress=[n floatValue];_downloadStatusLabel.text=[NSString stringWithFormat:@"Uploading %.0f%%",[n floatValue]*100.0];}
+- (void)uploadFinishedMain:(NSString*)s {_downloadStatusLabel.text=s;_downloadProgress.progress=([s hasPrefix:@"Upload complete"]?1:0);[self startBrowseURL:_remoteBaseURL];}
 
 - (void)performFileAPIPath:(NSString*)path method:(NSString*)method body:(NSData*)body contentType:(NSString*)contentType {
     if(!_remoteBaseURL)return;NSURL *u=[NSURL URLWithString:[NSString stringWithFormat:@"%@%@",[_remoteBaseURL absoluteString],path]];
@@ -716,9 +862,10 @@
     if(_reconnectTimer){[_reconnectTimer invalidate];[_reconnectTimer release];}
     if(_downloadConnection){[_downloadConnection cancel];[_downloadConnection release];}if(_downloadHandle){[_downloadHandle closeFile];[_downloadHandle release];}[_downloadPath release];
     _client.delegate=nil;[_client disconnect];[_client release];
-    [_terminalSession stop];[_tunnelSession stop];[_terminalSession release];[_tunnelSession release];[_terminalPanel release];[_terminalView release];[_terminalInput release];[_sshUserField release];[_sshPortField release];[_sshKeyField release];[_sshTunnelSwitch release];[_terminalButton release];
+    [_terminalSession stop];[_tunnelSession stop];[_terminalSession release];[_tunnelSession release];[_terminalBuffer release];[_terminalKeyBar release];[_terminalPanel release];[_terminalView release];[_terminalInput release];[_sshUserField release];[_sshPortField release];[_sshKeyField release];[_sshTunnelSwitch release];[_terminalButton release];
     [_filesToken release];[_filesTokenField release];[_remoteRelativePath release];
     [_filesPanel release];[_downloadURLField release];[_remoteFilesTable release];[_browseFilesButton release];[_filesUpButton release];[_remoteEntries release];[_remoteBaseURL release];[_browseData release];[_downloadStatusLabel release];[_downloadProgress release];[_fileListView release];[_keyBar release];
+    [_toolsPanel release];[_wolMACField release];[_broadcastField release];[_remoteDisplayField release];[_autoResolutionSwitch release];[_diagnosticsLabel release];[_toolsButton release];
     [_exitFullScreenButton release];[_fullScreenButton release];[_settingsButton release];[_filesButton release];[_keyboardButton release];[_qualityControl release];[_inputModeControl release];[_tightSwitch release];[_statsLabel release];[_profilesButton release];[_profiles release];[_speedSlider release];[_speedLabel release];
     [_vncView release];[_keyboardField release];[_statusLabel release];[_connectButton release];[_passwordField release];[_portField release];[_hostField release];[_connectionPanel release];[_controller release];[_window release];[super dealloc];
 }
