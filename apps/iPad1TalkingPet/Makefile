@@ -11,6 +11,7 @@ iPad1TalkingPet_FILES = main.m \
     src/PetAudioManager.m \
     src/PetSpriteAnimator.m \
     src/PetRigView.m \
+    src/ClothingRigManager.m \
     src/SoundManager.m \
     src/AchievementManager.m \
     src/HighScoreManager.m \

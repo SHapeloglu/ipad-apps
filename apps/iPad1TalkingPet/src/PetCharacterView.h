@@ -1,6 +1,7 @@
 #import <UIKit/UIKit.h>
 @class PetSpriteAnimator;
 @class PetRigView;
+@class ClothingRigManager;
 
 @interface PetCharacterView : UIView {
     UIView *_motionLayer;
@@ -8,6 +9,7 @@
     PetSpriteAnimator *_sprite;
     PetRigView *_rig;
     BOOL _useRig;
+    ClothingRigManager *_clothingRig;
 
     UIView *_hatLayer;
     UIView *_faceLayer;

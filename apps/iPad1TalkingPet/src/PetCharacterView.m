@@ -1,6 +1,7 @@
 #import "PetCharacterView.h"
 #import "PetSpriteAnimator.h"
 #import "PetRigView.h"
+#import "ClothingRigManager.h"
 
 @implementation PetCharacterView
 
@@ -46,6 +47,8 @@
         [_motionLayer bringSubviewToFront:_hatLayer];
         [_motionLayer bringSubviewToFront:_faceLayer];
 
+        _clothingRig=[[ClothingRigManager alloc] initWithHostView:_motionLayer];
+
         [self reloadOutfit];
     }
     return self;
@@ -85,26 +88,20 @@
     if(face==1) [self addImage:@"glasses_star.png" layer:_faceLayer rect:CGRectMake(W*0.25,H*0.205,W*0.50,H*0.15)];
     else if(face==2) [self addImage:@"glasses_black.png" layer:_faceLayer rect:CGRectMake(W*0.25,H*0.205,W*0.50,H*0.15)];
 
-    if(topType==1 && topStyle==1)
-        [self addImage:@"tshirt_style1.png" layer:_shirtLayer rect:CGRectMake(W*0.195,H*0.415,W*0.61,H*0.285)];
-    else if(topType==1 && topStyle==2)
+    if(topType==1 && topStyle==2)
         [self addImage:@"tshirt_style2.png" layer:_shirtLayer rect:CGRectMake(W*0.195,H*0.415,W*0.61,H*0.285)];
-    else if(topType==2 && topStyle==1)
-        [self addImage:@"crop_style1.png" layer:_shirtLayer rect:CGRectMake(W*0.205,H*0.445,W*0.59,H*0.195)];
     else if(topType==2 && topStyle==2)
         [self addImage:@"crop_style2.png" layer:_shirtLayer rect:CGRectMake(W*0.205,H*0.445,W*0.59,H*0.195)];
 
-    if(bottomType==1 && bottomStyle==1)
-        [self addImage:@"pants_style1.png" layer:_pantsLayer rect:CGRectMake(W*0.195,H*0.615,W*0.61,H*0.19)];
-    else if(bottomType==1 && bottomStyle==2)
+    if(bottomType==1 && bottomStyle==2)
         [self addImage:@"pants_style2.png" layer:_pantsLayer rect:CGRectMake(W*0.195,H*0.615,W*0.61,H*0.19)];
-    else if(bottomType==2 && bottomStyle==1)
-        [self addImage:@"skirt_style1.png" layer:_pantsLayer rect:CGRectMake(W*0.19,H*0.600,W*0.62,H*0.22)];
     else if(bottomType==2 && bottomStyle==2)
         [self addImage:@"skirt_style2.png" layer:_pantsLayer rect:CGRectMake(W*0.19,H*0.600,W*0.62,H*0.22)];
 
     if(shoes==1) [self addImage:@"shoes_red.png" layer:_shoesLayer rect:CGRectMake(W*0.22,H*0.87,W*0.56,H*0.13)];
     else if(shoes==2) [self addImage:@"shoes_blue.png" layer:_shoesLayer rect:CGRectMake(W*0.22,H*0.87,W*0.56,H*0.13)];
+
+    [_clothingRig reload];
 }
 
 - (void)animateWhole:(CGAffineTransform)t duration:(NSTimeInterval)d {
@@ -141,23 +138,27 @@
 - (void)sleep { if(_useRig)[_rig sad]; else [_sprite sleep]; }
 - (void)lookLeft { if(_useRig)[_rig lookLeft]; else [_sprite lookLeft]; }
 - (void)lookRight { if(_useRig)[_rig lookRight]; else [_sprite lookRight]; }
-- (void)wave { if(_useRig)[_rig wave]; else [_sprite wave]; }
+- (void)wave { if(_useRig)[_rig wave]; else [_sprite wave]; [_clothingRig setPoseWave]; }
 - (void)laugh { if(_useRig)[_rig happy]; else [_sprite laugh]; }
 - (void)surprise { if(_useRig)[_rig surprise]; else [_sprite surprise]; }
 - (void)stretch {
     if(_useRig)[_rig stretch]; else [_sprite stretch];
+    [_clothingRig setPoseStretch];
     [self animateWhole:CGAffineTransformMakeScale(0.99,1.025) duration:0.20];
 }
 - (void)dance {
     if(_useRig)[_rig dance]; else [_sprite dance];
+    [_clothingRig setPoseDance];
     [self animateWhole:CGAffineTransformMakeRotation(0.025) duration:0.16];
 }
 - (void)jump {
     if(_useRig)[_rig jump]; else [_sprite jump];
+    [_clothingRig setPoseJump];
     [self animateWhole:CGAffineTransformMakeTranslation(0,-14) duration:0.15];
 }
 
 - (void)dealloc {
+    [_clothingRig release];
     [_motionLayer release];
     [_rig release];
     [_sprite release];
