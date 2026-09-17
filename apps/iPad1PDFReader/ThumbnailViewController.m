@@ -73,6 +73,7 @@
     NSUInteger page=(NSUInteger)i.row+1;
     cell.textLabel.text=[NSString stringWithFormat:@"Sayfa %lu",(unsigned long)page];
 
+    // Sadece görünür hücre istenince üret.
     NSAutoreleasePool *pool=[[NSAutoreleasePool alloc] init];
     cell.imageView.image=[self thumbnailForPage:page];
     [pool drain];

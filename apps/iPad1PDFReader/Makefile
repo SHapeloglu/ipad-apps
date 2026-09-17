@@ -16,7 +16,6 @@ iPad1PDFReader_FILES = \
 	AppearanceStore.m \
 	AnnotationStore.m \
 	AnnotationOverlayView.m \
-	DocumentNavigatorViewController.m \
 	ThumbnailViewController.m \
 	OutlineViewController.m \
 	PDFOutlineParser.m \

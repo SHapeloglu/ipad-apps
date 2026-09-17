@@ -1,87 +1,60 @@
-# iPad1PDFReader
+# iPad 1 PDF Reader v3.1.0 — Memory Safe
 
-A lightweight PDF/document reader built specifically for the **original iPad 1 (256 MB RAM, iOS 5.1.1, armv7)**.
+Hedef cihaz değişmez:
 
-The project deliberately prioritizes **stability and bounded memory usage over feature count**.
+- iPad 1
+- 256 MB RAM
+- A4
+- iOS 5.1.1
 
-## Current development version
-**v3.1.0-memorysafe**
+## Mimari kurallar
 
-> v3.1 is the latest source head and still needs a clean build + physical-device validation after the memory-safety refactor. See `SESSION.md`.
+1. PDF tamamen bitmap'e çevrilmez.
+2. Reader aynı anda yalnızca aktif sayfayı render eder.
+3. Thumbnail üretimi yalnızca görünür hücrelerde yapılır.
+4. Thumbnail cache en fazla 8 küçük görsel tutar.
+5. Memory warning geldiğinde thumbnail ve search sonuç cache'i temizlenir.
+6. Search PDF'i sayfa sayfa tarar ve maksimum 40 sonuç tutar.
+7. Reflow artık tüm belgeyi tek NSString'e yüklemez; tek sayfa yükler.
+8. OCR cihaz üzerinde yapılmaz.
+9. Ağ indirmeleri streaming/connection mantığında tutulur.
+10. Ağır animasyon, blur ve yüksek çözünürlüklü çoklu page cache kullanılmaz.
 
-## Main features
-- Core Graphics PDF rendering (`CGPDFDocument`)
-- one active full page rendered at a time
-- zoom and page navigation
-- bookmarks and resume-last-page
-- lazy thumbnails with bounded cache
-- PDF text extraction/search via `CGPDFScanner`
-- page-at-a-time Reflow mode
-- outline support
-- drawing / highlight / note / simple signature overlay
-- flattened annotation PDF export
-- page reorder/delete/rotate/export
-- PDF merge API
-- HTTP/HTTPS/FTP import
-- WebDAV foundation
-- iTunes File Sharing / Open In
+## RAM hedefi
 
-## Memory-safe design
-Current hard policy:
-- thumbnail cache: max **8** small images;
-- search results: max **40**;
-- search: page-by-page;
-- Reflow: one page at a time;
-- no whole-document bitmap cache;
-- no on-device OCR;
-- no AI/ML;
-- caches clear on memory warning.
+- Normal okuma: yaklaşık 30–50 MB hedef
+- Thumbnail / arama / reflow: mümkün olduğunca 70–90 MB altında
+- Bu değerler garanti değil; PDF sayfa boyutu ve iOS durumuna göre değişebilir.
+
+## Özellik yaklaşımı
+
+Yeşil:
+- bookmark
+- tek sayfa render
+- annotation
+- HTTP/FTP/WebDAV
+- page management
+
+Sarı:
+- thumbnail
+- search
+- reflow
+- SMB/SFTP
+
+Kırmızı:
+- cihaz içi OCR
+- AI
+- tüm PDF'yi RAM'e alan motor
+- yüksek çözünürlüklü çoklu bitmap cache
 
 ## Build
-Expected environment:
-- Theos at `~/theos`
-- legacy `iPhoneOS6.1.sdk`
 
 ```bash
+cd ~/projects/ipad1pdfreader-v31/iPad1PDFReader-v3.1.0-memorysafe
 make clean
 rm -rf .theos
 make package FINALPACKAGE=1
 ```
 
-Core target:
-```make
-ARCHS = armv7
-TARGET = iphone:clang:6.1:5.1
-```
-
-Expected package name:
-```text
-com.olap.ipad1pdfreader_3.1.0_iphoneos-arm.deb
-```
-
-## Install on iPad 1
-Example device IP used during development: `192.168.1.2`.
-
-```bash
-scp -o HostKeyAlgorithms=+ssh-rsa packages/com.olap.ipad1pdfreader_3.1.0_iphoneos-arm.deb root@192.168.1.2:/var/mobile/
-ssh -o HostKeyAlgorithms=+ssh-rsa root@192.168.1.2
-```
-
-On iPad:
-```bash
-dpkg -i /var/mobile/com.olap.ipad1pdfreader_3.1.0_iphoneos-arm.deb
-killall SpringBoard
-```
-
-## Documentation
-For continuing development, read:
-- `SESSION.md` — exact handoff/current state
-- `ARCHITECTURE.md` — design and memory rules
-- `TASKS.md` — prioritized work
-- `TESTING.md` — real-device validation
-- `INTEGRATION.md` — sibling app integration
-- `AGENTS.md` / `CLAUDE.md` — coding-agent constraints
-- `CHANGELOG.md` — version history
-
-## Golden rule
-**If a feature risks stability on 256 MB RAM / iOS 5.1.1, it is redesigned, moved off-device, or not added.**
+Beklenen:
+`packages/com.olap.ipad1pdfreader_3.1.0_iphoneos-arm.deb`
