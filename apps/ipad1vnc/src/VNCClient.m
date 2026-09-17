@@ -24,11 +24,12 @@ static uint8_t reverseBits(uint8_t b){ b=(b&0xF0)>>4|(b&0x0F)<<4; b=(b&0xCC)>>2|
 
 @implementation VNCClient
 @synthesize delegate=_delegate;
+@synthesize qualityProfile=_qualityProfile;
 - (NSUInteger)framebufferWidth{return _fbWidth;}
 - (NSUInteger)framebufferHeight{return _fbHeight;}
 
 - (id)initWithHost:(NSString *)host port:(NSInteger)port password:(NSString *)password {
-    if((self=[super init])){ _host=[host copy]; _port=port; _password=[password copy]; _sock=-1; _writeLock=[[NSLock alloc]init]; }
+    if((self=[super init])){ _host=[host copy]; _port=port; _password=[password copy]; _sock=-1; _writeLock=[[NSLock alloc]init]; _qualityProfile=VNCQualityBalanced; _serverBytesPerPixel=2; }
     return self;
 }
 - (void)dealloc { [self disconnect]; [_host release]; [_password release]; [_framebuffer release]; [_writeLock release]; [super dealloc]; }
@@ -38,6 +39,7 @@ static uint8_t reverseBits(uint8_t b){ b=(b&0xF0)>>4|(b&0x0F)<<4; b=(b&0xCC)>>2|
 - (void)statusOnMain:(NSString *)s { [self notifyStatus:s]; }
 - (void)disconnectOnMain:(NSString *)s { [self notifyDisconnected:s]; }
 - (void)frameOnMain:(UIImage *)img { if([_delegate respondsToSelector:@selector(vncClientFramebuffer:width:height:)]) [_delegate vncClientFramebuffer:img width:_fbWidth height:_fbHeight]; }
+- (void)clipboardOnMain:(NSString *)text { if([_delegate respondsToSelector:@selector(vncClientClipboardText:)]) [_delegate vncClientClipboardText:text]; }
 
 - (void)connect { if(_running)return; _running=YES; [NSThread detachNewThreadSelector:@selector(networkThread) toTarget:self withObject:nil]; }
 - (void)disconnect { _running=NO; if(_sock>=0){ shutdown(_sock,SHUT_RDWR); close(_sock); _sock=-1; } }
@@ -78,10 +80,20 @@ static uint8_t reverseBits(uint8_t b){ b=(b&0xF0)>>4|(b&0x0F)<<4; b=(b&0xCC)>>2|
     uint8_t init[24]; if(!recvAll(_sock,init,24))return NO; _fbWidth=readBE16(init); _fbHeight=readBE16(init+2); uint32_t nameLen=readBE32(init+20);
     if(nameLen){ char *name=malloc(nameLen+1); if(!recvAll(_sock,name,nameLen)){free(name);return NO;} name[nameLen]=0; free(name); }
     [_framebuffer release]; _framebuffer=[[NSMutableData alloc] initWithLength:_fbWidth*_fbHeight*4];
-    // Pixel format: 32 bpp, depth 24, little-endian, true color, RGB max 255, shifts 16/8/0 => memory B,G,R,0 on little endian.
-    uint8_t pf[20]={0}; pf[0]=0; pf[4]=32; pf[5]=24; pf[6]=0; pf[7]=1; putBE16(pf+8,255); putBE16(pf+10,255); putBE16(pf+12,255); pf[14]=16; pf[15]=8; pf[16]=0;
+    // Request a compact true-color pixel format. The framebuffer kept in memory is always 32-bit BGRA.
+    uint8_t pf[20]={0}; pf[0]=0; pf[6]=0; pf[7]=1;
+    if (_qualityProfile == VNCQualityFast) {
+        // 8-bit RGB332. Lowest bandwidth and CPU use.
+        pf[4]=8; pf[5]=8; putBE16(pf+8,7); putBE16(pf+10,7); putBE16(pf+12,3); pf[14]=5; pf[15]=2; pf[16]=0; _serverBytesPerPixel=1;
+    } else if (_qualityProfile == VNCQualityBalanced) {
+        // 16-bit RGB565. Good default for the first-generation iPad.
+        pf[4]=16; pf[5]=16; putBE16(pf+8,31); putBE16(pf+10,63); putBE16(pf+12,31); pf[14]=11; pf[15]=5; pf[16]=0; _serverBytesPerPixel=2;
+    } else {
+        // 32-bit RGB888. Highest visual quality.
+        pf[4]=32; pf[5]=24; putBE16(pf+8,255); putBE16(pf+10,255); putBE16(pf+12,255); pf[14]=16; pf[15]=8; pf[16]=0; _serverBytesPerPixel=4;
+    }
     if(!sendAll(_sock,pf,sizeof(pf)))return NO;
-    // SetEncodings: RAW only.
+    // SetEncodings: RAW only. RAW is deliberately used for broad legacy-server compatibility.
     uint8_t enc[8]={2,0,0,1,0,0,0,0}; if(!sendAll(_sock,enc,sizeof(enc)))return NO;
     return YES;
 }
@@ -105,8 +117,25 @@ static uint8_t reverseBits(uint8_t b){ b=(b&0xF0)>>4|(b&0x0F)<<4; b=(b&0xCC)>>2|
     for(uint16_t r=0;r<rects;r++){
         uint8_t rh[12]; if(!recvAll(_sock,rh,12))return NO; uint16_t x=readBE16(rh),y=readBE16(rh+2),w=readBE16(rh+4),h=readBE16(rh+6); int32_t enc=(int32_t)readBE32(rh+8);
         if(enc!=0) return NO;
-        size_t rowBytes=(size_t)w*4; uint8_t *tmp=malloc(rowBytes);
-        for(uint16_t row=0;row<h;row++){ if(!recvAll(_sock,tmp,rowBytes)){free(tmp);return NO;} if(y+row<_fbHeight && x+w<=_fbWidth) memcpy((uint8_t *)[_framebuffer mutableBytes]+((size_t)(y+row)*_fbWidth+x)*4,tmp,rowBytes); }
+        size_t rowBytes=(size_t)w*_serverBytesPerPixel; uint8_t *tmp=malloc(rowBytes);
+        for(uint16_t row=0;row<h;row++){
+            if(!recvAll(_sock,tmp,rowBytes)){free(tmp);return NO;}
+            if(y+row<_fbHeight && x+w<=_fbWidth) {
+                uint8_t *dst=(uint8_t *)[_framebuffer mutableBytes]+((size_t)(y+row)*_fbWidth+x)*4;
+                for(uint16_t col=0; col<w; col++) {
+                    uint8_t r8=0,g8=0,b8=0;
+                    if (_serverBytesPerPixel == 4) {
+                        const uint8_t *sp=tmp+col*4; b8=sp[0]; g8=sp[1]; r8=sp[2];
+                    } else if (_serverBytesPerPixel == 2) {
+                        const uint8_t *sp=tmp+col*2; uint16_t v=(uint16_t)(sp[0] | (sp[1]<<8));
+                        r8=(uint8_t)((((v>>11)&31)*255)/31); g8=(uint8_t)((((v>>5)&63)*255)/63); b8=(uint8_t)(((v&31)*255)/31);
+                    } else {
+                        uint8_t v=tmp[col]; r8=(uint8_t)((((v>>5)&7)*255)/7); g8=(uint8_t)((((v>>2)&7)*255)/7); b8=(uint8_t)(((v&3)*255)/3);
+                    }
+                    dst[col*4+0]=b8; dst[col*4+1]=g8; dst[col*4+2]=r8; dst[col*4+3]=0;
+                }
+            }
+        }
         free(tmp);
     }
     UIImage *img=[self currentImage]; if(img)[self performSelectorOnMainThread:@selector(frameOnMain:) withObject:img waitUntilDone:NO]; return YES;
@@ -117,7 +146,7 @@ static uint8_t reverseBits(uint8_t b){ b=(b&0xF0)>>4|(b&0x0F)<<4; b=(b&0xCC)>>2|
     [self performSelectorOnMainThread:@selector(statusOnMain:) withObject:@"Connecting…" waitUntilDone:NO];
     if(![self openSocket] || ![self handshake]){ [self disconnect]; [self performSelectorOnMainThread:@selector(disconnectOnMain:) withObject:@"Connection/authentication failed" waitUntilDone:NO]; [pool drain]; return; }
     [self performSelectorOnMainThread:@selector(statusOnMain:) withObject:@"Connected" waitUntilDone:NO]; [self requestUpdateIncremental:NO];
-    while(_running){ uint8_t type; if(!recvAll(_sock,&type,1))break; if(type==0){ if(![self handleFramebufferUpdate])break; [self requestUpdateIncremental:YES]; } else if(type==2){ uint8_t pad[1]; if(!recvAll(_sock,pad,1))break; } else if(type==3){ uint8_t h[7]; if(!recvAll(_sock,h,7))break; uint32_t n=readBE32(h+3); char *tmp=malloc(n); BOOL ok=recvAll(_sock,tmp,n); free(tmp); if(!ok)break; } else { break; } }
+    while(_running){ uint8_t type; if(!recvAll(_sock,&type,1))break; if(type==0){ if(![self handleFramebufferUpdate])break; [self requestUpdateIncremental:YES]; } else if(type==2){ uint8_t pad[1]; if(!recvAll(_sock,pad,1))break; } else if(type==3){ uint8_t h[7]; if(!recvAll(_sock,h,7))break; uint32_t n=readBE32(h+3); char *tmp=malloc(n+1); BOOL ok=recvAll(_sock,tmp,n); if(ok){ tmp[n]=0; NSString *clip=[[[NSString alloc] initWithBytes:tmp length:n encoding:NSUTF8StringEncoding] autorelease]; if(!clip) clip=[[[NSString alloc] initWithBytes:tmp length:n encoding:NSISOLatin1StringEncoding] autorelease]; if(clip) [self performSelectorOnMainThread:@selector(clipboardOnMain:) withObject:clip waitUntilDone:NO]; } free(tmp); if(!ok)break; } else { break; } }
     [self disconnect]; [self performSelectorOnMainThread:@selector(disconnectOnMain:) withObject:@"Disconnected" waitUntilDone:NO]; [pool drain];
 }
 
@@ -127,4 +156,14 @@ static uint8_t reverseBits(uint8_t b){ b=(b&0xF0)>>4|(b&0x0F)<<4; b=(b&0xCC)>>2|
 - (void)sendKeySym:(uint32_t)keysym down:(BOOL)down {
     if(!_running||_sock<0)return; uint8_t m[8]={4,down?1:0,0,0,0,0,0,0}; putBE32(m+4,keysym); [_writeLock lock]; sendAll(_sock,m,8); [_writeLock unlock];
 }
+- (void)sendClipboardText:(NSString *)text {
+    if(!_running||_sock<0||![text length])return;
+    NSData *data=[text dataUsingEncoding:NSUTF8StringEncoding allowLossyConversion:YES];
+    if(!data)return;
+    NSUInteger len=[data length]; if(len>1024*1024) len=1024*1024;
+    NSMutableData *msg=[NSMutableData dataWithLength:8+len]; uint8_t *p=(uint8_t *)[msg mutableBytes];
+    p[0]=6; putBE32(p+4,(uint32_t)len); memcpy(p+8,[data bytes],len);
+    [_writeLock lock]; sendAll(_sock,[msg bytes],[msg length]); [_writeLock unlock];
+}
+
 @end
