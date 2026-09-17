@@ -1,57 +1,29 @@
-# iPad1TalkingPet v1.0.1 — Wardrobe Fit Fix
+# iPad1TalkingPet v1.2 — 2D Rig Animation
 
-Bu hotfix, gerçek cihazda görülen blok şeklindeki alt kıyafet problemini düzeltir.
+Bu sürüm Tom-benzeri akıcılığı iPad 1 sınırları içinde artırmak için hibrit 2D rig sistemini getirir.
 
-- Pantolon/şortta bacak arası artık transparan kesiklidir.
-- Kalça/bel formu daraltıldı.
-- Tişört ve crop gövdeye daha sıkı oturur.
-- Etek silüeti revize edildi.
-- Kıyafet katmanlarının yerleşimi mevcut karakter oranlarına göre yeniden ayarlandı.
-- v1.0 duygu, high-score, combo ve etkinlik özellikleri korunur.
+## Yeni
+- PetRigView
+- Ayrı kafa, gövde, kol, bacak ve kuyruk katmanları
+- Anchor-point tabanlı parça animasyonları
+- Baş eğme
+- Kol sallama
+- Kuyruk hareketi
+- Zıplamada squash/stretch hissi
+- Ayrı göz katmanları
+- Ayrı göz kapağı katmanları
+- 4 ağız şekli
+- Konuşma sırasında ağız animasyonu
+- Bakış yönü animasyonu
+- Sprite sistemi fallback olarak korunur
 
-# iPad1TalkingPet v1.0 — Emotion & Polish
-
-## v1.0 yenilikleri
-
-### Duygu / ihtiyaç davranış sistemi
-Kedi artık yalnızca rastgele değil, ihtiyaçlarına göre davranır:
-- Enerji düşük: uyku/esneme davranışı
-- Açlık düşük: üzgün/bakınma davranışı
-- Hijyen düşük: rahatsız/gerinme davranışı
-- Mutluluk düşük: oyun/ilgi isteyen davranış
-- Tüm ihtiyaçlar yüksek: gülme/dans/mutlu davranış
-
-Ana ekranda aktif ruh hali ve kısa ipucu gösterilir.
-
-### Rekor ve combo
-- Yerel `HighScoreManager`
-- `Rekorlar` ekranı
-- 8 mini oyun için rekor alanı
-- Koşu oyununda gerçek high-score + combo çarpanı
-- Eşleştir oyununda high-score entegrasyonu
-- Pazartesi 2x mini oyun ödülü ile birlikte çalışır
-
-### İçerik
-- Yemek sistemi 10 ürüne genişletildi
-- Yeni koltuk / halı / lamba PNG varyasyonları
-- v0.8 gardırop sistemi korunuyor
-- v0.9 spontane animasyonlar korunuyor
-
-### Platform
-iPad 1 / Apple A4 / 256 MB RAM / iOS 5.1.1 / armv7 / non-ARC.
+## Gardırop
+Mevcut kıyafet overlay sistemi korunur.
+Bu sürümden sonraki adım, kıyafetleri rig parçalarına bağlayarak kol/gövde ile birlikte hareket ettirmektir.
 
 ## Derleme
 ```bash
-cd ~/projects/iPad1TalkingPet-v1.0
+cd ~/projects/iPad1TalkingPet-v1.2
 rm -rf .theos packages
 FINALPACKAGE=1 make package
-```
-
-## iPad'e gönderme
-```bash
-scp \
-  -o HostKeyAlgorithms=+ssh-rsa \
-  -o PubkeyAcceptedAlgorithms=+ssh-rsa \
-  packages/com.olapteknoloji.ipad1talkingpet_1.0.0_iphoneos-arm.deb \
-  root@192.168.1.2:/var/mobile/
 ```
