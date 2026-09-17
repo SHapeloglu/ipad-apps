@@ -439,9 +439,10 @@ typedef struct { int x; int y; } KidsPixelPoint;
     UIGraphicsBeginImageContext(self.bounds.size); [_image drawInRect:self.bounds];
     CGContextRef ctx=UIGraphicsGetCurrentContext();
     CGContextSaveGState(ctx);
-    CGContextTranslateCTM(ctx,point.x,point.y);
+    CGContextTranslateCTM(ctx,p.x,p.y);
     CGContextRotateCTM(ctx,_stampRotation);
-    CGContextTranslateCTM(ctx,-point.x,-point.y); [self setStrokeInContext:ctx]; CGContextSetLineWidth(ctx,4.0f);
+    CGContextTranslateCTM(ctx,-p.x,-p.y);
+ [self setStrokeInContext:ctx]; CGContextSetLineWidth(ctx,4.0f);
     CGFloat r=30.0f*MAX(0.45f,MIN(2.2f,_stampScale));
     switch(_stampType) {
         case KidsStampStar: [self drawStarAt:p context:ctx radius:r]; break;

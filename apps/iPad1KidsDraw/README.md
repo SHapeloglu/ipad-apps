@@ -1,4 +1,4 @@
-# KidsDraw v1.3 for iPad 1
+# KidsDraw v1.3.1 for iPad 1
 
 ## Platform
 iPad 1 / iOS 5.1.1 / Apple A4 / 256 MB RAM / armv7 /
@@ -45,7 +45,7 @@ FINALPACKAGE=1 make package
 ```
 
 Beklenen:
-`packages/com.olap.kidsdraw_1.3.0_iphoneos-arm.deb`
+`packages/com.olap.kidsdraw_1.3.1_iphoneos-arm.deb`
 
 ## Fiziksel test önceliği
 1. Aynı boyama sayfasında art arda 5 farklı dolgu
@@ -55,3 +55,10 @@ Beklenen:
 5. Fırça favorisi + son kullanılanlar
 6. Yeni 20 boyama şablonu
 7. RAM/crash/akıcılık
+
+
+## v1.3.1 — build fix
+- Damga rotation transform kodu yanlışlıkla `point` değişkeni olmayan başka bir çizim bloğuna da eklenmişti.
+- `CGContextTranslateCTM(... point.x/point.y ...)` yalnızca `placeStampAt:` metodunda bırakıldı.
+- `CGContextRestoreGState` eşleştirmesi de yalnızca aynı damga metodunda tutuldu.
+- v1.3 özellikleri değişmeden korunur.
