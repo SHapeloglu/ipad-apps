@@ -1,28 +1,28 @@
 # PROJECT_CONTEXT
 
-Current version: 1.2.1
-Milestone: Hybrid Rig Hotfix
+Current version: 1.2.2
+Milestone: Clothing Fit Fix
 
-Platform constraints unchanged:
-iPad 1 / Apple A4 / 256 MB RAM / iOS 5.1.1 / armv7 / non-ARC.
+Platform:
+iPad 1 / Apple A4 / 256 MB RAM / iOS 5.1.1 / armv7 / Objective-C / Theos / non-ARC.
 
-## Important architecture decision
-Do NOT use rectangular crops of pet_base.png as anatomical rig parts.
-They create duplicated pixels and visible rectangular seams.
+## Clothing changes
+- tailored T-shirt/crop silhouettes
+- fitted shorts with transparent inner-leg cutout
+- narrower waistband and A-line skirt
+- refined top/bottom overlay rectangles
+- explicit clothing depth order
+- hybrid full-body pet image retained
 
-Current stable approach:
-- coherent full-body pet_base.png
-- subtle face overlays
-- unified motionLayer for character + clothing
-- lightweight transform animations
-- sprite fallback preserved
-
-Future true limb rig requires manually prepared transparent, non-overlapping body-part assets.
+## Important
+We are still using character-specific 2D clothing overlays rather than deformable mesh clothing.
+Future improvement should use manually authored alpha-masked clothing pieces for torso/hip/leg sections.
 
 ## Immediate next action
-Compile and physically verify:
-- character is visually whole
-- no rectangular body seams
-- clothing follows jump/dance/stretch
-- mouth overlay is subtle
-- no doubled eyes
+Compile and test on physical iPad:
+- T-shirt fit
+- crop fit
+- pants fit
+- skirt fit
+- combinations
+- motionLayer alignment during dance/jump/stretch

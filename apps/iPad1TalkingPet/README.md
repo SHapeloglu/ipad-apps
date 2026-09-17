@@ -1,19 +1,18 @@
-# iPad1TalkingPet v1.2.1 — Hybrid Rig Hotfix
+# iPad1TalkingPet v1.2.2 — Clothing Fit Fix
 
-Gerçek cihazdaki parçalanmış/kolaj görünümü düzeltilmiştir.
+## Bu sürümde
+- Tişörtler gövdeye daha dar ve eğimli formda yeniden çizildi.
+- Crop üstler gövde oranına göre yeniden çizildi.
+- Pantolon/şort kalça-bel formuna göre daraltıldı.
+- Pantolonda bacak arası transparan boşluk korunup iyileştirildi.
+- Etek daha dar bel bandı + A-line/pileli gövde şeklinde yeniden çizildi.
+- Kıyafet `CGRect` konumları gerçek cihazdaki mevcut karakter oranlarına göre yeniden ayarlandı.
+- Katman sırası açık şekilde body → top → bottom → shoes → hat/face olarak düzenlendi.
+- v1.2.1 hybrid rig ve motionLayer korunur.
 
-## Neden oldu?
-v1.2'de `pet_base.png` dosyasından dikdörtgen crop ile kafa/kol/gövde/bacak parçaları
-üretilmişti. Crop alanları gerçek alfa maskeli anatomik parçalar olmadığı için kompozisyonda
-dikdörtgen bölgeler, çift görüntüler ve kopmuş eklemler oluşuyordu.
-
-## Düzeltme
-- Parçalı gövde rig'i ekranda kullanılmıyor.
-- Tek ve temiz `pet_base.png` karakteri korunuyor.
-- Göz kapağı ve ağız gibi yüz rig katmanları hafif overlay olarak devam ediyor.
-- Animasyonlar artık karakter + kıyafetleri birlikte taşıyan `motionLayer` üzerinden uygulanıyor.
-- Gardırop hareket sırasında karakterden ayrılmıyor.
-- Eski sprite fallback korunuyor.
-
-Bu sürüm görsel bütünlüğü önceliklendirir. Gerçek bağımsız kol/bacak rig için
-ileride elle hazırlanmış alfa maskeli parçalar gerekir.
+## Derleme
+```bash
+cd ~/projects/iPad1TalkingPet-v1.2.2
+rm -rf .theos packages
+FINALPACKAGE=1 make package
+```

@@ -35,8 +35,16 @@
         for(UIView *v in [NSArray arrayWithObjects:_shirtLayer,_pantsLayer,_shoesLayer,_hatLayer,_faceLayer,nil]){
             v.backgroundColor=[UIColor clearColor];
             v.userInteractionEnabled=NO;
+            v.clipsToBounds=NO;
             [_motionLayer addSubview:v];
         }
+
+        // Explicit depth order: body/rig, top, bottom, shoes, head accessories.
+        [_motionLayer bringSubviewToFront:_shirtLayer];
+        [_motionLayer bringSubviewToFront:_pantsLayer];
+        [_motionLayer bringSubviewToFront:_shoesLayer];
+        [_motionLayer bringSubviewToFront:_hatLayer];
+        [_motionLayer bringSubviewToFront:_faceLayer];
 
         [self reloadOutfit];
     }
@@ -78,22 +86,22 @@
     else if(face==2) [self addImage:@"glasses_black.png" layer:_faceLayer rect:CGRectMake(W*0.25,H*0.205,W*0.50,H*0.15)];
 
     if(topType==1 && topStyle==1)
-        [self addImage:@"tshirt_style1.png" layer:_shirtLayer rect:CGRectMake(W*0.205,H*0.405,W*0.59,H*0.315)];
+        [self addImage:@"tshirt_style1.png" layer:_shirtLayer rect:CGRectMake(W*0.195,H*0.415,W*0.61,H*0.285)];
     else if(topType==1 && topStyle==2)
-        [self addImage:@"tshirt_style2.png" layer:_shirtLayer rect:CGRectMake(W*0.205,H*0.405,W*0.59,H*0.315)];
+        [self addImage:@"tshirt_style2.png" layer:_shirtLayer rect:CGRectMake(W*0.195,H*0.415,W*0.61,H*0.285)];
     else if(topType==2 && topStyle==1)
-        [self addImage:@"crop_style1.png" layer:_shirtLayer rect:CGRectMake(W*0.215,H*0.43,W*0.57,H*0.215)];
+        [self addImage:@"crop_style1.png" layer:_shirtLayer rect:CGRectMake(W*0.205,H*0.445,W*0.59,H*0.195)];
     else if(topType==2 && topStyle==2)
-        [self addImage:@"crop_style2.png" layer:_shirtLayer rect:CGRectMake(W*0.215,H*0.43,W*0.57,H*0.215)];
+        [self addImage:@"crop_style2.png" layer:_shirtLayer rect:CGRectMake(W*0.205,H*0.445,W*0.59,H*0.195)];
 
     if(bottomType==1 && bottomStyle==1)
-        [self addImage:@"pants_style1.png" layer:_pantsLayer rect:CGRectMake(W*0.205,H*0.615,W*0.59,H*0.205)];
+        [self addImage:@"pants_style1.png" layer:_pantsLayer rect:CGRectMake(W*0.195,H*0.615,W*0.61,H*0.19)];
     else if(bottomType==1 && bottomStyle==2)
-        [self addImage:@"pants_style2.png" layer:_pantsLayer rect:CGRectMake(W*0.205,H*0.615,W*0.59,H*0.205)];
+        [self addImage:@"pants_style2.png" layer:_pantsLayer rect:CGRectMake(W*0.195,H*0.615,W*0.61,H*0.19)];
     else if(bottomType==2 && bottomStyle==1)
-        [self addImage:@"skirt_style1.png" layer:_pantsLayer rect:CGRectMake(W*0.20,H*0.605,W*0.60,H*0.235)];
+        [self addImage:@"skirt_style1.png" layer:_pantsLayer rect:CGRectMake(W*0.19,H*0.600,W*0.62,H*0.22)];
     else if(bottomType==2 && bottomStyle==2)
-        [self addImage:@"skirt_style2.png" layer:_pantsLayer rect:CGRectMake(W*0.20,H*0.605,W*0.60,H*0.235)];
+        [self addImage:@"skirt_style2.png" layer:_pantsLayer rect:CGRectMake(W*0.19,H*0.600,W*0.62,H*0.22)];
 
     if(shoes==1) [self addImage:@"shoes_red.png" layer:_shoesLayer rect:CGRectMake(W*0.22,H*0.87,W*0.56,H*0.13)];
     else if(shoes==2) [self addImage:@"shoes_blue.png" layer:_shoesLayer rect:CGRectMake(W*0.22,H*0.87,W*0.56,H*0.13)];
