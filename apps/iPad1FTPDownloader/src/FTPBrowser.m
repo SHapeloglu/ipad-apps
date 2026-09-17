@@ -1,4 +1,5 @@
 #import "FTPBrowser.h"
+#import "FTPPathUtils.h"
 #import <CFNetwork/CFNetwork.h>
 
 @implementation FTPBrowser
@@ -21,28 +22,9 @@
     [self cancel];
     _finished = NO;
 
-    NSString *safePath = path;
-    if ([safePath length] == 0) safePath = @"/";
-    if (![safePath hasPrefix:@"/"]) {
-        safePath = [@"/" stringByAppendingString:safePath];
-    }
-/*
- * CFNetwork iOS 5'te FTP klasör listelemesi yaparken
- * klasör URL'sinin sonunda / bekliyor.
- *
- * /public_html/css   -> hata verebilir
- * /public_html/css/  -> doğru klasör listeleme
- */
-    NSString *urlPath = safePath;
+    NSString *safePath = [FTPPathUtils normalizedRemoteDirectoryPath:path];
 
-    if (![urlPath isEqualToString:@"/"] && ![urlPath hasSuffix:@"/"]) {
-        urlPath = [urlPath stringByAppendingString:@"/"];
-    }
-
-    NSString *urlString = [NSString stringWithFormat:@"ftp://%@:%ld%@",
-                       host,
-                       (long)port,
-                       urlPath];
+    NSString *urlString = [NSString stringWithFormat:@"ftp://%@:%ld%@", host, (long)port, safePath];
     NSString *escaped = [urlString stringByAddingPercentEscapesUsingEncoding:NSUTF8StringEncoding];
     NSURL *url = [NSURL URLWithString:escaped];
 
@@ -102,6 +84,12 @@
     }
 }
 
+- (NSArray *)sortedRemoteItems:(NSArray *)items {
+    NSSortDescriptor *foldersFirst = [[[NSSortDescriptor alloc] initWithKey:@"isDirectory" ascending:NO] autorelease];
+    NSSortDescriptor *nameAscending = [[[NSSortDescriptor alloc] initWithKey:@"name" ascending:YES selector:@selector(caseInsensitiveCompare:)] autorelease];
+    return [items sortedArrayUsingDescriptors:[NSArray arrayWithObjects:foldersFirst, nameAscending, nil]];
+}
+
 - (NSArray *)parseListing:(NSData *)listingData {
     NSMutableArray *items = [NSMutableArray array];
     NSString *text = [[[NSString alloc] initWithData:listingData encoding:NSUTF8StringEncoding] autorelease];
@@ -144,7 +132,7 @@
                               size, @"size", nil];
         [items addObject:item];
     }
-    return items;
+    return [self sortedRemoteItems:items];
 }
 
 - (void)finish {
