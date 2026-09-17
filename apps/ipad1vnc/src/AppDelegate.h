@@ -31,8 +31,13 @@
     UISwitch *_autoResolutionSwitch;
     UIButton *_matchResolutionButton;
     UILabel *_diagnosticsLabel;
+    UISwitch *_precisionSwitch;
+    UISwitch *_dragLockSwitch;
+    UIButton *_scanLANButton;
+    NSMutableArray *_lanResults;
     NSUInteger _reconnectCount;
     UISwitch *_tightSwitch;
+    UISwitch *_tlsSwitch;
     UIButton *_fullScreenButton;
     UIButton *_exitFullScreenButton;
     UITextField *_keyboardField;
@@ -88,6 +93,11 @@
     NSString *_remoteRelativePath;
     NSInteger _selectedRemoteIndex;
     BOOL _uploading;
+    BOOL _transferPaused;
+    NSMutableArray *_transferQueue;
+    NSDictionary *_currentTransfer;
+    NSString *_resumeRemotePath;
+    long long _downloadResumeOffset;
 }
 @property (nonatomic, retain) UIWindow *window;
 @end

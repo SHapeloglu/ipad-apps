@@ -1,125 +1,130 @@
-# iPad1VNC v2.1.0-rc2
+# iPad1VNC v2.2.0-beta1
 
-This release candidate folds the planned "finish the fundamentals" roadmap into one branch for iPad 1 / iOS 5.1.1.
+This branch combines the post-2.1 competitor-gap roadmap in one update. It is intentionally a **beta** because several large changes need real-device validation on iOS 5.1.1.
 
-## What is included
+## New in 2.2
 
-### VNC / performance
-- RAW + Hextile
-- Reworked Tight decoder:
-  - four persistent zlib streams
-  - stream reset bits
-  - Copy filter
-  - Palette filter
-  - Gradient filter
-  - JPEG rectangles
-  - Fill rectangles
-- Tight uses a 24-bit true-color transport for interoperability.
-- Auto Quality 2.0 for Hextile/RAW:
-  - decode time
-  - framebuffer request/update RTT estimate
-  - hysteresis to avoid quality oscillation
-- Health HUD:
-  - RTT/latency estimate
-  - FPS
-  - kbps
-  - encoding
-  - quality
-  - uptime
-  - reconnect count
+### Diagnostics 2.0
+- refresh interval reduced to 0.5 s
+- RTT current / rolling average / maximum
+- FPS current / cumulative average
+- kbps
+- total framebuffer updates
+- encoding / quality
+- uptime / reconnect count
+- simple Excellent / Good / Poor health classification
 
-### Security
-- VNC password and Files API token migrate out of NSUserDefaults into iOS Keychain.
-- Profile-specific VNC password and Files token are stored in Keychain.
-- SSH interactive sessions use `StrictHostKeyChecking=ask`.
-- SSH tunnel uses `StrictHostKeyChecking=yes`; trust the server once in Terminal before enabling the tunnel.
-- Private keys remain files under `/var/mobile/.ssh/` and are created with restrictive permissions.
+### VeNCrypt / TLS
+- optional **X509Vnc (VeNCrypt subtype 261)** client path using iOS SecureTransport
+- server certificate hostname validation
+- VNC password authentication takes place inside the encrypted channel
+- normal VncAuth remains the default and safe fallback
+- X509 TLS is OFF by default
 
-### Profiles 2.0
-Profiles can retain:
-- VNC host/port
-- quality/input/speed
-- SSH user/port/key/tunnel
-- Files URL
-- WOL MAC/broadcast
-- remote DISPLAY
-- auto-resolution preference
+This beta deliberately targets X509Vnc rather than anonymous TLSVnc. Configure TigerVNC with X.509-based VeNCrypt before enabling the switch.
 
-Profile management includes:
-- Load
+### Mouse UX
+- Precision mode: 0.30x fine pointer movement
+- Drag Lock: double tap toggles held left button
+- 3-finger tap: middle mouse button
+- existing long press: right click
+- existing 2-finger pan: wheel
+
+### Profiles 3.0
+Selecting a profile now exposes quick actions:
+- Desktop Connect
+- Terminal
+- Files
+- Wake
+- Load & Edit
 - Duplicate
 - Delete
-- Set Default
-- Toggle Auto Connect
 
-### Terminal 2.0
-- explicit Connect / Stop
-- RSA key generation through jailbroken `/usr/bin/ssh-keygen`
-- 5,000-line bounded scrollback
-- lightweight VT100/ANSI screen interpretation
-- terminal toolbar: Esc, Ctrl-C, Tab, Home, End, PgUp/PgDn and arrows
+Profiles also persist:
+- X509 TLS
+- Precision mode
+- Drag Lock
 
-This is intentionally a small VT100-like compatibility layer, not a full modern xterm implementation.
+### LAN discovery
+- scans the local IPv4 /24
+- detects SSH (22) and configured VNC port
+- results can populate the connection host
+- scanning is on a worker thread
 
-### Files 2.1
-Authenticated API:
-- list
-- download
-- new folder
-- rename
-- delete
-- file size + modified timestamp from server
-- chunked 64 KB upload so large files are not loaded fully into the iPad's 256 MB RAM
-- upload progress and cancel state
+### Keyboard
+- F1-F12
+- Insert / Delete / Print Screen
+- Alt+Tab
+- Ctrl+Alt+Del
+- Ctrl+Alt+T
+- Ctrl+Shift+Esc
+- Super / Menu / Pause / Scroll Lock
+- extended keys are exposed via a compact `Keys…` menu to avoid overcrowding the iPad 1 keyboard bar
 
-### Tools
-- Wake-on-LAN
-- Match remote XFCE/VNC framebuffer to current iPad orientation using SSH + `xrandr --fb`
-- optional auto-resolution on orientation changes
-- connection diagnostics panel
+### Files 2.2
+- sequential transfer queue
+- pause/resume state
+- HTTP Range download resume
+- partial downloads use `.part`
+- failed/cancelled partial downloads are retained
+- server `/api/stat`
+- chunk upload resumes from current remote size
+- 64 KB upload chunks remain RAM-safe for 256 MB devices
+- server supports `Accept-Ranges`
 
-## Important rollout order
+**Server script must be upgraded** before testing resume.
 
-1. Build/install rc1.
-2. Leave Tight OFF and verify the existing Hextile path.
-3. Verify Keychain migration did not lose the VNC password/Files token.
-4. Test Terminal and accept the SSH host fingerprint.
-5. Test SSH tunnel; only after that close public VNC port 5901.
-6. Upgrade the server Files API with the included Python script before testing chunked upload.
-7. Test Tight separately. If TigerVNC still sends a Tight variant not handled correctly, switch Tight OFF and keep Hextile as the safe fallback.
-8. Test Dynamic Resolution manually before enabling Auto Resolution.
+### iPad 1 stability
+- per-network-message autorelease pool to prevent long VNC sessions accumulating autoreleased frame objects
+- memory warning handler trims terminal scrollback and temporary file/browser data
+- terminal normal limit remains bounded
 
 ## Build
 
 ```bash
-cd ~/projects/ipad1vnc/iPad1VNC-v2.1.0-rc1
+cd ~/projects/ipad1vnc/iPad1VNC-v2.2.0-beta1
 make clean
 make package FINALPACKAGE=1
 ```
 
-Expected:
-`packages/com.olap.ipad1vnc_2.1.0-rc1_iphoneos-arm.deb`
+Expected package:
 
-## Server Files API upgrade
+```text
+packages/com.olap.ipad1vnc_2.2.0-beta1_iphoneos-arm.deb
+```
 
-Copy:
-`./scripts/ipad1vnc_fileserver.py`
+## Upgrade Files API on Contabo
 
-to:
-`/opt/ipad1vnc/ipad1vnc_fileserver.py`
+From WSL:
 
-then:
+```bash
+scp scripts/ipad1vnc_fileserver.py root@95.111.242.96:/opt/ipad1vnc/ipad1vnc_fileserver.py
+```
+
+On Contabo:
 
 ```bash
 sudo chmod 755 /opt/ipad1vnc/ipad1vnc_fileserver.py
 sudo systemctl restart ipad1vnc-fileserver
-sudo systemctl status ipad1vnc-fileserver --no-pager
+sudo systemctl status ipad1vnc-fileserver --no-pager -l
 ```
 
-The existing token file remains valid.
+The existing token file remains unchanged.
 
+## Recommended validation order
 
-## rc2 compile fixes
-- Rewrites the Hextile decoder loop with explicit braces to satisfy `-Wmisleading-indentation` under the legacy iOS 5 Theos build.
-- Restores the required `terminalSessionEnded:` delegate method for `TerminalSessionDelegate`.
-- No v2.1 functionality was removed.
+1. Compile.
+2. Tight ON baseline.
+3. Diagnostics 2.0 while dragging windows / scrolling.
+4. Precision, right/middle click, Drag Lock.
+5. Profiles 3.0 quick actions.
+6. Terminal.
+7. Upgrade server Files API.
+8. Download interruption -> resume.
+9. Upload interruption -> resume.
+10. LAN Scan on Wi-Fi.
+11. SSH Tunnel.
+12. X509 TLS **only after TigerVNC is configured for X509Vnc**.
+13. 30-60 minute VNC memory/stability test.
+
+Do not expose plain VNC to the internet merely because TLS support exists; keep SSH tunnel as the known-good secure path until X509Vnc has been validated on the actual server.

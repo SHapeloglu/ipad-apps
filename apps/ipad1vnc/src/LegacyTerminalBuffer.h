@@ -13,4 +13,5 @@
 - (void)reset;
 - (void)appendTerminalText:(NSString *)text;
 - (NSString *)renderString;
+- (void)trimScrollbackTo:(NSUInteger)lines;
 @end

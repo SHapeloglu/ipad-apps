@@ -1,69 +1,68 @@
-# iPad1VNC v2.1.0-rc1 acceptance checklist
+# iPad1VNC 2.2.0-beta1 acceptance
 
-## Baseline
-- [ ] Build succeeds for armv7 / iOS 5.1
-- [ ] App launches
-- [ ] Existing host/port remain
-- [ ] Existing VNC secret is migrated to Keychain
-- [ ] Existing Files token is migrated to Keychain
+## Compile
+- [ ] armv7 / iOS 5.1 build passes
+- [ ] application installs and launches
 
-## Hextile
-- [ ] Tight OFF connects
-- [ ] Direct mode
-- [ ] Trackpad mode
-- [ ] Zoom
-- [ ] Two-finger scroll
-- [ ] Clipboard
-- [ ] Keyboard + extended toolbar
-- [ ] 15-minute stable session
-
-## Health / Auto Quality
-- [ ] RTT appears
-- [ ] FPS appears
-- [ ] kbps appears
-- [ ] encoding appears
-- [ ] uptime/reconnect count appears in Tools
-- [ ] Auto does not oscillate rapidly
-
-## Tight
+## VNC baseline
 - [ ] Tight ON connects
-- [ ] desktop remains correct after scrolling/moving windows
-- [ ] gradients do not corrupt colors
-- [ ] JPEG regions render
-- [ ] reconnect after server restart
+- [ ] Hextile fallback connects
+- [ ] 15 minutes no visual corruption
+
+## Diagnostics
+- [ ] RTT now changes
+- [ ] RTT avg changes
+- [ ] RTT max increases on a slow event
+- [ ] FPS changes during idle vs window movement
+- [ ] kbps changes
+- [ ] total frame counter increases
+- [ ] health classification changes sensibly
+
+## Mouse
+- [ ] Precision is visibly slower
+- [ ] long press right click
+- [ ] 3-finger middle click
+- [ ] Drag Lock double tap
+- [ ] 2-finger wheel
 
 ## Profiles
-- [ ] save
-- [ ] load
-- [ ] duplicate
-- [ ] delete
-- [ ] set default
-- [ ] auto connect
-- [ ] profile-specific VNC password
-- [ ] profile-specific Files token
+- [ ] Desktop Connect
+- [ ] Terminal
+- [ ] Files
+- [ ] Wake
+- [ ] Load & Edit
+- [ ] Duplicate
+- [ ] Delete
 
-## SSH
-- [ ] username respected
-- [ ] host fingerprint prompt shown on first interactive connection
-- [ ] known_hosts persists
-- [ ] key generation works
-- [ ] Ctrl-C/arrows/Home/End/PgUp/PgDn
-- [ ] `top` displays acceptably
-- [ ] SSH tunnel connects after host is trusted
+## Keyboard
+- [ ] F1-F12
+- [ ] Insert/Delete
+- [ ] Alt+Tab
+- [ ] Ctrl+Alt+T
+- [ ] Ctrl+Alt+Del
 
-## Files
-- [ ] list
-- [ ] download
-- [ ] upload small file
-- [ ] upload 100+ MB file without memory crash
-- [ ] progress updates
-- [ ] new folder
-- [ ] rename
-- [ ] delete
-- [ ] server restart keeps token
+## Files server 2.2
+- [ ] /api/stat works
+- [ ] Range download returns HTTP 206
+- [ ] interrupted download resumes
+- [ ] interrupted upload resumes
+- [ ] queue starts next item
+- [ ] 100+ MB transfer does not crash app
 
-## Tools
-- [ ] WOL valid MAC
-- [ ] Match iPad resolution
-- [ ] rotate portrait/landscape
-- [ ] Auto Resolution does not loop
+## LAN
+- [ ] Wi-Fi IPv4 detected
+- [ ] SSH server appears
+- [ ] VNC server appears
+- [ ] selected LAN result fills Host
+
+## TLS / VeNCrypt
+- [ ] server configured for X509Vnc
+- [ ] X509 TLS switch connects
+- [ ] wrong/untrusted certificate fails
+- [ ] normal VncAuth remains functional with TLS switch OFF
+
+## Stability
+- [ ] 30 minute session
+- [ ] 60 minute session
+- [ ] memory warning does not crash
+- [ ] reconnect works after Wi-Fi interruption

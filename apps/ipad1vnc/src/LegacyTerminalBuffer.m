@@ -93,4 +93,7 @@
     }
     return s;
 }
+- (void)trimScrollbackTo:(NSUInteger)lines {
+    while([_scrollback count]>lines)[_scrollback removeObjectAtIndex:0];
+}
 @end

@@ -14,7 +14,7 @@ def safe_path(rel):
     return p
 
 class H(BaseHTTPRequestHandler):
-    server_version = "iPad1VNCFiles/2.0"
+    server_version = "iPad1VNCFiles/2.2"
     def auth(self):
         return self.headers.get("X-iPad1VNC-Token","") == TOKEN or urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query).get("token",[""])[0] == TOKEN
     def json(self, code, obj):
@@ -27,6 +27,11 @@ class H(BaseHTTPRequestHandler):
         u=urllib.parse.urlsplit(self.path)
         if u.path.startswith("/api/"):
             if not self.auth(): return self.json(401,{"error":"unauthorized"})
+            if u.path=="/api/stat":
+                try:p=self.target()
+                except Exception:return self.json(400,{"error":"bad path"})
+                if not p.exists():return self.json(404,{"error":"not found"})
+                st=p.stat();return self.json(200,{"path":str(p.relative_to(ROOT)) if p!=ROOT else "","dir":p.is_dir(),"size":(st.st_size if p.is_file() else 0),"mtime":int(st.st_mtime)})
             if u.path=="/api/list":
                 try:p=self.target()
                 except Exception:return self.json(400,{"error":"bad path"})
@@ -41,8 +46,25 @@ class H(BaseHTTPRequestHandler):
             try:p=self.target()
             except Exception:return self.json(400,{"error":"bad path"})
             if not p.is_file():return self.json(404,{"error":"not file"})
-            self.send_response(200);self.send_header("Content-Type",mimetypes.guess_type(p.name)[0] or "application/octet-stream");self.send_header("Content-Length",str(p.stat().st_size));self.send_header("Content-Disposition",f'attachment; filename="{p.name}"');self.end_headers()
-            with p.open("rb") as f: shutil.copyfileobj(f,self.wfile)
+            size=p.stat().st_size;start=0;end=size-1;status=200
+            rng=self.headers.get("Range","")
+            if rng.startswith("bytes="):
+                try:
+                    spec=rng[6:].split(",",1)[0];lo,hi=spec.split("-",1);start=int(lo or 0);end=int(hi) if hi else size-1
+                    if start<0 or start>=size or end<start:raise ValueError()
+                    end=min(end,size-1);status=206
+                except Exception:
+                    self.send_response(416);self.send_header("Content-Range",f"bytes */{size}");self.end_headers();return
+            length=max(0,end-start+1)
+            self.send_response(status);self.send_header("Accept-Ranges","bytes");self.send_header("Content-Type",mimetypes.guess_type(p.name)[0] or "application/octet-stream");self.send_header("Content-Length",str(length));self.send_header("Content-Disposition",f'attachment; filename="{p.name}"')
+            if status==206:self.send_header("Content-Range",f"bytes {start}-{end}/{size}")
+            self.end_headers()
+            with p.open("rb") as f:
+                f.seek(start);remaining=length
+                while remaining:
+                    chunk=f.read(min(1024*1024,remaining))
+                    if not chunk:break
+                    self.wfile.write(chunk);remaining-=len(chunk)
             return
         self.json(404,{"error":"not found"})
     def readbody(self):
@@ -60,6 +82,8 @@ class H(BaseHTTPRequestHandler):
                 d=json.loads(self.readbody() or b"{}");p=safe_path(d["path"]);shutil.rmtree(p) if p.is_dir() else p.unlink();return self.json(200,{"ok":True})
             if u.path=="/api/upload-chunk":
                 q=urllib.parse.parse_qs(u.query);p=safe_path(q.get("path",[""])[0]);offset=int(q.get("offset",["0"])[0]);total=int(q.get("total",["0"])[0]);p.parent.mkdir(parents=True,exist_ok=True)
+                current=p.stat().st_size if p.exists() else 0
+                if offset>current:return self.json(409,{"error":"offset ahead of remote file","size":current})
                 mode="r+b" if p.exists() else "wb"
                 with p.open(mode) as f:
                     f.seek(offset);data=self.readbody();f.write(data)

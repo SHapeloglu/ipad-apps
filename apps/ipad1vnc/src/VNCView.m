@@ -6,6 +6,8 @@
 @synthesize client = _client;
 @synthesize pointerSensitivity = _pointerSensitivity;
 @synthesize inputMode = _inputMode;
+@synthesize precisionMode = _precisionMode;
+@synthesize dragLock = _dragLock;
 
 - (id)initWithFrame:(CGRect)frame {
     if ((self = [super initWithFrame:frame])) {
@@ -17,6 +19,9 @@
         _pointerSensitivity = 1.0;
         _inputMode = VNCInputModeDirect;
         _trackpadMoved = NO;
+        _precisionMode = NO;
+        _dragLock = NO;
+        _dragging = NO;
 
         UILongPressGestureRecognizer *longPress = [[[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(longPress:)] autorelease];
         longPress.minimumPressDuration = 0.55;
@@ -31,6 +36,14 @@
         scroll.maximumNumberOfTouches = 2;
         scroll.cancelsTouchesInView = YES;
         [self addGestureRecognizer:scroll];
+
+        UITapGestureRecognizer *middleTap=[[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(middleTap:)] autorelease];
+        middleTap.numberOfTouchesRequired=3;middleTap.numberOfTapsRequired=1;middleTap.cancelsTouchesInView=YES;
+        [self addGestureRecognizer:middleTap];
+
+        UITapGestureRecognizer *dragTap=[[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(dragTap:)] autorelease];
+        dragTap.numberOfTouchesRequired=1;dragTap.numberOfTapsRequired=2;dragTap.cancelsTouchesInView=YES;
+        [self addGestureRecognizer:dragTap];
     }
     return self;
 }
@@ -78,7 +91,7 @@
 - (void)touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event {
     if([[event allTouches] count]!=1)return;
     UITouch *t=[touches anyObject];
-    CGFloat speed=MIN(1.5,MAX(0.5,_pointerSensitivity));
+    CGFloat speed=MIN(1.5,MAX(0.5,_pointerSensitivity));if(_precisionMode)speed*=0.30;
     if(_inputMode==VNCInputModeTrackpad){
         CGPoint p=[t locationInView:self];
         CGFloat dx=p.x-_lastTouchViewPoint.x, dy=p.y-_lastTouchViewPoint.y;
@@ -90,7 +103,7 @@
         _lastPoint.x+=dx*sx; _lastPoint.y+=dy*sy;
         _lastPoint.x=MIN(MAX(_lastPoint.x,0),MAX(1,_client.framebufferWidth-1));
         _lastPoint.y=MIN(MAX(_lastPoint.y,0),MAX(1,_client.framebufferHeight-1));
-        [_client sendPointerX:(NSUInteger)_lastPoint.x y:(NSUInteger)_lastPoint.y buttons:0];
+        [_client sendPointerX:(NSUInteger)_lastPoint.x y:(NSUInteger)_lastPoint.y buttons:(_dragging?1:0)];
         return;
     }
     CGPoint target=[self remotePointForTouch:t];
@@ -103,8 +116,8 @@
     if([[event allTouches] count]>1)return;
     if(_inputMode==VNCInputModeTrackpad){
         if(!_trackpadMoved){
-            [_client sendPointerX:(NSUInteger)_lastPoint.x y:(NSUInteger)_lastPoint.y buttons:1];
-            [_client sendPointerX:(NSUInteger)_lastPoint.x y:(NSUInteger)_lastPoint.y buttons:0];
+            if(_dragLock){_dragging=!_dragging;[_client sendPointerX:(NSUInteger)_lastPoint.x y:(NSUInteger)_lastPoint.y buttons:(_dragging?1:0)];}
+            else{[_client sendPointerX:(NSUInteger)_lastPoint.x y:(NSUInteger)_lastPoint.y buttons:1];[_client sendPointerX:(NSUInteger)_lastPoint.x y:(NSUInteger)_lastPoint.y buttons:0];}
         }
         return;
     }
@@ -145,5 +158,21 @@
     const CGFloat step=24.0;
     while(_scrollAccumulator>=step){[_client sendPointerX:(NSUInteger)rp.x y:(NSUInteger)rp.y buttons:16];[_client sendPointerX:(NSUInteger)rp.x y:(NSUInteger)rp.y buttons:0];_scrollAccumulator-=step;}
     while(_scrollAccumulator<=-step){[_client sendPointerX:(NSUInteger)rp.x y:(NSUInteger)rp.y buttons:8];[_client sendPointerX:(NSUInteger)rp.x y:(NSUInteger)rp.y buttons:0];_scrollAccumulator+=step;}
+}
+
+- (void)middleTap:(UITapGestureRecognizer*)g {
+    if(g.state!=UIGestureRecognizerStateRecognized||!_client)return;
+    CGPoint rp=(_inputMode==VNCInputModeTrackpad?_lastPoint:[self remotePointForViewPoint:[g locationInView:self]]);
+    if(_inputMode==VNCInputModeTrackpad)[self ensureTrackpadPointer];
+    [_client sendPointerX:(NSUInteger)rp.x y:(NSUInteger)rp.y buttons:2];
+    [_client sendPointerX:(NSUInteger)rp.x y:(NSUInteger)rp.y buttons:0];
+}
+- (void)dragTap:(UITapGestureRecognizer*)g {
+    if(g.state!=UIGestureRecognizerStateRecognized||!_client||!_dragLock)return;
+    CGPoint rp=(_inputMode==VNCInputModeTrackpad?_lastPoint:[self remotePointForViewPoint:[g locationInView:self]]);
+    if(_inputMode==VNCInputModeTrackpad)[self ensureTrackpadPointer];
+    _dragging=!_dragging;
+    _lastPoint=rp;
+    [_client sendPointerX:(NSUInteger)rp.x y:(NSUInteger)rp.y buttons:(_dragging?1:0)];
 }
 @end
