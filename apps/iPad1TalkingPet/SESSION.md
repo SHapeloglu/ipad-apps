@@ -1,15 +1,16 @@
 # SESSION
 
-Current version: 0.9.0
-Status: source prepared; physical verification pending.
+Current version: 1.0.0
+Status: source prepared; physical device verification pending.
 
 Immediate next action:
 FINALPACKAGE=1 make package
 
-Then test:
-- Living Pet random animations
-- Event button/details
-- Food discount day logic
-- Wardrobe discount day logic
-- No crashes after 10+ minutes idle
-- Outfit alignment during random animations
+Then install on the physical iPad 1 and verify:
+- mood changes with hunger/energy/hygiene/happiness
+- spontaneous reactions follow mood
+- Rekorlar screen opens
+- Runner high-score/combo persists after restart
+- Food screen shows expanded content correctly
+- wardrobe remains aligned
+- no crash after 15+ minutes idle

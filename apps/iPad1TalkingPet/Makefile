@@ -13,6 +13,7 @@ iPad1TalkingPet_FILES = main.m \
     src/SoundManager.m \
     src/AchievementManager.m \
     src/HighScoreManager.m \
+    src/PetMoodManager.m \
     src/WeeklyEventManager.m \
     src/LivingPetManager.m \
     src/RoomBackgroundView.m \
@@ -34,7 +35,8 @@ iPad1TalkingPet_FILES = main.m \
     src/PhotoAlbumViewController.m \
     src/TravelViewController.m \
     src/AchievementsViewController.m \
-    src/WeeklyEventViewController.m
+    src/WeeklyEventViewController.m \
+    src/ScoresViewController.m
 
 iPad1TalkingPet_FRAMEWORKS = UIKit Foundation QuartzCore CoreGraphics AVFoundation AudioToolbox
 iPad1TalkingPet_CFLAGS = -fno-objc-arc

@@ -1,26 +1,58 @@
 # PROJECT_CONTEXT
 
-Current version: 0.9.0
-Milestone: Living Pet
+Current version: 1.0.0
+Milestone: Emotion & Polish
 
 ## Platform constraints
-iPad 1 / Apple A4 / 256 MB RAM / iOS 5.1.1 / armv7 / Objective-C / Theos / non-ARC.
+- iPad 1
+- Apple A4
+- 256 MB RAM
+- iOS 5.1.1
+- armv7
+- Objective-C / UIKit
+- Theos / legacy iPhoneOS 6.1 SDK
+- non-ARC / MRC
 
-## New architecture
-LivingPetManager:
-- spontaneous non-user-triggered pet animations
-- lightweight NSTimer scheduling
+## Core architecture
 
-WeeklyEventManager:
-- fully offline weekday-based event modifiers
+### PetMoodManager
+Maps needs to one dominant mood:
+- happy
+- hungry
+- dirty
+- sleepy
+- bored
+- neutral
 
-HighScoreManager:
-- local high score and combo infrastructure
+### LivingPetManager
+Uses current needs to choose spontaneous animation rather than pure random behavior.
+
+### HighScoreManager
+Persistent local scores and combo multiplier support.
+
+### WeeklyEventManager
+Offline weekday event modifiers.
+
+### Wardrobe
+Top:
+- T-shirt style 1/2
+- Crop style 1/2
+
+Bottom:
+- Pants style 1/2
+- Skirt style 1/2
+
+Head/face/shoes retained.
 
 ## Immediate next action
-Compile and test on real iPad 1.
-Focus on:
-- spontaneous animations not colliding with talk/eat/sleep
-- wardrobe alignment while spontaneous animation runs
-- event discounts
-- memory usage after 10+ minutes
+Compile on the user's legacy Theos toolchain and test on physical iPad 1.
+
+Priority tests:
+1. Build compatibility with iOS 5 SDK APIs
+2. Mood label updates
+3. Need-based spontaneous reactions
+4. Runner high-score/combo
+5. Scores screen
+6. Food list expansion
+7. 15+ minute memory stability
+8. Outfit alignment while LivingPet animations run

@@ -1,5 +1,7 @@
 #import "MatchGameViewController.h"
 #import "PetProgressManager.h"
+#import "HighScoreManager.h"
+#import "WeeklyEventManager.h"
 
 @implementation MatchGameViewController
 
@@ -20,7 +22,10 @@
 
     NSArray *vals=[NSArray arrayWithObjects:@"A",@"A",@"B",@"B",@"C",@"C",@"D",@"D",@"E",@"E",@"F",@"F",nil];
     NSMutableArray *sh=[NSMutableArray arrayWithArray:vals];
-    for(NSInteger i=[sh count]-1;i>0;i--){NSInteger j=arc4random()%(i+1);[sh exchangeObjectAtIndex:i withObjectAtIndex:j];}
+    for(NSInteger i=[sh count]-1;i>0;i--){
+        NSInteger j=arc4random()%(i+1);
+        [sh exchangeObjectAtIndex:i withObjectAtIndex:j];
+    }
 
     for(NSInteger i=0;i<12;i++){
         UIButton *b=[UIButton buttonWithType:UIButtonTypeRoundedRect];
@@ -33,8 +38,9 @@
         [self.view addSubview:b];
     }
 
-    _status=[[UILabel alloc] initWithFrame:CGRectMake(120,760,528,70)];
+    _status=[[UILabel alloc] initWithFrame:CGRectMake(110,735,548,110)];
     _status.textAlignment=UITextAlignmentCenter;
+    _status.numberOfLines=3;
     _status.backgroundColor=[UIColor clearColor];
     [self.view addSubview:_status];
 
@@ -43,6 +49,7 @@
     [back setTitle:@"Geri" forState:UIControlStateNormal];
     [back addTarget:self action:@selector(goBack) forControlEvents:UIControlEventTouchUpInside];
     [self.view addSubview:back];
+
     [self update];
 }
 
@@ -50,15 +57,35 @@
     if(!b.enabled) return;
     b.enabled=NO;
     _score++;
+
     if(_score>=6) {
-        [_progress addCoins:60];
+        NSInteger eventMul=[[WeeklyEventManager sharedManager] coinMultiplierForMiniGames];
+        NSInteger coins=60*eventMul;
+        [_progress addCoins:coins];
         [_progress addXP:30];
-        _status.text=@"Tamamlandı! +60 coin +30 XP";
-    } else [self update];
+
+        NSInteger score=100;
+        BOOL rec=[[HighScoreManager sharedManager] submitScore:score forGame:@"match"];
+        _status.text=[NSString stringWithFormat:@"Tamamlandı! %@\n+%ld coin +30 XP",
+                      rec?@"YENİ REKOR!":@"",(long)coins];
+    } else {
+        [self update];
+    }
 }
 
-- (void)update { _status.text=[NSString stringWithFormat:@"Eşleşme: %ld/6",(long)_score]; }
+- (void)update {
+    NSInteger hs=[[HighScoreManager sharedManager] highScoreForGame:@"match"];
+    _status.text=[NSString stringWithFormat:@"Eşleşme: %ld/6\nRekor: %ld",
+                  (long)_score,(long)hs];
+}
+
 - (void)goBack { [self dismissModalViewControllerAnimated:YES]; }
-- (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)o { return o==UIInterfaceOrientationPortrait; }
-- (void)dealloc { [_progress release]; [_status release]; [super dealloc]; }
+- (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)o {
+    return o==UIInterfaceOrientationPortrait;
+}
+- (void)dealloc {
+    [_progress release];
+    [_status release];
+    [super dealloc];
+}
 @end

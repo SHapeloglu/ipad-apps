@@ -1,5 +1,7 @@
 #import "RunnerGameViewController.h"
 #import "PetProgressManager.h"
+#import "HighScoreManager.h"
+#import "WeeklyEventManager.h"
 
 @implementation RunnerGameViewController
 
@@ -11,9 +13,10 @@
     [super viewDidLoad];
     self.view.backgroundColor=[UIColor colorWithRed:0.88 green:0.97 blue:1 alpha:1];
 
-    _label=[[UILabel alloc] initWithFrame:CGRectMake(30,35,708,55)];
+    _label=[[UILabel alloc] initWithFrame:CGRectMake(30,35,708,85)];
     _label.textAlignment=UITextAlignmentCenter;
-    _label.font=[UIFont boldSystemFontOfSize:25];
+    _label.numberOfLines=2;
+    _label.font=[UIFont boldSystemFontOfSize:23];
     _label.backgroundColor=[UIColor clearColor];
     [self.view addSubview:_label];
 
@@ -37,7 +40,11 @@
     [back addTarget:self action:@selector(goBack) forControlEvents:UIControlEventTouchUpInside];
     [self.view addSubview:back];
 
-    _timer=[[NSTimer scheduledTimerWithTimeInterval:0.05 target:self selector:@selector(tick) userInfo:nil repeats:YES] retain];
+    _timer=[[NSTimer scheduledTimerWithTimeInterval:0.05
+                                             target:self
+                                           selector:@selector(tick)
+                                           userInfo:nil
+                                            repeats:YES] retain];
     [self update];
 }
 
@@ -53,15 +60,32 @@
     }];
 }
 
+- (void)finishGame {
+    [_timer invalidate];
+
+    NSInteger combo=MAX(1,_score/3);
+    NSInteger comboMul=[[HighScoreManager sharedManager] comboBonusForCombo:combo];
+    NSInteger eventMul=[[WeeklyEventManager sharedManager] coinMultiplierForMiniGames];
+    NSInteger coins=_score*2*comboMul*eventMul;
+
+    [_progress addCoins:coins];
+    [_progress addXP:_score];
+
+    BOOL record=[[HighScoreManager sharedManager] submitScore:_score forGame:@"runner"];
+    _label.text=[NSString stringWithFormat:@"Oyun bitti! Puan %ld\n%@ +%ld coin",
+                 (long)_score, record?@"YENİ REKOR!":@"", (long)coins];
+}
+
 - (void)tick {
-    CGRect o=_obstacle.frame; o.origin.x-=9; _obstacle.frame=o;
+    CGRect o=_obstacle.frame;
+    o.origin.x-=9+MIN(8,_score/2);
+    _obstacle.frame=o;
+
     if(CGRectIntersectsRect(_runner.frame,_obstacle.frame)) {
-        [_timer invalidate];
-        [_progress addCoins:_score*2];
-        [_progress addXP:_score];
-        _label.text=@"Çarptın! Oyun bitti.";
+        [self finishGame];
         return;
     }
+
     if(CGRectGetMaxX(_obstacle.frame)<0) {
         _score++;
         _obstacle.frame=CGRectMake(720,735,45,55);
@@ -69,13 +93,26 @@
     }
 }
 
-- (void)update { _label.text=[NSString stringWithFormat:@"Koşu Puanı: %ld",(long)_score]; }
+- (void)update {
+    NSInteger hs=[[HighScoreManager sharedManager] highScoreForGame:@"runner"];
+    NSInteger combo=MAX(1,_score/3);
+    NSInteger mul=[[HighScoreManager sharedManager] comboBonusForCombo:combo];
+    _label.text=[NSString stringWithFormat:@"Puan: %ld   Rekor: %ld\nCombo x%ld",
+                 (long)_score,(long)hs,(long)mul];
+}
+
 - (void)goBack { [_timer invalidate]; [self dismissModalViewControllerAnimated:YES]; }
-- (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)o { return o==UIInterfaceOrientationPortrait; }
+- (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)o {
+    return o==UIInterfaceOrientationPortrait;
+}
 
 - (void)dealloc {
-    [_timer invalidate]; [_timer release];
-    [_progress release]; [_runner release]; [_obstacle release]; [_label release];
+    [_timer invalidate];
+    [_timer release];
+    [_progress release];
+    [_runner release];
+    [_obstacle release];
+    [_label release];
     [super dealloc];
 }
 @end

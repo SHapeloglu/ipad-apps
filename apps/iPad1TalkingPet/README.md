@@ -1,44 +1,46 @@
-# iPad1TalkingPet v0.9 — Living Pet
+# iPad1TalkingPet v1.0 — Emotion & Polish
 
-## Yeni
-- Spontane karakter davranışları:
-  - sola bak
-  - sağa bak
-  - el salla
-  - gül
-  - şaşır
-  - gerin
-  - dans et
-  - zıpla
-- LivingPetManager: belirli aralıklarla rastgele davranış
-- HighScoreManager:
-  - yerel high score
-  - combo çarpanı altyapısı
-- Haftalık offline etkinlik sistemi:
-  - Pazartesi: mini oyun coin 2x
-  - Salı: yemek indirimi
-  - Çarşamba: gardırop indirimi
-  - Perşembe: fotoğraf günü
-  - Cuma: gezi günü
-  - Cumartesi: bonus coin
-  - Pazar: bakım/uyku odaklı
-- Etkinlik ekranı
-- Mobilya içeriği genişletildi
-- v0.8 gardırop ve kıyafet fit sistemi korunuyor
-- v0.6/v0.7 sprite, ses, görev, başarımlar ve 8 mini oyun korunuyor
+## v1.0 yenilikleri
+
+### Duygu / ihtiyaç davranış sistemi
+Kedi artık yalnızca rastgele değil, ihtiyaçlarına göre davranır:
+- Enerji düşük: uyku/esneme davranışı
+- Açlık düşük: üzgün/bakınma davranışı
+- Hijyen düşük: rahatsız/gerinme davranışı
+- Mutluluk düşük: oyun/ilgi isteyen davranış
+- Tüm ihtiyaçlar yüksek: gülme/dans/mutlu davranış
+
+Ana ekranda aktif ruh hali ve kısa ipucu gösterilir.
+
+### Rekor ve combo
+- Yerel `HighScoreManager`
+- `Rekorlar` ekranı
+- 8 mini oyun için rekor alanı
+- Koşu oyununda gerçek high-score + combo çarpanı
+- Eşleştir oyununda high-score entegrasyonu
+- Pazartesi 2x mini oyun ödülü ile birlikte çalışır
+
+### İçerik
+- Yemek sistemi 10 ürüne genişletildi
+- Yeni koltuk / halı / lamba PNG varyasyonları
+- v0.8 gardırop sistemi korunuyor
+- v0.9 spontane animasyonlar korunuyor
+
+### Platform
+iPad 1 / Apple A4 / 256 MB RAM / iOS 5.1.1 / armv7 / non-ARC.
 
 ## Derleme
 ```bash
-cd ~/projects/iPad1TalkingPet-v0.9
+cd ~/projects/iPad1TalkingPet-v1.0
 rm -rf .theos packages
 FINALPACKAGE=1 make package
 ```
 
-## Gönderme
+## iPad'e gönderme
 ```bash
 scp \
   -o HostKeyAlgorithms=+ssh-rsa \
   -o PubkeyAcceptedAlgorithms=+ssh-rsa \
-  packages/com.olapteknoloji.ipad1talkingpet_0.9.0_iphoneos-arm.deb \
+  packages/com.olapteknoloji.ipad1talkingpet_1.0.0_iphoneos-arm.deb \
   root@192.168.1.2:/var/mobile/
 ```

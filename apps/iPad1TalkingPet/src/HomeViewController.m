@@ -13,6 +13,7 @@
 #import "TravelViewController.h"
 #import "LivingPetManager.h"
 #import "WeeklyEventViewController.h"
+#import "PetMoodManager.h"
 #import "AchievementsViewController.h"
 #import "AchievementManager.h"
 #import "SoundManager.h"
@@ -36,8 +37,15 @@
     _petView=[[PetCharacterView alloc] initWithFrame:CGRectMake(185,205,400,610)];
     [_roomView addSubview:_petView];
     [_petView startIdle];
-    _livingPet=[[LivingPetManager alloc] initWithPet:_petView];
+    _livingPet=[[LivingPetManager alloc] initWithPet:_petView needs:_needs];
     [_livingPet start];
+
+    UILabel *mood=[[[UILabel alloc] initWithFrame:CGRectMake(230,83,310,44)] autorelease];
+    mood.tag=9090;
+    mood.textAlignment=UITextAlignmentCenter;
+    mood.font=[UIFont boldSystemFontOfSize:20];
+    mood.backgroundColor=[UIColor colorWithWhite:1 alpha:0.65];
+    [self.view addSubview:mood];
 
     [self buildStatus];
     [self buildTopActions];
@@ -241,6 +249,12 @@
 - (void)roomChanged { [_roomView reloadTheme]; }
 
 - (void)refreshUI {
+    UILabel *mood=(UILabel *)[self.view viewWithTag:9090];
+    if(mood) {
+        mood.text=[NSString stringWithFormat:@"%@ • %@",
+                   [[PetMoodManager sharedManager] moodTitleForNeeds:_needs],
+                   [[PetMoodManager sharedManager] moodHintForNeeds:_needs]];
+    }
     static NSInteger lastLevel = -1;
     if(lastLevel < 0) lastLevel = _progress.level;
     else if(_progress.level > lastLevel) {

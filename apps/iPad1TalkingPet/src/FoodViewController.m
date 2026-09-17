@@ -33,7 +33,7 @@
     _mouthTarget.backgroundColor=[UIColor colorWithRed:1 green:0.70 blue:0.70 alpha:0.45];
     _mouthTarget.layer.cornerRadius=28; [self.view addSubview:_mouthTarget];
 
-    NSArray *foods=[NSArray arrayWithObjects:@"Elma",@"Muz",@"Havuç",@"Tavuk",@"Pasta",@"Süt",nil];
+    NSArray *foods=[NSArray arrayWithObjects:@"Elma",@"Muz",@"Havuç",@"Tavuk",@"Pasta",@"Süt",@"Balık",@"Peynir",@"Dondurma",@"Karpuz",nil];
     for (NSInteger i=0;i<6;i++) {
         UIButton *b=[UIButton buttonWithType:UIButtonTypeRoundedRect];
         NSInteger row=i/3, col=i%3;
@@ -78,7 +78,7 @@
 
 - (void)foodDrop:(UIButton *)sender withEvent:(UIEvent *)event {
     if (CGRectIntersectsRect(sender.frame,_mouthTarget.frame)) {
-        NSInteger costs[6]={5,6,5,12,18,7};
+        NSInteger costs[10]={5,6,5,12,18,7,14,9,20,8};
         NSInteger discount=[[WeeklyEventManager sharedManager] foodDiscountPercent];
         if(discount>0) costs[_selectedFood]=MAX(1,costs[_selectedFood]*(100-discount)/100);
         NSInteger xp[6]={3,3,3,5,6,3};

@@ -10,6 +10,7 @@
 #import "MatchGameViewController.h"
 #import "AchievementManager.h"
 #import "SoundManager.h"
+#import "ScoresViewController.h"
 
 @implementation GameMenuViewController
 
@@ -42,6 +43,12 @@
         [self.view addSubview:b];
     }
 
+    UIButton *scores=[UIButton buttonWithType:UIButtonTypeRoundedRect];
+    scores.frame=CGRectMake(555,930,180,55);
+    [scores setTitle:@"Rekorlar" forState:UIControlStateNormal];
+    [scores addTarget:self action:@selector(openScores) forControlEvents:UIControlEventTouchUpInside];
+    [self.view addSubview:scores];
+
     UIButton *back=[UIButton buttonWithType:UIButtonTypeRoundedRect];
     back.frame=CGRectMake(30,930,160,55);
     [back setTitle:@"Geri" forState:UIControlStateNormal];
@@ -68,6 +75,11 @@
         [ud synchronize];
         [self presentModalViewController:vc animated:YES];
     }
+}
+
+- (void)openScores {
+    ScoresViewController *v=[[[ScoresViewController alloc] init] autorelease];
+    [self presentModalViewController:v animated:YES];
 }
 
 - (void)goBack { [self dismissModalViewControllerAnimated:YES]; }
