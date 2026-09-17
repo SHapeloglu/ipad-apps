@@ -33,19 +33,75 @@
 - (void)generateSSHKeyTapped;
 - (void)buildTerminalPanel;
 - (void)tightChanged;
+- (void)tlsChanged;
 - (void)profilesTapped;
 - (void)deleteProfileAtIndex:(NSInteger)index;
-- (void)renameRemoteEntry:(NSDictionary *)entry;
-- (void)deleteRemoteEntry:(NSDictionary *)entry;
+- (void)showProfileActionsAtIndex:(NSInteger)index;
+
+- (void)keyboardTapped;
+- (void)extendedKeysTapped;
+- (void)sendExtendedKeyAtIndex:(NSInteger)index;
+
+- (void)filesTapped;
+- (void)closeFilesTapped;
+- (void)filesUpTapped;
+- (void)downloadTapped;
+- (void)cancelDownloadTapped;
+- (void)refreshFileList;
+- (void)startBrowseURL:(NSURL*)url;
+- (void)startDownloadFromURL:(NSURL*)url;
+- (void)parseDirectoryHTML:(NSData*)data baseURL:(NSURL*)baseURL;
+- (NSString*)downloadsDirectory;
+- (NSString*)uniqueDownloadPathForName:(NSString*)name;
+- (NSString*)remotePathForEntry:(NSDictionary*)e;
+- (NSURL*)downloadURLForEntry:(NSDictionary*)e;
+- (void)renameRemoteEntry:(NSDictionary*)entry;
+- (void)deleteRemoteEntry:(NSDictionary*)entry;
 - (void)mkdirRemote;
 - (void)uploadLocalFile;
+- (NSDictionary*)remoteStatPath:(NSString*)path;
+- (void)enqueueTransfer:(NSDictionary*)item;
+- (void)startNextTransfer;
+- (void)pauseTransferTapped;
+- (void)showTransferQueueTapped;
+- (void)streamUploadInfo:(NSDictionary*)info;
+- (void)uploadProgressMain:(NSNumber*)n;
+- (void)uploadFinishedMain:(NSString*)s;
+- (void)performFileAPIPath:(NSString*)path method:(NSString*)method body:(NSData*)body contentType:(NSString*)contentType;
+
+- (void)saveConnectionSettings;
+- (void)setControlsCollapsed:(BOOL)collapsed animated:(BOOL)animated;
+- (void)toolsTapped;
+- (void)closeToolsTapped;
+- (void)precisionChanged;
+- (void)dragLockChanged;
+- (void)scanLANTapped;
+- (void)scanLANThread;
+- (void)scanLANFinished:(NSArray*)results;
+- (NSString*)localIPv4;
+- (BOOL)portOpenHost:(NSString*)host port:(NSInteger)port timeoutMS:(NSInteger)timeoutMS;
+- (void)showLANResults;
+- (void)wakeTapped;
+- (void)matchResolutionTapped;
+- (void)orientationChanged:(NSNotification*)note;
+- (BOOL)sendWakePacketMAC:(NSString*)mac broadcast:(NSString*)broadcast;
+- (NSString*)currentProfileID;
+- (void)migrateSecretsToKeychain;
+- (void)terminalSessionEnded:(NSString*)reason;
+@end
+
+@implementation AppDelegate
+@synthesize window = _window;
+
 - (NSDictionary*)remoteStatPath:(NSString*)path {
     if(!_remoteBaseURL)return nil;NSString *esc=[path stringByAddingPercentEscapesUsingEncoding:NSUTF8StringEncoding];NSURL*u=[NSURL URLWithString:[NSString stringWithFormat:@"%@/api/stat?path=%@",[_remoteBaseURL absoluteString],esc]];
     NSMutableURLRequest*r=[NSMutableURLRequest requestWithURL:u cachePolicy:NSURLRequestReloadIgnoringLocalCacheData timeoutInterval:15];if([_filesToken length])[r setValue:_filesToken forHTTPHeaderField:@"X-iPad1VNC-Token"];NSData*d=[NSURLConnection sendSynchronousRequest:r returningResponse:nil error:nil];if(!d)return nil;id o=[NSJSONSerialization JSONObjectWithData:d options:0 error:nil];return [o isKindOfClass:[NSDictionary class]]?o:nil;
 }
+
 - (void)enqueueTransfer:(NSDictionary*)item {
     if(!item)return;[_transferQueue addObject:item];_downloadStatusLabel.text=[NSString stringWithFormat:@"Queued: %lu",(unsigned long)[_transferQueue count]];[self startNextTransfer];
 }
+
 - (void)startNextTransfer {
     if(_currentTransfer||_transferPaused||![_transferQueue count])return;
     _currentTransfer=[[_transferQueue objectAtIndex:0] retain];[_transferQueue removeObjectAtIndex:0];
@@ -53,68 +109,30 @@
     if([type isEqualToString:@"upload"])[NSThread detachNewThreadSelector:@selector(streamUploadInfo:) toTarget:self withObject:_currentTransfer];
     else if([type isEqualToString:@"download"])[self startDownloadFromURL:[_currentTransfer objectForKey:@"url"]];
 }
+
 - (void)pauseTransferTapped {
     _transferPaused=!_transferPaused;
     if(_transferPaused){if(_downloadConnection)[self cancelDownloadTapped];_uploading=NO;_downloadStatusLabel.text=@"Transfers paused";}else{_downloadStatusLabel.text=@"Transfers resumed";[self startNextTransfer];}
 }
+
 - (void)showTransferQueueTapped {
     NSMutableString*s=[NSMutableString stringWithFormat:@"Current: %@\nQueued: %lu\n",(_currentTransfer?[[_currentTransfer objectForKey:@"name"] description]:@"none"),(unsigned long)[_transferQueue count]];
     for(NSDictionary*i in _transferQueue)[s appendFormat:@"%@ — %@\n",[i objectForKey:@"type"],[i objectForKey:@"name"]?:@""];
     UIAlertView*a=[[[UIAlertView alloc]initWithTitle:@"Transfer Queue" message:s delegate:nil cancelButtonTitle:@"OK" otherButtonTitles:nil]autorelease];[a show];
 }
-- (void)streamUploadInfo:(NSDictionary*)info;
-- (void)uploadProgressMain:(NSNumber*)n;
-- (void)uploadFinishedMain:(NSString*)s;
-- (void)performFileAPIPath:(NSString *)path method:(NSString *)method body:(NSData *)body contentType:(NSString *)contentType;
-- (void)keyboardTapped;
-- (void)filesTapped;
-- (NSString*)remotePathForEntry:(NSDictionary*)e;
-- (NSURL*)downloadURLForEntry:(NSDictionary*)e;
-- (void)startDownloadFromURL:(NSURL *)url {
-    if(!url)return;
-    if(_downloadConnection){
-        NSDictionary*q=[NSDictionary dictionaryWithObjectsAndKeys:@"download",@"type",([[url path] lastPathComponent]?:@"file"),@"name",url,@"url",nil];[self enqueueTransfer:q];return;
-    }
-    NSString *name=[[url path] lastPathComponent];if(![name length])name=@"download.bin";
-    NSString *final=[[self downloadsDirectory] stringByAppendingPathComponent:name];
-    NSString *part=[final stringByAppendingString:@".part"];
-    unsigned long long existing=0;NSDictionary *attrs=[[NSFileManager defaultManager]attributesOfItemAtPath:part error:nil];if(attrs)existing=[[attrs objectForKey:NSFileSize]unsignedLongLongValue];
-    if(!attrs&&[[NSFileManager defaultManager]fileExistsAtPath:final]){
-        final=[self uniqueDownloadPathForName:name];part=[final stringByAppendingString:@".part"];existing=0;
-    }
-    if(![[NSFileManager defaultManager]fileExistsAtPath:part])[[NSFileManager defaultManager]createFileAtPath:part contents:nil attributes:nil];
-    _downloadHandle=[[NSFileHandle fileHandleForWritingAtPath:part] retain];[_downloadHandle seekToEndOfFile];
-    [_downloadPath release];_downloadPath=[part copy];_downloadReceived=(long long)existing;_downloadResumeOffset=(long long)existing;_downloadExpected=0;
-    NSMutableURLRequest*r=[NSMutableURLRequest requestWithURL:url cachePolicy:NSURLRequestReloadIgnoringLocalCacheData timeoutInterval:60];
-    if([_filesToken length])[r setValue:_filesToken forHTTPHeaderField:@"X-iPad1VNC-Token"];
-    if(existing>0)[r setValue:[NSString stringWithFormat:@"bytes=%llu-",existing] forHTTPHeaderField:@"Range"];
-    _downloadConnection=[[NSURLConnection alloc]initWithRequest:r delegate:self startImmediately:YES];
-    _downloadStatusLabel.text=(existing>0?[NSString stringWithFormat:@"Resuming %.1f MB",(double)existing/1048576.0]:@"Downloading…");
-}
-- (void)refreshFileList;
-- (NSString *)downloadsDirectory;
-- (NSString *)uniqueDownloadPathForName:(NSString *)name;
-- (void)downloadTapped;
-- (void)cancelDownloadTapped;
-- (void)closeFilesTapped;
-- (void)startBrowseURL:(NSURL *)url;
-- (void)parseDirectoryHTML:(NSData *)data baseURL:(NSURL *)baseURL;
-- (void)filesUpTapped;
-- (void)saveConnectionSettings;
-- (void)setControlsCollapsed:(BOOL)collapsed animated:(BOOL)animated;
-- (void)toolsTapped;
-- (void)closeToolsTapped;
 
 - (void)precisionChanged {
     _vncView.precisionMode=_precisionSwitch.on;
     [[NSUserDefaults standardUserDefaults]setBool:_precisionSwitch.on forKey:@"precisionMode"];[[NSUserDefaults standardUserDefaults]synchronize];
     _statusLabel.text=(_precisionSwitch.on?@"Precision pointer 0.3x":@"Normal pointer precision");
 }
+
 - (void)dragLockChanged {
     _vncView.dragLock=_dragLockSwitch.on;
     [[NSUserDefaults standardUserDefaults]setBool:_dragLockSwitch.on forKey:@"dragLock"];[[NSUserDefaults standardUserDefaults]synchronize];
     _statusLabel.text=(_dragLockSwitch.on?@"Drag Lock enabled — double tap toggles drag":@"Drag Lock disabled");
 }
+
 - (NSString*)localIPv4 {
     struct ifaddrs *ifaddr=NULL;if(getifaddrs(&ifaddr)!=0)return nil;NSString *result=nil;
     for(struct ifaddrs *ifa=ifaddr;ifa;ifa=ifa->ifa_next){
@@ -125,6 +143,7 @@
     }
     freeifaddrs(ifaddr);return result;
 }
+
 - (BOOL)portOpenHost:(NSString*)host port:(NSInteger)port timeoutMS:(NSInteger)timeoutMS {
     int fd=socket(AF_INET,SOCK_STREAM,0);if(fd<0)return NO;int fl=fcntl(fd,F_GETFL,0);fcntl(fd,F_SETFL,fl|O_NONBLOCK);
     struct sockaddr_in a;memset(&a,0,sizeof(a));a.sin_family=AF_INET;a.sin_port=htons((uint16_t)port);if(inet_aton([host UTF8String],&a.sin_addr)==0){close(fd);return NO;}
@@ -132,10 +151,12 @@
     fd_set wf;FD_ZERO(&wf);FD_SET(fd,&wf);struct timeval tv;tv.tv_sec=timeoutMS/1000;tv.tv_usec=(timeoutMS%1000)*1000;
     r=select(fd+1,NULL,&wf,NULL,&tv);BOOL ok=NO;if(r>0&&FD_ISSET(fd,&wf)){int e=0;socklen_t l=sizeof(e);getsockopt(fd,SOL_SOCKET,SO_ERROR,&e,&l);ok=(e==0);}close(fd);return ok;
 }
+
 - (void)scanLANTapped {
     _scanLANButton.enabled=NO;_diagnosticsLabel.text=@"Scanning local /24 for SSH and VNC…";
     [NSThread detachNewThreadSelector:@selector(scanLANThread) toTarget:self withObject:nil];
 }
+
 - (void)scanLANThread {
     NSAutoreleasePool *pool=[[NSAutoreleasePool alloc]init];NSString *ip=[self localIPv4];NSMutableArray *found=[NSMutableArray array];
     if([ip length]){
@@ -153,6 +174,7 @@
     }
     [self performSelectorOnMainThread:@selector(scanLANFinished:) withObject:[NSArray arrayWithArray:found] waitUntilDone:NO];[pool drain];
 }
+
 - (void)scanLANFinished:(NSArray*)results {
     [_lanResults removeAllObjects];[_lanResults addObjectsFromArray:results];_scanLANButton.enabled=YES;
     if(![_lanResults count]){_diagnosticsLabel.text=@"LAN scan finished: no SSH/VNC hosts found.";return;}
@@ -160,40 +182,13 @@
     for(NSDictionary *r in _lanResults)[s appendFormat:@"%@  %@ %@\n",[r objectForKey:@"host"],[[r objectForKey:@"ssh"]boolValue]?@"SSH":@"",[[r objectForKey:@"vnc"]boolValue]?@"VNC":@""];
     _diagnosticsLabel.text=s;[self showLANResults];
 }
+
 - (void)showLANResults {
     if(![_lanResults count])return;UIActionSheet *s=[[[UIActionSheet alloc]initWithTitle:@"LAN Hosts — tap to use" delegate:self cancelButtonTitle:nil destructiveButtonTitle:nil otherButtonTitles:nil]autorelease];s.tag=950;
     NSUInteger max=MIN((NSUInteger)12,[_lanResults count]);for(NSUInteger i=0;i<max;i++){NSDictionary*r=[_lanResults objectAtIndex:i];[s addButtonWithTitle:[NSString stringWithFormat:@"%@  %@%@",[r objectForKey:@"host"],[[r objectForKey:@"ssh"]boolValue]?@"SSH ":@"",[[r objectForKey:@"vnc"]boolValue]?@"VNC":@""]];}
     s.cancelButtonIndex=[s addButtonWithTitle:@"Cancel"];[s showInView:_controller.view];
 }
-- (void)wakeTapped;
-- (void)matchResolutionTapped;
-- (void)orientationChanged:(NSNotification*)note;
-- (BOOL)sendWakePacketMAC:(NSString*)mac broadcast:(NSString*)broadcast;
-- (NSString*)currentProfileID;
-- (void)migrateSecretsToKeychain;
-- (void)terminalSessionEnded:(NSString*)reason;
 
-- (void)tlsChanged;
-- (void)precisionChanged;
-- (void)dragLockChanged;
-- (void)scanLANTapped;
-- (void)scanLANThread;
-- (void)scanLANFinished:(NSArray*)results;
-- (NSString*)localIPv4;
-- (BOOL)portOpenHost:(NSString*)host port:(NSInteger)port timeoutMS:(NSInteger)timeoutMS;
-- (void)showLANResults;
-- (void)showProfileActionsAtIndex:(NSInteger)index;
-- (void)enqueueTransfer:(NSDictionary*)item;
-- (void)startNextTransfer;
-- (void)pauseTransferTapped;
-- (void)showTransferQueueTapped;
-- (NSDictionary*)remoteStatPath:(NSString*)path;
-- (void)extendedKeysTapped;
-- (void)sendExtendedKeyAtIndex:(NSInteger)index;
-@end
-
-@implementation AppDelegate
-@synthesize window = _window;
 
 
 - (void)tightChanged { [self saveConnectionSettings]; _statusLabel.text=(_tightSwitch.on?@"Tight ON: 24-bit transport; reconnect":@"Hextile/RAW mode; reconnect"); }
@@ -982,17 +977,26 @@
         s.tag=920;[s showInView:_filesPanel];
     }
 }
-- (void)startDownloadFromURL:(NSURL*)url {
-    if(_downloadConnection||!url)return;
+- (void)startDownloadFromURL:(NSURL *)url {
+    if(!url)return;
+    if(_downloadConnection){
+        NSDictionary*q=[NSDictionary dictionaryWithObjectsAndKeys:@"download",@"type",([[url path] lastPathComponent]?:@"file"),@"name",url,@"url",nil];[self enqueueTransfer:q];return;
+    }
     NSString *name=[[url path] lastPathComponent];if(![name length])name=@"download.bin";
-    _downloadPath=[[self uniqueDownloadPathForName:name] retain];
-    [[NSFileManager defaultManager] createFileAtPath:_downloadPath contents:nil attributes:nil];
-    _downloadHandle=[[NSFileHandle fileHandleForWritingAtPath:_downloadPath] retain];
-    NSMutableURLRequest *req=[NSMutableURLRequest requestWithURL:url cachePolicy:NSURLRequestReloadIgnoringLocalCacheData timeoutInterval:30.0];
-    if([_filesToken length])[req setValue:_filesToken forHTTPHeaderField:@"X-iPad1VNC-Token"];
-    _downloadConnection=[[NSURLConnection alloc]initWithRequest:req delegate:self startImmediately:YES];
-    _downloadExpected=0;_downloadReceived=0;_downloadProgress.progress=0;
-    _downloadStatusLabel.text=[NSString stringWithFormat:@"Downloading %@…",name];
+    NSString *final=[[self downloadsDirectory] stringByAppendingPathComponent:name];
+    NSString *part=[final stringByAppendingString:@".part"];
+    unsigned long long existing=0;NSDictionary *attrs=[[NSFileManager defaultManager]attributesOfItemAtPath:part error:nil];if(attrs)existing=[[attrs objectForKey:NSFileSize]unsignedLongLongValue];
+    if(!attrs&&[[NSFileManager defaultManager]fileExistsAtPath:final]){
+        final=[self uniqueDownloadPathForName:name];part=[final stringByAppendingString:@".part"];existing=0;
+    }
+    if(![[NSFileManager defaultManager]fileExistsAtPath:part])[[NSFileManager defaultManager]createFileAtPath:part contents:nil attributes:nil];
+    _downloadHandle=[[NSFileHandle fileHandleForWritingAtPath:part] retain];[_downloadHandle seekToEndOfFile];
+    [_downloadPath release];_downloadPath=[part copy];_downloadReceived=(long long)existing;_downloadResumeOffset=(long long)existing;_downloadExpected=0;
+    NSMutableURLRequest*r=[NSMutableURLRequest requestWithURL:url cachePolicy:NSURLRequestReloadIgnoringLocalCacheData timeoutInterval:60];
+    if([_filesToken length])[r setValue:_filesToken forHTTPHeaderField:@"X-iPad1VNC-Token"];
+    if(existing>0)[r setValue:[NSString stringWithFormat:@"bytes=%llu-",existing] forHTTPHeaderField:@"Range"];
+    _downloadConnection=[[NSURLConnection alloc]initWithRequest:r delegate:self startImmediately:YES];
+    _downloadStatusLabel.text=(existing>0?[NSString stringWithFormat:@"Resuming %.1f MB",(double)existing/1048576.0]:@"Downloading…");
 }
 - (void)refreshFileList {
     NSArray *items=[[NSFileManager defaultManager] contentsOfDirectoryAtPath:[self downloadsDirectory] error:nil];

@@ -1,4 +1,4 @@
-# iPad1VNC v2.2.0-beta1
+# iPad1VNC v2.2.0-beta2
 
 This branch combines the post-2.1 competitor-gap roadmap in one update. It is intentionally a **beta** because several large changes need real-device validation on iOS 5.1.1.
 
@@ -128,3 +128,15 @@ The existing token file remains unchanged.
 13. 30-60 minute VNC memory/stability test.
 
 Do not expose plain VNC to the internet merely because TLS support exists; keep SSH tunnel as the known-good secure path until X509Vnc has been validated on the actual server.
+
+
+## beta2 legacy compiler fixes
+- Repairs methods that were accidentally emitted inside the private `@interface`.
+- Keeps resumable `startDownloadFromURL:` as the sole download implementation.
+- Legacy iOS 5/6 SDK compatibility for SecureTransport:
+  - `SSLNewContext`
+  - `SSLDisposeContext`
+  - `SSLSetEnableCertVerify`
+  are resolved dynamically with `dlsym`.
+- If those SecureTransport entry points are absent on the actual iOS 5.1.1 runtime, X509 TLS fails cleanly instead of crashing. SSH Tunnel remains the secure fallback.
+- Removed accidental Python `__pycache__` from the source package.

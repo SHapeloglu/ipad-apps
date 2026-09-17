@@ -6,6 +6,7 @@
 #import <unistd.h>
 #import <netinet/tcp.h>
 #import <errno.h>
+#import <dlfcn.h>
 
 static OSStatus iPad1VNCSSLRead(SSLConnectionRef connection, void *data, size_t *dataLength) {
     int s=(int)(intptr_t)connection;
@@ -59,6 +60,26 @@ static void p16(uint8_t*p,uint16_t v){p[0]=v>>8;p[1]=v;}
 static void p32(uint8_t*p,uint32_t v){p[0]=v>>24;p[1]=v>>16;p[2]=v>>8;p[3]=v;}
 static uint8_t rev8(uint8_t b){b=(b&0xF0)>>4|(b&0x0F)<<4;b=(b&0xCC)>>2|(b&0x33)<<2;return(b&0xAA)>>1|(b&0x55)<<1;}
 
+
+typedef OSStatus (*iPad1VNC_SSLNewContext_Fn)(Boolean, SSLContextRef *);
+typedef OSStatus (*iPad1VNC_SSLDisposeContext_Fn)(SSLContextRef);
+typedef OSStatus (*iPad1VNC_SSLSetEnableCertVerify_Fn)(SSLContextRef, Boolean);
+
+static iPad1VNC_SSLNewContext_Fn iPad1VNC_SSLNewContextPtr(void) {
+    return (iPad1VNC_SSLNewContext_Fn)dlsym(RTLD_DEFAULT,"SSLNewContext");
+}
+static iPad1VNC_SSLDisposeContext_Fn iPad1VNC_SSLDisposeContextPtr(void) {
+    return (iPad1VNC_SSLDisposeContext_Fn)dlsym(RTLD_DEFAULT,"SSLDisposeContext");
+}
+static iPad1VNC_SSLSetEnableCertVerify_Fn iPad1VNC_SSLSetEnableCertVerifyPtr(void) {
+    return (iPad1VNC_SSLSetEnableCertVerify_Fn)dlsym(RTLD_DEFAULT,"SSLSetEnableCertVerify");
+}
+static void iPad1VNCDisposeSSLContext(SSLContextRef ctx) {
+    if(!ctx)return;
+    iPad1VNC_SSLDisposeContext_Fn fn=iPad1VNC_SSLDisposeContextPtr();
+    if(fn)fn(ctx);
+}
+
 @implementation VNCClient
 @synthesize delegate=_delegate,qualityProfile=_qualityProfile,adaptiveQualityEnabled=_adaptiveQualityEnabled,preferTight=_preferTight,preferX509TLS=_preferX509TLS;
 - (NSUInteger)framebufferWidth{return _fbWidth;}
@@ -87,7 +108,7 @@ static uint8_t rev8(uint8_t b){b=(b&0xF0)>>4|(b&0x0F)<<4;b=(b&0xCC)>>2|(b&0x33)<
 - (void)connect{if(_running)return;_running=YES;[NSThread detachNewThreadSelector:@selector(networkThread) toTarget:self withObject:nil];}
 - (void)disconnect{
     _running=NO;
-    if(_ssl){SSLClose(_ssl);SSLDisposeContext(_ssl);_ssl=NULL;_tlsActive=NO;}
+    if(_ssl){SSLClose(_ssl);iPad1VNCDisposeSSLContext(_ssl);_ssl=NULL;_tlsActive=NO;}
     if(_sock>=0){shutdown(_sock,SHUT_RDWR);close(_sock);_sock=-1;}
 }
 
@@ -123,24 +144,37 @@ static uint8_t rev8(uint8_t b){b=(b&0xF0)>>4|(b&0x0F)<<4;b=(b&0xCC)>>2|(b&0x33)<
 }
 - (BOOL)startX509TLS {
     if(_ssl)return YES;
+
+    iPad1VNC_SSLNewContext_Fn newContext=iPad1VNC_SSLNewContextPtr();
+    iPad1VNC_SSLSetEnableCertVerify_Fn setVerify=iPad1VNC_SSLSetEnableCertVerifyPtr();
+    if(!newContext||!setVerify){
+        [self performSelectorOnMainThread:@selector(statusMain:) withObject:@"X509 TLS unavailable in this iOS SecureTransport" waitUntilDone:NO];
+        return NO;
+    }
+
     SSLContextRef ctx=NULL;
-    OSStatus st=SSLNewContext(false,&ctx);
+    OSStatus st=newContext(false,&ctx);
     if(st!=noErr||!ctx)return NO;
+
     st=SSLSetIOFuncs(ctx,iPad1VNCSSLRead,iPad1VNCSSLWrite);
     if(st==noErr)st=SSLSetConnection(ctx,(SSLConnectionRef)(intptr_t)_sock);
     if(st==noErr){
         NSData *hn=[_host dataUsingEncoding:NSUTF8StringEncoding];
         if([hn length])st=SSLSetPeerDomainName(ctx,[hn bytes],[hn length]);
     }
-    if(st==noErr)st=SSLSetEnableCertVerify(ctx,true);
-    if(st!=noErr){SSLDisposeContext(ctx);return NO;}
+    if(st==noErr)st=setVerify(ctx,true);
+    if(st!=noErr){iPad1VNCDisposeSSLContext(ctx);return NO;}
+
     while(_running){
         st=SSLHandshake(ctx);
         if(st==noErr)break;
         if(st==errSSLWouldBlock){usleep(1000);continue;}
-        SSLDisposeContext(ctx);return NO;
+        iPad1VNCDisposeSSLContext(ctx);
+        return NO;
     }
-    _ssl=ctx;_tlsActive=YES;
+
+    _ssl=ctx;
+    _tlsActive=YES;
     return YES;
 }
 - (BOOL)negotiateVeNCryptX509Vnc {
