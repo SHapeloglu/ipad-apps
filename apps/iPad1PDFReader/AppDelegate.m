@@ -1,5 +1,6 @@
 #import "AppDelegate.h"
 #import "PDFLibraryViewController.h"
+#import "MemoryBudget.h"
 @implementation AppDelegate
 @synthesize window=_window;
 @synthesize navigationController=_navigationController;
@@ -9,6 +10,7 @@
     self.navigationController=[[[UINavigationController alloc] initWithRootViewController:library] autorelease];
     self.window.rootViewController=self.navigationController;
     [self.window makeKeyAndVisible];
+    [MemoryBudget logMemoryPolicy];
     NSURL *url=[launchOptions objectForKey:UIApplicationLaunchOptionsURLKey];
     if(url) [library importExternalPDFURL:url];
     return YES;

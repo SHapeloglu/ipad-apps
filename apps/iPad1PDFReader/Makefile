@@ -27,7 +27,8 @@ iPad1PDFReader_FILES = \
 	WebDAVClient.m \
 	PageManager.m \
 	PageManagerViewController.m \
-	PDFAnnotationExporter.m
+	PDFAnnotationExporter.m \
+	MemoryBudget.m
 
 iPad1PDFReader_FRAMEWORKS = UIKit Foundation CoreGraphics QuartzCore CFNetwork
 iPad1PDFReader_CFLAGS = -fno-objc-arc -Wall
