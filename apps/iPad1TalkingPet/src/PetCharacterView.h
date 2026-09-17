@@ -3,6 +3,7 @@
 @class PetRigView;
 
 @interface PetCharacterView : UIView {
+    UIView *_motionLayer;
     UIImageView *_body;
     PetSpriteAnimator *_sprite;
     PetRigView *_rig;

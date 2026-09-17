@@ -1,20 +1,12 @@
 #import <UIKit/UIKit.h>
 
 @interface PetRigView : UIView {
-    UIImageView *_head;
-    UIImageView *_torso;
-    UIImageView *_armLeft;
-    UIImageView *_armRight;
-    UIImageView *_legLeft;
-    UIImageView *_legRight;
-    UIImageView *_tail;
-
+    UIImageView *_base;
     UIImageView *_eyeLeft;
     UIImageView *_eyeRight;
     UIImageView *_lidLeft;
     UIImageView *_lidRight;
     UIImageView *_mouth;
-
     NSTimer *_idleTimer;
     NSInteger _mouthFrame;
     BOOL _talking;

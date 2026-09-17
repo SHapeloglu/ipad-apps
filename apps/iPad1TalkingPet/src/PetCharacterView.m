@@ -8,31 +8,34 @@
     self=[super initWithFrame:frame];
     if(self) {
         self.backgroundColor=[UIColor clearColor];
-
         _useRig=YES;
 
+        _motionLayer=[[UIView alloc] initWithFrame:self.bounds];
+        _motionLayer.backgroundColor=[UIColor clearColor];
+        [self addSubview:_motionLayer];
+
         _body=[[UIImageView alloc] initWithImage:[UIImage imageNamed:@"pet_base.png"]];
-        _body.frame=self.bounds;
+        _body.frame=_motionLayer.bounds;
         _body.contentMode=UIViewContentModeScaleAspectFit;
         _body.hidden=_useRig;
-        [self addSubview:_body];
+        [_motionLayer addSubview:_body];
 
         _sprite=[[PetSpriteAnimator alloc] initWithImageView:_body];
 
-        _rig=[[PetRigView alloc] initWithFrame:self.bounds];
+        _rig=[[PetRigView alloc] initWithFrame:_motionLayer.bounds];
         _rig.hidden=!_useRig;
-        [self addSubview:_rig];
+        [_motionLayer addSubview:_rig];
 
-        _hatLayer=[[UIView alloc] initWithFrame:self.bounds];
-        _faceLayer=[[UIView alloc] initWithFrame:self.bounds];
-        _shirtLayer=[[UIView alloc] initWithFrame:self.bounds];
-        _pantsLayer=[[UIView alloc] initWithFrame:self.bounds];
-        _shoesLayer=[[UIView alloc] initWithFrame:self.bounds];
+        _hatLayer=[[UIView alloc] initWithFrame:_motionLayer.bounds];
+        _faceLayer=[[UIView alloc] initWithFrame:_motionLayer.bounds];
+        _shirtLayer=[[UIView alloc] initWithFrame:_motionLayer.bounds];
+        _pantsLayer=[[UIView alloc] initWithFrame:_motionLayer.bounds];
+        _shoesLayer=[[UIView alloc] initWithFrame:_motionLayer.bounds];
 
         for(UIView *v in [NSArray arrayWithObjects:_shirtLayer,_pantsLayer,_shoesLayer,_hatLayer,_faceLayer,nil]){
             v.backgroundColor=[UIColor clearColor];
             v.userInteractionEnabled=NO;
-            [self addSubview:v];
+            [_motionLayer addSubview:v];
         }
 
         [self reloadOutfit];
@@ -66,7 +69,7 @@
     NSInteger bottomType=[d integerForKey:@"outfit.bottomType"];
     NSInteger bottomStyle=[d integerForKey:@"outfit.bottomStyle"];
 
-    CGFloat W=self.bounds.size.width,H=self.bounds.size.height;
+    CGFloat W=_motionLayer.bounds.size.width,H=_motionLayer.bounds.size.height;
 
     if(hat==1) [self addImage:@"hat_blue.png" layer:_hatLayer rect:CGRectMake(W*0.23,H*0.015,W*0.54,H*0.15)];
     else if(hat==2) [self addImage:@"hat_red.png" layer:_hatLayer rect:CGRectMake(W*0.23,H*0.015,W*0.54,H*0.15)];
@@ -96,15 +99,36 @@
     else if(shoes==2) [self addImage:@"shoes_blue.png" layer:_shoesLayer rect:CGRectMake(W*0.22,H*0.87,W*0.56,H*0.13)];
 }
 
+- (void)animateWhole:(CGAffineTransform)t duration:(NSTimeInterval)d {
+    [UIView animateWithDuration:d animations:^{ _motionLayer.transform=t; }
+                     completion:^(BOOL f){
+        [UIView animateWithDuration:d animations:^{ _motionLayer.transform=CGAffineTransformIdentity; }];
+    }];
+}
+
 - (void)startIdle { if(_useRig)[_rig startIdle]; else [_sprite startIdle]; }
 - (void)stop { if(_useRig)[_rig stopIdle]; else [_sprite stop]; }
 - (void)blink { if(_useRig)[_rig blink]; else [_sprite blink]; }
-- (void)happy { if(_useRig)[_rig happy]; else [_sprite happy]; }
-- (void)sad { if(_useRig)[_rig sad]; else [_sprite sad]; }
-- (void)touchHead { if(_useRig){[_rig happy];[_rig blink];} else {[_sprite happy];[_sprite blink];} }
-- (void)touchBody { if(_useRig)[_rig surprise]; else [_sprite touch]; }
-- (void)touchFeet { if(_useRig)[_rig sad]; else [_sprite sad]; }
-- (void)setTalking:(BOOL)t { if(_useRig)[_rig setTalking:t]; else {if(t)[_sprite talkStart];else[_sprite talkStop];} }
+
+- (void)happy {
+    if(_useRig) [_rig happy]; else [_sprite happy];
+    [self animateWhole:CGAffineTransformMakeScale(1.015,1.015) duration:0.16];
+}
+- (void)sad {
+    if(_useRig) [_rig sad]; else [_sprite sad];
+}
+- (void)touchHead {
+    if(_useRig){[_rig happy];[_rig blink];} else {[_sprite happy];[_sprite blink];}
+}
+- (void)touchBody {
+    if(_useRig)[_rig surprise]; else [_sprite touch];
+}
+- (void)touchFeet {
+    if(_useRig)[_rig sad]; else [_sprite sad];
+}
+- (void)setTalking:(BOOL)t {
+    if(_useRig)[_rig setTalking:t]; else {if(t)[_sprite talkStart];else[_sprite talkStop];}
+}
 - (void)chew { if(_useRig)[_rig happy]; else [_sprite chew]; }
 - (void)sleep { if(_useRig)[_rig sad]; else [_sprite sleep]; }
 - (void)lookLeft { if(_useRig)[_rig lookLeft]; else [_sprite lookLeft]; }
@@ -112,11 +136,21 @@
 - (void)wave { if(_useRig)[_rig wave]; else [_sprite wave]; }
 - (void)laugh { if(_useRig)[_rig happy]; else [_sprite laugh]; }
 - (void)surprise { if(_useRig)[_rig surprise]; else [_sprite surprise]; }
-- (void)stretch { if(_useRig)[_rig stretch]; else [_sprite stretch]; }
-- (void)dance { if(_useRig)[_rig dance]; else [_sprite dance]; }
-- (void)jump { if(_useRig)[_rig jump]; else [_sprite jump]; }
+- (void)stretch {
+    if(_useRig)[_rig stretch]; else [_sprite stretch];
+    [self animateWhole:CGAffineTransformMakeScale(0.99,1.025) duration:0.20];
+}
+- (void)dance {
+    if(_useRig)[_rig dance]; else [_sprite dance];
+    [self animateWhole:CGAffineTransformMakeRotation(0.025) duration:0.16];
+}
+- (void)jump {
+    if(_useRig)[_rig jump]; else [_sprite jump];
+    [self animateWhole:CGAffineTransformMakeTranslation(0,-14) duration:0.15];
+}
 
 - (void)dealloc {
+    [_motionLayer release];
     [_rig release];
     [_sprite release];
     [_body release];

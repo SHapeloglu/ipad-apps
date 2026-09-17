@@ -1,42 +1,28 @@
 # PROJECT_CONTEXT
 
-Current version: 1.2.0
-Milestone: 2D Rig Animation
+Current version: 1.2.1
+Milestone: Hybrid Rig Hotfix
 
-Platform:
-iPad 1 / Apple A4 / 256 MB RAM / iOS 5.1.1 / armv7 / Objective-C / UIKit / Theos / non-ARC.
+Platform constraints unchanged:
+iPad 1 / Apple A4 / 256 MB RAM / iOS 5.1.1 / armv7 / non-ARC.
 
-## New
-PetRigView:
-- head
-- torso
-- left/right arms
-- left/right legs
-- tail
-- eyes
-- eyelids
-- mouth shapes
+## Important architecture decision
+Do NOT use rectangular crops of pet_base.png as anatomical rig parts.
+They create duplicated pixels and visible rectangular seams.
 
-Rig animations:
-- idle
-- blink
-- look left/right
-- wave
-- happy
-- sad
-- surprise
-- stretch
-- dance
-- jump
-- talk mouth cycling
+Current stable approach:
+- coherent full-body pet_base.png
+- subtle face overlays
+- unified motionLayer for character + clothing
+- lightweight transform animations
+- sprite fallback preserved
 
-Legacy PetSpriteAnimator remains as fallback.
+Future true limb rig requires manually prepared transparent, non-overlapping body-part assets.
 
 ## Immediate next action
-Compile on legacy Theos toolchain and physically test:
-- rig composition
-- face alignment
-- talk mouth animation
-- idle stability
-- memory usage
-- wardrobe overlay alignment
+Compile and physically verify:
+- character is visually whole
+- no rectangular body seams
+- clothing follows jump/dance/stretch
+- mouth overlay is subtle
+- no doubled eyes

@@ -1,29 +1,19 @@
-# iPad1TalkingPet v1.2 — 2D Rig Animation
+# iPad1TalkingPet v1.2.1 — Hybrid Rig Hotfix
 
-Bu sürüm Tom-benzeri akıcılığı iPad 1 sınırları içinde artırmak için hibrit 2D rig sistemini getirir.
+Gerçek cihazdaki parçalanmış/kolaj görünümü düzeltilmiştir.
 
-## Yeni
-- PetRigView
-- Ayrı kafa, gövde, kol, bacak ve kuyruk katmanları
-- Anchor-point tabanlı parça animasyonları
-- Baş eğme
-- Kol sallama
-- Kuyruk hareketi
-- Zıplamada squash/stretch hissi
-- Ayrı göz katmanları
-- Ayrı göz kapağı katmanları
-- 4 ağız şekli
-- Konuşma sırasında ağız animasyonu
-- Bakış yönü animasyonu
-- Sprite sistemi fallback olarak korunur
+## Neden oldu?
+v1.2'de `pet_base.png` dosyasından dikdörtgen crop ile kafa/kol/gövde/bacak parçaları
+üretilmişti. Crop alanları gerçek alfa maskeli anatomik parçalar olmadığı için kompozisyonda
+dikdörtgen bölgeler, çift görüntüler ve kopmuş eklemler oluşuyordu.
 
-## Gardırop
-Mevcut kıyafet overlay sistemi korunur.
-Bu sürümden sonraki adım, kıyafetleri rig parçalarına bağlayarak kol/gövde ile birlikte hareket ettirmektir.
+## Düzeltme
+- Parçalı gövde rig'i ekranda kullanılmıyor.
+- Tek ve temiz `pet_base.png` karakteri korunuyor.
+- Göz kapağı ve ağız gibi yüz rig katmanları hafif overlay olarak devam ediyor.
+- Animasyonlar artık karakter + kıyafetleri birlikte taşıyan `motionLayer` üzerinden uygulanıyor.
+- Gardırop hareket sırasında karakterden ayrılmıyor.
+- Eski sprite fallback korunuyor.
 
-## Derleme
-```bash
-cd ~/projects/iPad1TalkingPet-v1.2
-rm -rf .theos packages
-FINALPACKAGE=1 make package
-```
+Bu sürüm görsel bütünlüğü önceliklendirir. Gerçek bağımsız kol/bacak rig için
+ileride elle hazırlanmış alfa maskeli parçalar gerekir.

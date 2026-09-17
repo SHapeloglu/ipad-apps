@@ -1,16 +1,14 @@
 # SESSION
 
-Current version: 1.2.0
-Status: source prepared, physical verification pending.
+Current version: 1.2.1
+Status: hybrid rig fix prepared; physical verification pending.
 
 Immediate next action:
 FINALPACKAGE=1 make package
 
-Then install on iPad 1 and verify:
-1. character is assembled correctly
-2. no obvious seams or doubled parts
-3. eye/eyelid positions
-4. mouth talk animation
-5. wave/head/tail/jump animations
-6. wardrobe alignment
-7. 10+ minute memory stability
+Verify on iPad:
+1. no rectangular crop artifacts
+2. no duplicated head/arms/legs
+3. clothing remains attached during motion
+4. face overlay does not create googly/double eyes
+5. talking mouth remains visually acceptable
