@@ -77,6 +77,16 @@
         if (_soapRubCount >= 5) {
             _soapy = YES;
             _catArea.backgroundColor = [UIColor colorWithWhite:1 alpha:0.90];
+            for (NSInteger i=0;i<10;i++) {
+                UIView *bubble = [[[UIView alloc] initWithFrame:CGRectMake(20+(arc4random()%270),
+                                                                          20+(arc4random()%390),
+                                                                          20+(arc4random()%28),
+                                                                          20+(arc4random()%28))] autorelease];
+                bubble.backgroundColor = [UIColor colorWithWhite:1 alpha:0.75];
+                bubble.layer.cornerRadius = bubble.frame.size.width/2.0;
+                bubble.tag = 909;
+                [_catArea addSubview:bubble];
+            }
             _status.text = @"Köpüklendi! Şimdi duşu kullan.";
         }
     }
@@ -97,6 +107,9 @@
     [_progress addXP:6];
     _soapy = NO;
     _soapRubCount = 0;
+    for (UIView *v in [[_catArea.subviews copy] autorelease]) {
+        if (v.tag == 909) [v removeFromSuperview];
+    }
     _catArea.backgroundColor = [UIColor colorWithWhite:1 alpha:0.55];
     _status.text = @"Temizlendin! +6 XP";
     [self refresh];

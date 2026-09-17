@@ -1,21 +1,24 @@
 # SESSION
 
-Current version: 0.3.0
+Current version: 0.4.0
+Status: source prepared; physical iPad verification required.
 
-## Awaiting physical iPad verification
-- app launch
-- Food drag/drop
-- Bath soap drag + shower
-- Sleep lamp toggle
-- Pati Yakala
-- Baloncuk Patlat
-- Talking repeat audio
-- XP / coin persistence
-- RAM / responsiveness
+## New in this handoff
+- PetAnimator
+- PetAccessoryView
+- RoomDecorViewController
+- MemoryGameViewController
+- FoodCatchViewController
+- multi-food FoodViewController
+- bath foam particles
+- Game menu expanded to 4 games
+
+## Important
+Do not mark v0.4 as working until built and tested on iPad 1 / iOS 5.1.1.
 
 ## Immediate next action
-Build:
+Run:
+
 FINALPACKAGE=1 make package
 
-If successful, install on 192.168.1.2 and test all room interactions.
-Do not consider v0.3 validated until physical-device testing is complete.
+Then install the generated 0.4.0 .deb on 192.168.1.2.

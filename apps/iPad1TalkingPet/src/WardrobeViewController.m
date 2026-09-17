@@ -76,6 +76,7 @@
 
     [d setInteger:idx forKey:@"wardrobe.selected"];
     [d synchronize];
+    [[NSNotificationCenter defaultCenter] postNotificationName:@"WardrobeChanged" object:nil];
     NSArray *names = [NSArray arrayWithObjects:@"Pembe Kalp Tişört", @"Mavi Şapka", @"Yıldız Gözlük", nil];
     _selectedLabel.text = [NSString stringWithFormat:@"Seçildi:\n%@", [names objectAtIndex:idx]];
     [_progress addXP:5];
