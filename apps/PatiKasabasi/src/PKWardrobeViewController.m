@@ -6,10 +6,13 @@
 #import "PKTheme.h"
 #import "PKSoundManager.h"
 #import <QuartzCore/QuartzCore.h>
+#include <float.h>
 
 @interface PKWardrobeViewController ()
 - (void)refreshUI;
 - (NSString *)identifierForIndexPath:(NSIndexPath *)indexPath;
+- (void)startAvatarIdleAnimation;
+- (void)stopAvatarIdleAnimation;
 @end
 
 @implementation PKWardrobeViewController
@@ -109,13 +112,31 @@
     [self refreshUI];
 }
 
+- (void)startAvatarIdleAnimation {
+    [self stopAvatarIdleAnimation];
+    [UIView beginAnimations:@"wardrobePetIdle" context:nil];
+    [UIView setAnimationDuration:1.65f];
+    [UIView setAnimationCurve:UIViewAnimationCurveEaseInOut];
+    [UIView setAnimationRepeatCount:FLT_MAX];
+    [UIView setAnimationRepeatAutoreverses:YES];
+    _avatarView.transform = CGAffineTransformMakeTranslation(0.0f, -5.0f);
+    [UIView commitAnimations];
+}
+
+- (void)stopAvatarIdleAnimation {
+    [_avatarView.layer removeAllAnimations];
+    _avatarView.transform = CGAffineTransformIdentity;
+}
+
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
     [self refreshUI];
+    [self startAvatarIdleAnimation];
 }
 
 - (void)viewWillDisappear:(BOOL)animated {
     [super viewWillDisappear:animated];
+    [self stopAvatarIdleAnimation];
     [_gameState save];
 }
 

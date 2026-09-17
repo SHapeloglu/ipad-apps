@@ -14,12 +14,15 @@
 #import "PKAppDelegate.h"
 #import "PKTheme.h"
 #import <QuartzCore/QuartzCore.h>
+#include <float.h>
 
 @interface PKHomeViewController ()
 - (NSArray *)actionIdentifiers;
 - (void)refreshUI;
 - (void)showReactionForIdentifier:(NSString *)identifier;
 - (void)resetAvatarReaction;
+- (void)startAvatarIdleAnimation;
+- (void)stopAvatarIdleAnimation;
 - (void)cleanupUnreferencedPhotosInFolder:(NSString *)folder;
 @end
 
@@ -70,11 +73,14 @@
     _moodLabel = [[self labelWithFrame:CGRectMake(15.0f, 10.0f, 305.0f, 68.0f) text:@"" fontSize:19.0f bold:YES] retain];
     [speech addSubview:_moodLabel];
 
-    _avatarView = [[PKPetAvatarView alloc] initWithFrame:CGRectMake(220.0f, 150.0f, 360.0f, 370.0f) speciesIdentifier:_gameState.pet.speciesIdentifier];
+    _avatarMotionView = [[UIView alloc] initWithFrame:CGRectMake(220.0f, 150.0f, 360.0f, 370.0f)];
+    _avatarMotionView.backgroundColor = [UIColor clearColor];
+    _avatarView = [[PKPetAvatarView alloc] initWithFrame:_avatarMotionView.bounds speciesIdentifier:_gameState.pet.speciesIdentifier];
     _avatarView.userInteractionEnabled = YES;
     UITapGestureRecognizer *petTap = [[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(avatarTapped:)] autorelease];
     [_avatarView addGestureRecognizer:petTap];
-    [self.view addSubview:_avatarView];
+    [_avatarMotionView addSubview:_avatarView];
+    [self.view addSubview:_avatarMotionView];
 
     UIView *needsPanel = [[[UIView alloc] initWithFrame:CGRectMake(650.0f, 25.0f, 350.0f, 365.0f)] autorelease];
     [PKTheme stylePanel:needsPanel];
@@ -188,6 +194,22 @@
     _avatarView.reactionIdentifier = @"";
 }
 
+- (void)startAvatarIdleAnimation {
+    [self stopAvatarIdleAnimation];
+    [UIView beginAnimations:@"homePetIdle" context:nil];
+    [UIView setAnimationDuration:1.70f];
+    [UIView setAnimationCurve:UIViewAnimationCurveEaseInOut];
+    [UIView setAnimationRepeatCount:FLT_MAX];
+    [UIView setAnimationRepeatAutoreverses:YES];
+    _avatarMotionView.transform = CGAffineTransformMakeTranslation(0.0f, -5.0f);
+    [UIView commitAnimations];
+}
+
+- (void)stopAvatarIdleAnimation {
+    [_avatarMotionView.layer removeAllAnimations];
+    _avatarMotionView.transform = CGAffineTransformIdentity;
+}
+
 - (void)destinationTapped:(UIButton *)sender {
     UIViewController *controller = nil;
     if (sender.tag == 0) controller = [[[PKTownMapViewController alloc] initWithGameState:_gameState] autorelease];
@@ -259,16 +281,18 @@
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
     [self refreshUI];
+    [self startAvatarIdleAnimation];
 }
 
 - (void)viewWillDisappear:(BOOL)animated {
     [super viewWillDisappear:animated];
+    [self stopAvatarIdleAnimation];
     [_gameState save];
 }
 
 - (void)dealloc {
     [NSObject cancelPreviousPerformRequestsWithTarget:self];
-    [_gameState release]; [_roomView release]; [_avatarView release]; [_nameLabel release]; [_profileLabel release];
+    [_gameState release]; [_roomView release]; [_avatarMotionView release]; [_avatarView release]; [_nameLabel release]; [_profileLabel release];
     [_statusLabel release]; [_moodLabel release]; [_feedbackLabel release]; [_questLabel release]; [_soundButton release];
     [_satietyBar release]; [_energyBar release]; [_hygieneBar release]; [_funBar release]; [_socialBar release]; [_affectionBar release];
     [super dealloc];

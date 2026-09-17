@@ -1,6 +1,6 @@
 Package: com.olapteknoloji.patikasabasi
 Name: Pati Kasabasi
-Version: 0.3.0-alpha3
+Version: 0.4.0-alpha4
 Architecture: iphoneos-arm
 Description: iPad 1 icin cevrimdisi ve cocuk dostu hayvan yasam simulasyonu.
 Maintainer: Olap Teknoloji

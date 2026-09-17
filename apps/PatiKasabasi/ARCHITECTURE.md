@@ -9,9 +9,10 @@
 
 ## Görsel ve ses bileşenleri
 
-- `PKPetAvatarView`: dört türü, üç büyüme ölçeğini, dört aksesuar katmanını ve kısa tepki sembollerini Core Graphics ile çizer.
-- `PKRoomBackgroundView`: gün/mevsim renklerini ve sabit yuvalardaki mobilyaları çizer; aynı yuvalar için hafif dokunma testi yapar.
+- `PKPetAvatarView`: dört türü, üç büyüme ölçeğini, dört aksesuar katmanını ve kısa tepki sembollerini Core Graphics ile çizer. Ortak `visualScale=0.25` çizimi küçültür; görünüm çerçevesi büyütülmeden en az 54×54 dokunma alanı korunur.
+- `PKRoomBackgroundView`: gün/mevsim renklerini ve sabit yuvalardaki mobilyaları çizer; aynı yuvalar için hafif dokunma testi yapar. Mama kabı tek bir elips yerine gövde, üst kenar, mama ve pati işaretinden oluşur.
 - `PKTownMapView`: dört bölge arasındaki yol ve nehri Core Graphics ile çizer; ayrı sahneleri önbelleğe almaz.
+- `PKAmbientObjectView`: haritadaki bayrak, ağaç ve feneri bir kez Core Graphics ile çizer; hareket sırasında yalnızca görünüm katmanının dönüşümü/şeffaflığı değişir.
 - `PKNeedBarView`, `PKPetCardControl`, `PKTheme`: ihtiyaç, seçim ve ortak stil.
 - `PKSoundManager`: iki küçük mono WAV dosyasını `AudioServicesPlaySystemSound` ile istek üzerine oynatır.
 
@@ -34,6 +35,8 @@ flowchart TD
 
 Ev ekranı merkezdir. Alt ekranlar aynı `PKGameState` örneğini kullanır; görünüm kaybolurken kayıt alınır ve eve dönünce arayüz yenilenir. Görev tamamlaması okul, park veya meydan denetleyicisinde konum kimliğiyle doğrulanır.
 
+Haritadaki küçük yavru `UIPanGestureRecognizer` ile bölge düğmelerine bırakılabilir. Geçerli bırakmada ilgili ekran açılır, geçersiz bırakmada yavru başlangıç noktasına döner. Aynı dört büyük düğme motor becerisi veya sürükleme güçlüğü yaşayan çocuklar için dokunma alternatifi olarak kalır.
+
 ## Zaman ve simülasyon
 
 - Sürekli oyun saati yoktur.
@@ -47,7 +50,7 @@ Ev ekranı merkezdir. Alt ekranlar aynı `PKGameState` örneğini kullanır; gö
 - Açık dünya veya sahne önbelleği yok; navigasyon denetleyicisi yalnızca mevcut yolun ekranlarını tutar.
 - Büyük doku atlası yok; ana görseller vektör şekillerinden oluşur.
 - Kasaba görünümünde en fazla dört hayvan vardır.
-- Animasyonlar kısa `UIView` geçişleridir; `NSTimer`/`CADisplayLink` yoktur.
+- Tepki animasyonları kısa `UIView` geçişleridir. Ortam ve boşta bekleme hareketleri en fazla birkaç küçük görünümün transform/alpha değerini değiştirir; ekran kaybolunca `removeAllAnimations` ile durur. `NSTimer`, `CADisplayLink`, GIF kare dizisi, SVG yorumlayıcı veya doku atlası yoktur.
 - Fotoğraflar 512×352 JPEG olarak saklanır, albüm 12 kayıtla sınırlanır ve artık başvurulmayan JPEG'ler silinir.
 - Sesler mono 22.05 kHz ve toplamda küçüktür.
 

@@ -26,8 +26,8 @@ Pati Kasabası; ihtiyaç, kişilik, ilişki, beceri, meslek ve ev kurma sistemle
 
 ## Güncel kilometre taşı
 
-`0.3.0-alpha3`: sekiz parçalı dolap, eşyaya dokunarak doğrudan kullanım, dört bölgeli kasaba haritası ve her komşuya üç tane düşen 12 konumlu görev mevcut yaşam simülasyonuna bağlandı. Kayıt sürümü 3; eski kayıt anahtarı korunuyor.
+`0.4.0-alpha4`: hayvan çizimleri ortak olarak dörtte bir ölçeğe indirildi, mama kabı yeniden çizildi, harita bölgelerine yavru sürükleme eklendi ve ana ekranlardaki durağanlık düşük maliyetli Core Graphics/katman animasyonlarıyla azaltıldı. Büyük harita düğmeleri dokunma alternatifi olarak korundu; kayıt sürümü 3 ve eski kayıt anahtarı değişmedi.
 
 ## Immediate next action
 
-Projeyi legacy Theos ortamında derle. Uyarıları temizledikten sonra fiziksel iPad 1'e yükleyip özellikle dolap çizimlerini, eşya dokunma alanlarını, harita geçişlerini, 12 günlük görev döngüsünü ve `TESTING.md` içindeki bellek testini uygula.
+Projeyi legacy Theos ortamında derle. Fiziksel iPad 1'e yükleyip özellikle dörtte bir hayvan ölçeğinin okunaklılığını, mama kabını, harita sürüklemesini/dokunma alternatifini, hareketlerin ekran geçişinde durmasını ve `TESTING.md` içindeki 15 dakikalık bellek testini uygula.

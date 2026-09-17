@@ -1,5 +1,16 @@
 # Değişiklik Günlüğü
 
+## 0.4.0-alpha4
+
+- Bütün Core Graphics hayvan çizimleri ortak `visualScale=0.25` ile önceki görünür boyutun dörtte birine indirildi; en az 54×54 dokunma hedefi korundu.
+- Oda ve besleme tepkisindeki mama kabı gölge, gövde, koyu üst kenar, mama taneleri ve pati işaretiyle yeniden çizildi.
+- Haritadaki yavruyu Ev, Pati Okulu, Dostluk Parkı veya Kasaba Meydanına sürükleyerek gezinme eklendi; büyük bölge düğmeleri dokunma alternatifi olarak korundu.
+- Haritaya Core Graphics ile çizilen bayrak, ağaç ve fener eklendi; yalnızca transform/alpha katman animasyonlarıyla hareket ediyor.
+- Ev, oda, dolap ve harita yavrularına 5 puntoluk yavaş boşta bekleme hareketi eklendi.
+- Ekran kaybolurken sürekli animasyonların kaldırılması ve gecikmiş harita geçişlerinin iptali eklendi.
+- Doğrulayıcı GIF kare dizisi, SVG yorumlayıcı, `NSTimer`, `CADisplayLink` ve yanlış legacy animasyon çağrılarını engelleyecek şekilde genişletildi.
+- Kayıt biçimi sürüm 3 olarak korundu; alpha4 yeni kalıcı alan gerektirmiyor.
+
 ## 0.3.0-alpha3
 
 - Baş, yüz, boyun ve gövde yuvalarında sekiz parçalı aksesuar/kıyafet dolabı eklendi.
@@ -9,6 +20,7 @@
 - Dört komşuya üçer tane düşen 12 günlük görev ve okul/park/meydan konum doğrulaması eklendi.
 - Komşular Dostluk Parkına, etkinlikler Kasaba Meydanına ayrıldı.
 - Kayıt formatı sürüm 3'e yükseltildi; 0.1/0.2 kayıt anahtarı ve geçişi korundu.
+- Legacy UIKit animasyonlarında iOS 5 uyumlu `setAnimationRepeatAutoreverses:` çağrısı kullanıldı.
 
 ## 0.2.0-alpha2
 

@@ -30,7 +30,7 @@ ls -lh packages/
 scp \
   -o HostKeyAlgorithms=+ssh-rsa \
   -o PubkeyAcceptedAlgorithms=+ssh-rsa \
-  packages/com.olapteknoloji.patikasabasi_0.3.0-alpha3_iphoneos-arm.deb \
+  packages/com.olapteknoloji.patikasabasi_0.4.0-alpha4_iphoneos-arm.deb \
   root@IPAD_IP:/var/mobile/
 ```
 
@@ -46,11 +46,11 @@ ssh \
 iPad terminalinde:
 
 ```bash
-dpkg -i /var/mobile/com.olapteknoloji.patikasabasi_0.3.0-alpha3_iphoneos-arm.deb
+dpkg -i /var/mobile/com.olapteknoloji.patikasabasi_0.4.0-alpha4_iphoneos-arm.deb
 uicache
 killall -9 SpringBoard
 ```
 
 ## 5. Fiziksel test
 
-`TESTING.md` içindeki tüm senaryoları uygula. Özellikle 0.1/0.2 kayıt geçişini, dolap ve oda dokunmalarını, 12 görev döngüsünü, fotoğraf belleğini ve 15 dakikalık ekran dolaşımını gerçek iPad 1 üzerinde doğrula. Cihazda görülmeyen davranış doğrulanmış kabul edilmez.
+`TESTING.md` içindeki tüm senaryoları uygula. Özellikle dörtte bir hayvan ölçeğini, mama kabını, harita sürüklemesini ve dokunma alternatifini, hareketlerin ekran geçişinde durmasını, 0.1/0.2/0.3 kayıt geçişini ve 15 dakikalık ekran dolaşımını gerçek iPad 1 üzerinde doğrula. Cihazda görülmeyen davranış doğrulanmış kabul edilmez.

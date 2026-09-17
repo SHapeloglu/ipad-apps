@@ -10,7 +10,7 @@ Pati Kasabası, iPad 1 için çevrimdışı ve çocuk dostu bir hayvan yaşam si
 - non-ARC / MRC
 - Tamamen çevrimdışı; hesap, reklam, gerçek para ve sohbet yok
 
-## 0.3.0-alpha3 kapsamı
+## 0.4.0-alpha4 kapsamı
 
 - Barınak veya pet shop ile başlayan sahiplenme akışı
 - Kedi, köpek, tavşan ve panda; isim ve beş kişilik seçimi
@@ -26,6 +26,10 @@ Pati Kasabası, iPad 1 için çevrimdışı ve çocuk dostu bir hayvan yaşam si
 - Pati Eşleştirme ve Mama Matematiği mini oyunları
 - Fotoğraf çekimi, büyüme/etkinlik anıları ve koleksiyon albümü
 - Kişiliğe bağlı, eylemle tetiklenen küçük “özgür irade” anları
+- Bütün hayvan çizimlerinde önceki boyutun dörtte biri olan ortak görsel ölçek; en az 54×54 dokunma alanı
+- Mama, kap gövdesi, üst kenar, gölge ve pati işaretiyle yeniden çizilmiş mama kabı
+- Haritadaki yavruyu dört bölgeye sürükleyerek gezinme; büyük bölge düğmeleri dokunma alternatifi olarak korunur
+- Core Graphics ile çizilen bayrak, ağaç ve fenerde düşük maliyetli ortam hareketleri; ev, oda ve dolapta hafif yavru hareketi
 - `NSUserDefaults` tabanlı sürüm 3 kayıt; 0.1/0.2 kayıtları için geriye dönük varsayılanlar
 
 ## Derleme
@@ -40,4 +44,4 @@ Dağıtım paketi `packages/` altında oluşur. Bu kaynak tesliminde statik lega
 
 ## Tasarım yaklaşımı
 
-Oyun açık dünya yerine küçük ekranlara ayrılır. Harita yalnızca dört hafif bölge arasında geçiş sağlar; görseller çoğunlukla Core Graphics şekilleridir ve parkta en fazla dört hayvan çizilir. Zaman yalnızca oyuncu eylemleriyle ilerler, dolayısıyla uygulama kapalıyken çocuk cezalandırılmaz ve arka planda sürekli zamanlayıcı çalışmaz.
+Oyun açık dünya yerine küçük ekranlara ayrılır. Harita yalnızca dört hafif bölge arasında geçiş sağlar; görseller çoğunlukla Core Graphics şekilleridir ve parkta en fazla dört hayvan çizilir. Hareketli görünümler önceden çizilmiş katmanların küçük dönüşümleridir, ekran kapanınca durdurulur ve GIF/SVG oynatıcı ya da sürekli zamanlayıcı kullanılmaz. Zaman yalnızca oyuncu eylemleriyle ilerler, dolayısıyla uygulama kapalıyken çocuk cezalandırılmaz.

@@ -35,6 +35,8 @@ Barınak 500 pati ve `Yeni Bir Yuva` rozeti verir. Pet shop 300 pati ve renkli t
 - Envanter: yatak, mama kabı, top, bitki, kitaplık, piyano, sanat masası ve pati halısı.
 - Odada en fazla altı eşya, önceden belirlenmiş güvenli yuvalara yerleşir.
 - Ayrı oda görünümünde yatağa, mama kabına, topa, halıya veya beceri mobilyasına dokunmak ilgili eylemi doğrudan başlatır.
+- Hayvan çizimleri önceki görünür boyutun dörtte biri ölçeğindedir; dokunma hedefi görselden bağımsız olarak en az 54×54 kalır.
+- Mama kabı gövde, belirgin üst kenar, görünür mama taneleri ve ön yüzde pati işaretiyle diğer oda nesnelerinden ayrılır.
 - Dolapta Baş, Gözlük, Boyun ve Kostüm yuvaları vardır; her yuvada aynı anda yalnızca bir parça takılır.
 - Sekiz parçanın ikisi başlangıç hediyesidir; diğerleri yalnızca oyun içi pati parasıyla alınır ve gerçek ödeme yoktur.
 - Müzik, Sanat, Doğa, Mantık ve Sosyal becerileri 0–10 aralığındadır.
@@ -52,6 +54,14 @@ Barınak 500 pati ve `Yeni Bir Yuva` rozeti verir. Pet shop 300 pati ve renkli t
 - Günlük Çiçek Pikniği, Müzik Günü, Renk Şenliği ve Yıldız Gecesi dönüşümlü gelir; katılım 25 pati ve rozet verir.
 - Etkinlikler kaybolmaz; döngü halinde yeniden gelir.
 - Kişiliğe bağlı küçük bağımsız davranışlar her üçüncü eylemde metin olayı olarak görünür.
+- Haritadaki yavru bir bölgeye sürüklenebilir; bölge düğmelerine dokunma her zaman eşdeğer alternatif olarak kalır.
+
+## Hareket bütçesi
+
+- Bayrak, ağaç ve fener Core Graphics ile bir kez çizilir; hareket sırasında yalnızca küçük görünüm katmanlarının dönüşümü veya şeffaflığı değişir.
+- Ev, oda, dolap ve haritadaki tek yavruda en fazla 5 punto yavaş boşta bekleme hareketi kullanılır.
+- Ekran görünmez olunca animasyonlar kaldırılır. GIF, kare dizisi, SVG yorumlayıcı, sürekli oyun döngüsü veya zamanlayıcı kullanılmaz.
+- Parktaki dört komşu aynı anda sürekli canlandırılmaz; iPad 1 bellek ve işlemci bütçesi önceliklidir.
 
 ## Mini oyunlar ve albüm
 
@@ -60,3 +70,11 @@ Barınak 500 pati ve `Yeni Bir Yuva` rozeti verir. Pet shop 300 pati ve renkli t
 - Her mini oyunun günlük ilk tamamlanışı 30 pati verir; oyun hiçbir zaman kilitlenmez.
 - Ev ekranı 512×352 anı fotoğrafı kaydeder. Büyüme, etkinlik, meslek ve rehber anıları otomatik eklenir.
 - Albüm en fazla 12 anı tutar; kasaba rozetleri ayrı koleksiyonda gösterilir.
+
+## Sanal evcil hayvan oyunlarından güvenli ürün adayları
+
+- Mama çeşitleri: birkaç küçük katalog girdisi, yavrunun sevdiği mama ve kısa komik/olumlu tepki; gerçek para veya rastgele ödül olmadan.
+- Oyun parkı oyuncakları: salıncak ya da trambolinde tek dokunuşla başlayan kısa, zamanlayıcısız etkileşim.
+- Bağlamsal tepkiler: seçili oda nesnesine göre özgün yüz/simge tepkisi; hazır karakter veya görsel kopyalanmaz.
+- Anı çıkartmaları: bakım, oyun ve keşiflerden öngörülebilir koleksiyon; ödül çarkı veya sürpriz kutu yoktur.
+- Ses tekrar özelliği bu sürüm için seçilmedi; mikrofon gizliliği, ses belleği ve eski cihaz uyumluluğu ayrıca tasarlanmadan eklenmez.

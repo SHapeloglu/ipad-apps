@@ -5,7 +5,7 @@
 - `ARCHS=armv7`, deployment target 5.1, iPhoneOS 6.1 SDK, ARC kapalı.
 - `./scripts/validate_project.sh` geçmeli.
 - Derleyici uyarıları incelenmeli; modern API veya sahiplik uyarısı kalmamalı.
-- Üretilen paketin mimarisi ve sürümü `iphoneos-arm / 0.3.0-alpha3` olmalı.
+- Üretilen paketin mimarisi ve sürümü `iphoneos-arm / 0.4.0-alpha4` olmalı.
 
 ## Sahiplenme ve kayıt geçişi
 
@@ -13,7 +13,7 @@
 2. Evde 500 pati, yatak ve mama kabını doğrula.
 3. Pet shop yolunda 300 pati, top sahipliği ve topun odada olduğunu doğrula.
 4. Uygulamayı kapat/aç; Devam Et ile tüm değerlerin korunduğunu doğrula.
-5. 0.1.0-alpha1 ve ayrı olarak 0.2.0-alpha2 kaydı olan cihazda 0.3'ü aç; eski yavru, ekonomi ve ihtiyaçlar korunurken kırmızı kurdele/yeşil tasmanın dolaba eklenip takılmasını doğrula.
+5. 0.1.0-alpha1, 0.2.0-alpha2 ve 0.3.0-alpha3 kayıtlarını ayrı ayrı 0.4'te aç; eski yavru, ekonomi, ihtiyaç, oda ve dolap verilerinin korunduğunu doğrula.
 6. Kaydet, uygulamayı yeniden aç ve eşya yerleşimi ile takılan aksesuarların aynı kaldığını doğrula.
 7. Yeni Oyun seçeneğinde onaydan sonra eski kayıt ve fotoğraf klasörünün temizlendiğini doğrula.
 
@@ -24,6 +24,8 @@
 - Oyna, Uyut, Temizle ve Sev beklenen ihtiyaçları değiştirmeli; bütün değerler 0–100 kalmalı.
 - Hayvana dokunmak sevgi eylemi, kalp tepkisi, kısa animasyon ve metin vermeli.
 - Eylem simgeleri yaklaşık 0,4 saniyede temizlenmeli; ekran kapanınca gecikmiş çağrı çökmemeli.
+- Evdeki yavru önceki görünür boyutun dörtte biri olmalı; buna rağmen merkezdeki dokunma hedefi en az 54×54 çalışmalı.
+- Evdeki yavru yavaşça en fazla yaklaşık 5 punto hareket etmeli; başka ekrana geçildiğinde katman animasyonu kalmamalı.
 - Ses anahtarı anında çalışmalı ve yeniden açılışta korunmalı.
 - Her dört anlamlı eylemde gün +1 ve para +20 olmalı.
 - Her üçüncü eylemde seçilen kişiliğe uygun özgür irade metni görülebilmeli.
@@ -45,6 +47,7 @@
 - Top, yatak ve mama kabı bakım bonusu; bitki, kitaplık, piyano ve sanat masası ders bonusu vermeli.
 - Odam ekranında yalnızca yerleştirilmiş eşyalara dokunulabilmeli; boş zemine dokunmak tur veya para harcamamalı.
 - Yatak Uyut, mama kabı Besle, top Oyna, halı Sev eylemini doğrudan başlatmalı.
+- Mama kabı gövde, koyu üst kenar, görünür mama taneleri ve ön pati işaretiyle ilk bakışta ayırt edilmeli.
 - Bitki, kitaplık, piyano ve sanat masası ilgili dersi doğrudan başlatmalı; 10 pati ve yerleşik eşya bonusu uygulanmalı.
 - Üst üste gelen halı/eşya dokunma alanlarında görünür küçük eşya halıdan önce seçilmeli.
 
@@ -55,11 +58,15 @@
 - Yetersiz para alımı engellemeli; başarılı alım parayı düşürüp parçayı hemen takmalı.
 - Aynı bölgeden ikinci parça giyilince ilki otomatik çıkmalı; Giy/Çıkar durumu doğru yenilenmeli.
 - Takılan parçalar dolap önizlemesinde, evde ve etkileşimli odada görünmeli; kayıt sonrası korunmalı.
-- Dört hayvan türü ve üç büyüme aşamasında aksesuar katmanları yüzü ve dokunma alanını bozmayacak şekilde kontrol edilmeli.
+- Dört hayvan türü ve üç büyüme aşamasında dörtte bir çizim ölçeği, aksesuar katmanları ve en az 54×54 dokunma alanı kontrol edilmeli.
+- Dolap önizlemesindeki yavru yavaşça hareket etmeli ve ekran kapanınca animasyon durmalı.
 
 ## Harita, kasaba, ilişkiler ve etkinlik
 
 - Haritada Ev, Okul, Dostluk Parkı ve Kasaba Meydanı büyük dokunma alanlarıyla görünmeli.
+- Ortadaki yavru dört bölgenin her birine sürüklenince doğru ekran açılmalı; geçersiz alana bırakılınca başlangıç noktasına dönmeli.
+- Sürükleme sırasında hedef bölgenin beyaz çerçevesi kalınlaşıp hafif büyümeli; düğmeye tek dokunma aynı geçişi yapmaya devam etmeli.
+- Bayrak ve ağaç hafif sallanmalı, fener yavaşça parlamalı; haritadan çıkınca animasyon katmanları temizlenmeli.
 - Günlük isteğin bölgesinde sarı çerçeve ve `İstek burada!` metni olmalı; her bölge doğru ekrana gitmeli.
 - Dostluk Parkında aynı anda yalnızca dört komşu görünmeli ve tablo akıcı kaymalı.
 - Her ziyaret arkadaşlığı +8 ve komşunun becerisini +1 artırmalı.
@@ -100,4 +107,5 @@
 - Türkçe karakterler, simgeler ve küçük WAV sesleri doğru çalışmalı.
 - Tablolar, harita bölgeleri, dolap düğmeleri ve oda eşyaları rahat dokunulmalı; mini oyunlarda gecikme hissedilmemeli.
 - 15 dakika boyunca harita/park/meydan/okul/dolap/oda arasında dolaş, tüm aksesuarları dene, 12 fotoğraf çek ve mini oyun oyna; bellek uyarısı veya kapanma olmamalı.
+- Aynı 15 dakikalık turda ekranlara en az 20 kez girip çık; boşta bekleme ve ortam animasyonları birikmemeli, giderek hızlanmamalı veya takılmamalı.
 - Askıya alıp geri dönünce kayıt korunmalı.

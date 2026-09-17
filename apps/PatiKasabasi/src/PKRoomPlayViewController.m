@@ -8,11 +8,14 @@
 #import "PKTheme.h"
 #import "PKSoundManager.h"
 #import <QuartzCore/QuartzCore.h>
+#include <float.h>
 
 @interface PKRoomPlayViewController ()
 - (void)refreshUI;
 - (void)showReaction:(NSString *)identifier;
 - (void)resetReaction;
+- (void)startAvatarIdleAnimation;
+- (void)stopAvatarIdleAnimation;
 @end
 
 @implementation PKRoomPlayViewController
@@ -51,11 +54,14 @@
     _feedbackLabel.clipsToBounds = YES;
     [self.view addSubview:_feedbackLabel];
 
-    _avatarView = [[PKPetAvatarView alloc] initWithFrame:CGRectMake(345.0f, 235.0f, 315.0f, 390.0f) speciesIdentifier:_gameState.pet.speciesIdentifier];
+    _avatarMotionView = [[UIView alloc] initWithFrame:CGRectMake(345.0f, 235.0f, 315.0f, 390.0f)];
+    _avatarMotionView.backgroundColor = [UIColor clearColor];
+    _avatarView = [[PKPetAvatarView alloc] initWithFrame:_avatarMotionView.bounds speciesIdentifier:_gameState.pet.speciesIdentifier];
     _avatarView.userInteractionEnabled = YES;
     UITapGestureRecognizer *petTap = [[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(avatarTapped:)] autorelease];
     [_avatarView addGestureRecognizer:petTap];
-    [self.view addSubview:_avatarView];
+    [_avatarMotionView addSubview:_avatarView];
+    [self.view addSubview:_avatarMotionView];
     [self refreshUI];
 }
 
@@ -108,6 +114,22 @@
     _avatarView.reactionIdentifier = @"";
 }
 
+- (void)startAvatarIdleAnimation {
+    [self stopAvatarIdleAnimation];
+    [UIView beginAnimations:@"roomPetIdle" context:nil];
+    [UIView setAnimationDuration:1.80f];
+    [UIView setAnimationCurve:UIViewAnimationCurveEaseInOut];
+    [UIView setAnimationRepeatCount:FLT_MAX];
+    [UIView setAnimationRepeatAutoreverses:YES];
+    _avatarMotionView.transform = CGAffineTransformMakeTranslation(0.0f, -5.0f);
+    [UIView commitAnimations];
+}
+
+- (void)stopAvatarIdleAnimation {
+    [_avatarMotionView.layer removeAllAnimations];
+    _avatarMotionView.transform = CGAffineTransformIdentity;
+}
+
 - (void)editTapped:(id)sender {
     (void)sender;
     PKDecorViewController *controller = [[PKDecorViewController alloc] initWithGameState:_gameState];
@@ -118,10 +140,12 @@
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
     [self refreshUI];
+    [self startAvatarIdleAnimation];
 }
 
 - (void)viewWillDisappear:(BOOL)animated {
     [super viewWillDisappear:animated];
+    [self stopAvatarIdleAnimation];
     [_gameState save];
 }
 
@@ -129,6 +153,7 @@
     [NSObject cancelPreviousPerformRequestsWithTarget:self];
     [_gameState release];
     [_roomView release];
+    [_avatarMotionView release];
     [_avatarView release];
     [_statusLabel release];
     [_feedbackLabel release];

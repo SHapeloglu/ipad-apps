@@ -7,6 +7,7 @@
 @interface PKRoomPlayViewController : PKBaseViewController {
     PKGameState *_gameState;
     PKRoomBackgroundView *_roomView;
+    UIView *_avatarMotionView;
     PKPetAvatarView *_avatarView;
     UILabel *_statusLabel;
     UILabel *_feedbackLabel;

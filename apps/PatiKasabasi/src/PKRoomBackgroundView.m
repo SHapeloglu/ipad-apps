@@ -123,8 +123,37 @@
         CGContextFillEllipseInRect(context, CGRectMake(54.0f, floorY + 47.0f, 72.0f, 38.0f));
     }
     if ([_placedItems containsObject:@"bowl"]) {
-        CGContextSetFillColorWithColor(context, [UIColor colorWithRed:0.32f green:0.63f blue:0.75f alpha:1.0f].CGColor);
-        CGContextFillEllipseInRect(context, CGRectMake(610.0f, floorY + 95.0f, 72.0f, 30.0f));
+        UIColor *bowlBlue = [UIColor colorWithRed:0.27f green:0.58f blue:0.72f alpha:1.0f];
+        UIColor *bowlRim = [UIColor colorWithRed:0.13f green:0.38f blue:0.52f alpha:1.0f];
+        UIColor *food = [UIColor colorWithRed:0.79f green:0.61f blue:0.37f alpha:1.0f];
+        UIColor *kibble = [UIColor colorWithRed:0.43f green:0.27f blue:0.16f alpha:1.0f];
+
+        CGContextSetFillColorWithColor(context, [UIColor colorWithWhite:0.0f alpha:0.16f].CGColor);
+        CGContextFillEllipseInRect(context, CGRectMake(598.0f, floorY + 132.0f, 98.0f, 15.0f));
+
+        CGContextSetFillColorWithColor(context, bowlBlue.CGColor);
+        CGContextMoveToPoint(context, 601.0f, floorY + 98.0f);
+        CGContextAddLineToPoint(context, 693.0f, floorY + 98.0f);
+        CGContextAddQuadCurveToPoint(context, 688.0f, floorY + 137.0f, 676.0f, floorY + 140.0f);
+        CGContextAddLineToPoint(context, 618.0f, floorY + 140.0f);
+        CGContextAddQuadCurveToPoint(context, 606.0f, floorY + 137.0f, 601.0f, floorY + 98.0f);
+        CGContextClosePath(context);
+        CGContextFillPath(context);
+
+        CGContextSetFillColorWithColor(context, bowlRim.CGColor);
+        CGContextFillEllipseInRect(context, CGRectMake(598.0f, floorY + 84.0f, 98.0f, 31.0f));
+        CGContextSetFillColorWithColor(context, food.CGColor);
+        CGContextFillEllipseInRect(context, CGRectMake(605.0f, floorY + 89.0f, 84.0f, 21.0f));
+        CGContextSetFillColorWithColor(context, kibble.CGColor);
+        CGContextFillEllipseInRect(context, CGRectMake(617.0f, floorY + 91.0f, 13.0f, 10.0f));
+        CGContextFillEllipseInRect(context, CGRectMake(638.0f, floorY + 96.0f, 14.0f, 10.0f));
+        CGContextFillEllipseInRect(context, CGRectMake(660.0f, floorY + 91.0f, 13.0f, 10.0f));
+
+        CGContextSetFillColorWithColor(context, [UIColor colorWithWhite:1.0f alpha:0.88f].CGColor);
+        CGContextFillEllipseInRect(context, CGRectMake(640.0f, floorY + 116.0f, 15.0f, 13.0f));
+        CGContextFillEllipseInRect(context, CGRectMake(630.0f, floorY + 111.0f, 8.0f, 9.0f));
+        CGContextFillEllipseInRect(context, CGRectMake(641.0f, floorY + 107.0f, 8.0f, 9.0f));
+        CGContextFillEllipseInRect(context, CGRectMake(652.0f, floorY + 111.0f, 8.0f, 9.0f));
     }
     if ([_placedItems containsObject:@"ball"]) {
         CGContextSetFillColorWithColor(context, [UIColor colorWithRed:0.94f green:0.30f blue:0.37f alpha:1.0f].CGColor);

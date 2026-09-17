@@ -20,6 +20,7 @@ static void PKStrokeLine(CGContextRef context, CGPoint a, CGPoint b, UIColor *co
 @synthesize lifeStageIdentifier = _lifeStageIdentifier;
 @synthesize equippedAccessories = _equippedAccessories;
 @synthesize happy = _happy;
+@synthesize visualScale = _visualScale;
 
 - (id)initWithFrame:(CGRect)frame {
     return [self initWithFrame:frame speciesIdentifier:@"cat"];
@@ -33,6 +34,7 @@ static void PKStrokeLine(CGContextRef context, CGPoint a, CGPoint b, UIColor *co
         _lifeStageIdentifier = [@"baby" copy];
         _equippedAccessories = [[NSDictionary alloc] init];
         _happy = YES;
+        _visualScale = 0.25f;
         self.backgroundColor = [UIColor clearColor];
         self.opaque = NO;
         self.contentMode = UIViewContentModeRedraw;
@@ -77,6 +79,22 @@ static void PKStrokeLine(CGContextRef context, CGPoint a, CGPoint b, UIColor *co
     [self setNeedsDisplay];
 }
 
+- (void)setVisualScale:(CGFloat)visualScale {
+    _visualScale = MIN(MAX(visualScale, 0.10f), 1.0f);
+    [self setNeedsDisplay];
+}
+
+- (BOOL)pointInside:(CGPoint)point withEvent:(UIEvent *)event {
+    (void)event;
+    CGFloat hitWidth = MAX(54.0f, self.bounds.size.width * _visualScale);
+    CGFloat hitHeight = MAX(54.0f, self.bounds.size.height * _visualScale);
+    CGRect hitFrame = CGRectMake((self.bounds.size.width - hitWidth) * 0.5f,
+                                 (self.bounds.size.height - hitHeight) * 0.5f,
+                                 hitWidth,
+                                 hitHeight);
+    return CGRectContainsPoint(hitFrame, point);
+}
+
 - (void)drawTriangleInContext:(CGContextRef)context
                             a:(CGPoint)a
                             b:(CGPoint)b
@@ -97,7 +115,7 @@ static void PKStrokeLine(CGContextRef context, CGPoint a, CGPoint b, UIColor *co
     CGFloat w = rect.size.width;
     CGFloat h = rect.size.height;
     CGFloat stageScale = [_lifeStageIdentifier isEqualToString:@"adult"] ? 1.0f : ([_lifeStageIdentifier isEqualToString:@"young"] ? 0.91f : 0.82f);
-    CGFloat scale = MIN(w / 220.0f, h / 260.0f) * stageScale;
+    CGFloat scale = MIN(w / 220.0f, h / 260.0f) * stageScale * _visualScale;
     CGFloat ox = (w - (220.0f * scale)) * 0.5f;
     CGFloat oy = (h - (260.0f * scale)) * 0.5f;
     CGContextSaveGState(context);
@@ -257,8 +275,22 @@ static void PKStrokeLine(CGContextRef context, CGPoint a, CGPoint b, UIColor *co
         PKFillEllipse(context, CGRectMake(190.0f, 55.0f, 24.0f, 24.0f), [UIColor colorWithRed:0.94f green:0.30f blue:0.42f alpha:1.0f]);
         [self drawTriangleInContext:context a:CGPointMake(172.0f, 68.0f) b:CGPointMake(214.0f, 68.0f) c:CGPointMake(193.0f, 98.0f) color:[UIColor colorWithRed:0.94f green:0.30f blue:0.42f alpha:1.0f]];
     } else if ([_reactionIdentifier isEqualToString:@"feed"]) {
-        CGContextSetFillColorWithColor(context, [UIColor colorWithRed:0.35f green:0.66f blue:0.76f alpha:1.0f].CGColor);
-        CGContextFillEllipseInRect(context, CGRectMake(166.0f, 205.0f, 50.0f, 22.0f));
+        UIColor *bowlBlue = [UIColor colorWithRed:0.27f green:0.58f blue:0.72f alpha:1.0f];
+        UIColor *bowlRim = [UIColor colorWithRed:0.13f green:0.38f blue:0.52f alpha:1.0f];
+        PKFillEllipse(context, CGRectMake(164.0f, 226.0f, 52.0f, 8.0f), [UIColor colorWithWhite:0.0f alpha:0.13f]);
+        CGContextSetFillColorWithColor(context, bowlBlue.CGColor);
+        CGContextMoveToPoint(context, 166.0f, 209.0f);
+        CGContextAddLineToPoint(context, 214.0f, 209.0f);
+        CGContextAddQuadCurveToPoint(context, 211.0f, 231.0f, 204.0f, 232.0f);
+        CGContextAddLineToPoint(context, 176.0f, 232.0f);
+        CGContextAddQuadCurveToPoint(context, 169.0f, 231.0f, 166.0f, 209.0f);
+        CGContextClosePath(context);
+        CGContextFillPath(context);
+        PKFillEllipse(context, CGRectMake(164.0f, 201.0f, 52.0f, 18.0f), bowlRim);
+        PKFillEllipse(context, CGRectMake(168.0f, 204.0f, 44.0f, 12.0f), [UIColor colorWithRed:0.79f green:0.61f blue:0.37f alpha:1.0f]);
+        PKFillEllipse(context, CGRectMake(176.0f, 205.0f, 7.0f, 6.0f), [UIColor colorWithRed:0.43f green:0.27f blue:0.16f alpha:1.0f]);
+        PKFillEllipse(context, CGRectMake(187.0f, 208.0f, 8.0f, 6.0f), [UIColor colorWithRed:0.43f green:0.27f blue:0.16f alpha:1.0f]);
+        PKFillEllipse(context, CGRectMake(199.0f, 205.0f, 7.0f, 6.0f), [UIColor colorWithRed:0.43f green:0.27f blue:0.16f alpha:1.0f]);
     }
 
     CGContextRestoreGState(context);
