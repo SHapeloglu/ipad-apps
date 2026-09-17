@@ -36,6 +36,14 @@
     UIPinchGestureRecognizer *_stampPinch;
     NSInteger _smudgeStrengthIndex;
     NSInteger _mixerStrengthIndex;
+    NSInteger _stampRotationIndex;
+    UIView *_brushPreview;
+    UILabel *_brushPreviewLabel;
+    NSInteger _smoothingIndex;
+    NSMutableSet *_favoriteDrawings;
+    NSMutableArray *_favoriteBrushes;
+    NSMutableArray *_recentBrushes;
+    NSInteger _galleryFilter;
 }
 - (void)openExternalImageAtPath:(NSString *)path;
 @end

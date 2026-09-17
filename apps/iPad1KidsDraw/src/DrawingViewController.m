@@ -1,6 +1,7 @@
 #import "DrawingViewController.h"
 #import "DrawingView.h"
 #import <AudioToolbox/AudioToolbox.h>
+#import <QuartzCore/QuartzCore.h>
 
 #define TOP_HEIGHT 108.0f
 #define BOTTOM_HEIGHT 64.0f
@@ -73,6 +74,15 @@
     _secondaryBrushIndex=0;
     _smudgeStrengthIndex=1;
     _mixerStrengthIndex=1;
+    _stampRotationIndex=0;
+    _smoothingIndex=1;
+    NSArray *savedFav=[[NSUserDefaults standardUserDefaults] objectForKey:@"KidsDrawFavoriteDrawings"];
+    _favoriteDrawings=[[NSMutableSet alloc] initWithArray:(savedFav?savedFav:[NSArray array])];
+    NSArray *savedBrushFav=[[NSUserDefaults standardUserDefaults] objectForKey:@"KidsDrawFavoriteBrushes"];
+    _favoriteBrushes=[[NSMutableArray alloc] initWithArray:(savedBrushFav?savedBrushFav:[NSArray array])];
+    NSArray *savedRecent=[[NSUserDefaults standardUserDefaults] objectForKey:@"KidsDrawRecentBrushes"];
+    _recentBrushes=[[NSMutableArray alloc] initWithArray:(savedRecent?savedRecent:[NSArray array])];
+    _galleryFilter=0;
     _drawingView.lineWidth=7.0f;
     _drawingView.stampScale=1.0f;
     _drawingView.sprayDensity=1.0f;
@@ -83,6 +93,8 @@
     _secondaryPaintColor=[[UIColor blueColor] retain];
     _drawingView.secondaryStrokeColor=_secondaryPaintColor;
     _drawingView.secondaryBrushStyle=KidsBrushNormal;
+    _drawingView.smoothingEnabled=YES;
+    _drawingView.smoothingStrength=0.35f;
     _drawingView.smudgeStrength=0.55f;
     _drawingView.mixerStrength=0.50f;
 
@@ -114,6 +126,11 @@
     [_topToolbar addSubview:[self textButton:@"Özel\nRenk" tag:208]];
     [_topToolbar addSubview:[self textButton:@"Dağıt" tag:209]];
     [_topToolbar addSubview:[self textButton:@"Karıştır" tag:210]];
+    [_topToolbar addSubview:[self textButton:@"Damlalık" tag:211]];
+    [_topToolbar addSubview:[self textButton:@"Damga\nDöndür" tag:212]];
+    [_topToolbar addSubview:[self textButton:@"Renk\nSeçici" tag:213]];
+    [_topToolbar addSubview:[self textButton:@"Önizle" tag:214]];
+    [_topToolbar addSubview:[self textButton:@"Yumuşat" tag:215]];
 
     _starLabel=[[UILabel alloc] initWithFrame:CGRectZero];
     _starLabel.backgroundColor=[UIColor clearColor];
@@ -130,6 +147,18 @@
     for(i=0;i<16;i++) [_bottomToolbar addSubview:[self textButton:[bottom objectAtIndex:i] tag:301+i]];
 
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(canvasChanged:) name:@"KidsDrawCanvasChanged" object:_drawingView];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(colorPicked:) name:@"KidsDrawColorPicked" object:_drawingView];
+    _brushPreview=[[UIView alloc] initWithFrame:CGRectZero];
+    _brushPreview.backgroundColor=[UIColor colorWithWhite:0.98f alpha:1.0f];
+    _brushPreview.layer.borderWidth=1.0f;
+    _brushPreview.hidden=YES;
+    _brushPreviewLabel=[[UILabel alloc] initWithFrame:CGRectZero];
+    _brushPreviewLabel.backgroundColor=[UIColor clearColor];
+    _brushPreviewLabel.textAlignment=UITextAlignmentCenter;
+    _brushPreviewLabel.font=[UIFont boldSystemFontOfSize:13.0f];
+    [_brushPreview addSubview:_brushPreviewLabel];
+    [self.view addSubview:_brushPreview];
+
     [self performSelector:@selector(loadAutosaveDraft) withObject:nil afterDelay:0.1];
 }
 
@@ -166,11 +195,11 @@
     _starLabel.font=[UIFont boldSystemFontOfSize:16.0f];
 
     CGFloat toolGap=5.0f;
-    CGFloat toolW=(b.size.width-left*2.0f-toolGap*9.0f)/10.0f;
+    CGFloat toolW=(b.size.width-left*2.0f-toolGap*14.0f)/15.0f;
     CGFloat toolY=51.0f;
     x=left;
 
-    for(i=201;i<=210;i++){
+    for(i=201;i<=215;i++){
         UIView *v=[_topToolbar viewWithTag:i];
         v.frame=CGRectMake(x,toolY,toolW,49.0f);
         x+=toolW+toolGap;
@@ -185,6 +214,8 @@
         x+=bw+bottomGap;
     }
 
+    _brushPreview.frame=CGRectMake(b.size.width-170.0f,TOP_HEIGHT+8.0f,160.0f,54.0f);
+    _brushPreviewLabel.frame=_brushPreview.bounds;
     if(_galleryOverlay) _galleryOverlay.frame=self.view.bounds;
     if(_replayOverlay) _replayOverlay.frame=_drawingView.frame;
 }
@@ -242,6 +273,7 @@
                                                        @"Tebeşir",
                                                        @"Parmakla Dağıt",
                                                        @"Renk Karıştır",
+                                                       @"Sulu Boya",
                                                        nil] autorelease];
     a.tag=643;
     [a show];
@@ -365,19 +397,293 @@
     [button setTitle:names[_mixerStrengthIndex] forState:UIControlStateNormal];
 }
 
+
+- (void)colorPicked:(NSNotification *)n
+{
+    UIColor *c=[[n userInfo] objectForKey:@"color"];
+    if(!c) return;
+    [_lastPaintColor release];
+    _lastPaintColor=[c retain];
+    _drawingView.strokeColor=c;
+    [self showBrushPreviewWithText:@"Renk alındı"];
+}
+
+- (void)activateEyedropper
+{
+    _drawingView.eyedropperMode=YES;
+    _drawingView.bucketMode=NO;
+    _drawingView.stampType=KidsStampNone;
+    _drawingView.shapeType=KidsShapeNone;
+    [self showBrushPreviewWithText:@"Tuvalden renk seç"];
+}
+
+- (void)cycleStampRotation:(UIButton *)button
+{
+    static const CGFloat vals[]={0.0f,0.785398f,1.570796f,2.356194f,3.141593f,3.926991f,4.712389f,5.497787f};
+    static NSString *names[]={@"0°",@"45°",@"90°",@"135°",@"180°",@"225°",@"270°",@"315°"};
+    _stampRotationIndex=(_stampRotationIndex+1)%8;
+    _drawingView.stampRotation=vals[_stampRotationIndex];
+    [button setTitle:names[_stampRotationIndex] forState:UIControlStateNormal];
+}
+
+- (void)chooseAdvancedColor
+{
+    UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"Renk Seçici"
+                                               message:@"Renk ailesini seç."
+                                              delegate:self
+                                     cancelButtonTitle:@"Vazgeç"
+                                     otherButtonTitles:@"Kırmızılar",@"Turuncu/Sarı",@"Yeşiller",@"Maviler",@"Mor/Pembe",@"Toprak/Gri",nil] autorelease];
+    a.tag=644;
+    [a show];
+}
+
+- (void)showColorFamily:(NSInteger)family
+{
+    NSArray *titles=nil;
+    if(family==0) titles=[NSArray arrayWithObjects:@"Koyu Kırmızı",@"Kırmızı",@"Açık Kırmızı",@"Mercan",nil];
+    else if(family==1) titles=[NSArray arrayWithObjects:@"Turuncu",@"Altın",@"Sarı",@"Limon",nil];
+    else if(family==2) titles=[NSArray arrayWithObjects:@"Koyu Yeşil",@"Yeşil",@"Mint",@"Lime",nil];
+    else if(family==3) titles=[NSArray arrayWithObjects:@"Lacivert",@"Mavi",@"Açık Mavi",@"Turkuaz",nil];
+    else if(family==4) titles=[NSArray arrayWithObjects:@"Mor",@"Lavanta",@"Pembe",@"Gül",nil];
+    else titles=[NSArray arrayWithObjects:@"Kahve",@"Taba",@"Gri",@"Siyah",nil];
+
+    UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"Renk Tonu"
+                                               message:@"Bir ton seç."
+                                              delegate:self
+                                     cancelButtonTitle:@"Geri"
+                                     otherButtonTitles:nil] autorelease];
+    NSInteger i;
+    for(i=0;i<[titles count];i++) [a addButtonWithTitle:[titles objectAtIndex:i]];
+    a.tag=645+family;
+    [a show];
+}
+
+- (UIColor *)advancedColorForFamily:(NSInteger)family item:(NSInteger)item
+{
+    static const int rgb[6][4][3]={
+        {{120,20,25},{220,35,45},{250,105,110},{245,110,90}},
+        {{245,125,30},{235,185,40},{255,215,35},{220,240,40}},
+        {{20,110,55},{45,185,80},{140,235,190},{180,245,40}},
+        {{25,45,110},{35,80,215},{35,170,245},{30,200,190}},
+        {{125,60,190},{190,150,240},{250,80,160},{220,80,120}},
+        {{110,70,45},{175,115,70},{110,110,110},{20,20,20}}
+    };
+    if(family<0||family>5||item<0||item>3) return [UIColor blackColor];
+    return [self colorWithR:rgb[family][item][0] g:rgb[family][item][1] b:rgb[family][item][2]];
+}
+
+- (void)showBrushPreviewWithText:(NSString *)text
+{
+    _brushPreviewLabel.text=text;
+    _brushPreview.hidden=NO;
+    [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(hideBrushPreview) object:nil];
+    [self performSelector:@selector(hideBrushPreview) withObject:nil afterDelay:1.2];
+}
+
+- (void)hideBrushPreview
+{
+    _brushPreview.hidden=YES;
+}
+
+- (NSString *)currentBrushName
+{
+    switch(_drawingView.brushStyle){
+        case KidsBrushNormal:return @"Normal";
+        case KidsBrushPencil:return @"Kurşun Kalem";
+        case KidsBrushMarker:return @"Keçeli Kalem";
+        case KidsBrushPastel:return @"Pastel";
+        case KidsBrushNeon:return @"Fosfor";
+        case KidsBrushRainbow:return @"Gökkuşağı";
+        case KidsBrushSpray:return @"Boya Spreyi";
+        case KidsBrushChalk:return @"Tebeşir";
+        case KidsBrushSmudge:return @"Dağıt";
+        case KidsBrushMixer:return @"Karıştır";
+        case KidsBrushWatercolor:return @"Sulu Boya";
+        default:return @"Fırça";
+    }
+}
+
+- (void)showCurrentBrushPreview
+{
+    NSString *s=[NSString stringWithFormat:@"%@ • %.0f px • %d%%",
+                 [self currentBrushName],
+                 _drawingView.lineWidth,
+                 (int)(_drawingView.globalOpacity*100.0f)];
+    [self showBrushPreviewWithText:s];
+}
+
+
+- (void)cycleSmoothing:(UIButton *)button
+{
+    static const CGFloat vals[]={0.0f,0.25f,0.40f,0.55f};
+    static NSString *names[]={@"Yumuşatma Kapalı",@"Yumuşat Az",@"Yumuşat Orta",@"Yumuşat Çok"};
+    _smoothingIndex=(_smoothingIndex+1)%4;
+    _drawingView.smoothingEnabled=(_smoothingIndex!=0);
+    _drawingView.smoothingStrength=vals[_smoothingIndex];
+    [button setTitle:names[_smoothingIndex] forState:UIControlStateNormal];
+    [self showCurrentBrushPreview];
+}
+
+- (void)persistFavorites
+{
+    NSArray *arr=[_favoriteDrawings allObjects];
+    [[NSUserDefaults standardUserDefaults] setObject:arr forKey:@"KidsDrawFavoriteDrawings"];
+    [[NSUserDefaults standardUserDefaults] synchronize];
+}
+
+- (void)toggleFavoriteForCurrentDrawing
+{
+    NSString *path=[[NSUserDefaults standardUserDefaults] objectForKey:@"KidsDrawCurrentGalleryPath"];
+    if(!path){
+        NSArray *all=[self galleryPaths];
+        if([all count]>0) path=[all objectAtIndex:0];
+    }
+    if(!path) return;
+    if([_favoriteDrawings containsObject:path]) [_favoriteDrawings removeObject:path];
+    else [_favoriteDrawings addObject:path];
+    [self persistFavorites];
+}
+
+
+- (void)rememberBrushStyle:(KidsBrushStyle)style
+{
+    NSNumber *n=[NSNumber numberWithInteger:(NSInteger)style];
+    [_recentBrushes removeObject:n];
+    [_recentBrushes insertObject:n atIndex:0];
+    while([_recentBrushes count]>5) [_recentBrushes removeLastObject];
+    [[NSUserDefaults standardUserDefaults] setObject:_recentBrushes forKey:@"KidsDrawRecentBrushes"];
+}
+
+- (void)toggleFavoriteBrush
+{
+    NSNumber *n=[NSNumber numberWithInteger:(NSInteger)_drawingView.brushStyle];
+    if([_favoriteBrushes containsObject:n]) [_favoriteBrushes removeObject:n];
+    else [_favoriteBrushes addObject:n];
+    [[NSUserDefaults standardUserDefaults] setObject:_favoriteBrushes forKey:@"KidsDrawFavoriteBrushes"];
+    [[NSUserDefaults standardUserDefaults] synchronize];
+    [self showBrushPreviewWithText:([_favoriteBrushes containsObject:n]?@"Fırça ★ favoride":@"Fırça favoriden çıktı")];
+}
+
+- (NSString *)brushNameForStyle:(KidsBrushStyle)style
+{
+    switch(style){
+        case KidsBrushNormal:return @"Normal";
+        case KidsBrushPencil:return @"Kurşun Kalem";
+        case KidsBrushMarker:return @"Keçeli Kalem";
+        case KidsBrushPastel:return @"Pastel";
+        case KidsBrushNeon:return @"Fosfor";
+        case KidsBrushRainbow:return @"Gökkuşağı";
+        case KidsBrushSpray:return @"Boya Spreyi";
+        case KidsBrushChalk:return @"Tebeşir";
+        case KidsBrushSmudge:return @"Dağıt";
+        case KidsBrushMixer:return @"Karıştır";
+        case KidsBrushWatercolor:return @"Sulu Boya";
+        default:return @"Fırça";
+    }
+}
+
+- (void)showBrushList:(NSArray *)styles title:(NSString *)title tag:(NSInteger)tag
+{
+    UIAlertView *a=[[[UIAlertView alloc] initWithTitle:title
+                                               message:@"Bir fırça seç."
+                                              delegate:self
+                                     cancelButtonTitle:@"Geri"
+                                     otherButtonTitles:nil] autorelease];
+    NSInteger i, max=MIN((NSInteger)[styles count],5);
+    for(i=0;i<max;i++){
+        KidsBrushStyle s=(KidsBrushStyle)[[styles objectAtIndex:i] integerValue];
+        [a addButtonWithTitle:[self brushNameForStyle:s]];
+    }
+    a.tag=tag;
+    [a show];
+}
+
+- (void)showToolInfoMenu
+{
+    BOOL fav=[_favoriteBrushes containsObject:[NSNumber numberWithInteger:(NSInteger)_drawingView.brushStyle]];
+    UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"Fırça Araçları"
+                                               message:[NSString stringWithFormat:@"%@ • %.0f px • %d%%",
+                                                        [self currentBrushName],
+                                                        _drawingView.lineWidth,
+                                                        (int)(_drawingView.globalOpacity*100.0f)]
+                                              delegate:self
+                                     cancelButtonTitle:@"Kapat"
+                                     otherButtonTitles:(fav?@"★ Favoriden Çıkar":@"☆ Favoriye Ekle"),
+                                                       @"Favori Fırçalar",
+                                                       @"Son Kullanılanlar",
+                                                       nil] autorelease];
+    a.tag=646;
+    [a show];
+}
+
+- (NSString *)thumbnailCacheDirectory
+{
+    NSArray *dirs=NSSearchPathForDirectoriesInDomains(NSCachesDirectory,NSUserDomainMask,YES);
+    NSString *d=[[dirs objectAtIndex:0] stringByAppendingPathComponent:@"KidsDrawThumbs"];
+    [[NSFileManager defaultManager] createDirectoryAtPath:d withIntermediateDirectories:YES attributes:nil error:NULL];
+    return d;
+}
+
+- (NSString *)thumbnailPathForDrawing:(NSString *)path
+{
+    NSString *name=[[[path lastPathComponent] stringByDeletingPathExtension] stringByAppendingString:@"-160x120.jpg"];
+    return [[self thumbnailCacheDirectory] stringByAppendingPathComponent:name];
+}
+
+- (UIImage *)cachedThumbnailForPath:(NSString *)path size:(CGSize)s
+{
+    NSString *tp=[self thumbnailPathForDrawing:path];
+    UIImage *cached=[UIImage imageWithContentsOfFile:tp];
+    if(cached) return cached;
+
+    UIImage *im=[UIImage imageWithContentsOfFile:path];
+    if(!im) return nil;
+    UIImage *thumb=[self thumbnailForImage:im size:s];
+    NSData *jpg=UIImageJPEGRepresentation(thumb,0.65f);
+    [jpg writeToFile:tp atomically:YES];
+    return thumb;
+}
+
+- (NSArray *)filteredGalleryPaths
+{
+    NSArray *all=[self galleryPaths];
+    if(_galleryFilter==1){
+        NSMutableArray *fav=[NSMutableArray array];
+        NSString *p;
+        for(p in all) if([_favoriteDrawings containsObject:p]) [fav addObject:p];
+        return fav;
+    }
+    if(_galleryFilter==2){
+        NSInteger max=MIN((NSInteger)[all count],10);
+        return [all subarrayWithRange:NSMakeRange(0,max)];
+    }
+    return all;
+}
+
+- (void)setGalleryFilter:(UIButton *)sender
+{
+    _galleryFilter=sender.tag-920;
+    [self showGallery];
+}
+
 - (void)toolPressed:(UIButton *)s
 {
     switch(s.tag){
         case 201:[self chooseBrush];break;
-        case 202:[self cycleLineSize:s];break;
+        case 202:[self cycleLineSize:s];[self showCurrentBrushPreview];break;
         case 203:[self cycleSprayDensity:s];break;
         case 204:[self cycleNeonStrength:s];break;
         case 205:[self cycleSpraySize:s];break;
-        case 206:[self cycleOpacity:s];break;
+        case 206:[self cycleOpacity:s];[self showCurrentBrushPreview];break;
         case 207:[self chooseSecondaryPen];break;
         case 208:[self chooseCustomColor];break;
         case 209:[self cycleSmudgeStrength:s];break;
         case 210:[self cycleMixerStrength:s];break;
+        case 211:[self activateEyedropper];break;
+        case 212:[self cycleStampRotation:s];break;
+        case 213:[self chooseAdvancedColor];break;
+        case 214:[self showToolInfoMenu];break;
+        case 215:[self cycleSmoothing:s];break;
 
         case 301:[_drawingView undo];break;
         case 302:[_drawingView redo];break;
@@ -447,10 +753,10 @@
 - (void)showColoringCategory:(NSInteger)c
 {
     NSArray *titles=nil;
-    if(c==0) titles=[NSArray arrayWithObjects:@"Çiçek",@"Ağaç",@"Güneş",@"Mantar",@"Kalp",@"Yaprak",@"Dağ",nil];
-    else if(c==1) titles=[NSArray arrayWithObjects:@"Balık",@"Kelebek",@"Kedi",@"Kaplumbağa",@"Kuş",@"Tavşan",@"Balina",nil];
-    else if(c==2) titles=[NSArray arrayWithObjects:@"Araba",@"Roket",@"Gemi",@"Tren",@"Uçurtma",@"Otobüs",@"Uçak",nil];
-    else titles=[NSArray arrayWithObjects:@"Ev",@"Robot",@"Dondurma",@"Şemsiye",@"Hediye",@"Kale",@"Balon",nil];
+    if(c==0) titles=[NSArray arrayWithObjects:@"Çiçek",@"Ağaç",@"Güneş",@"Mantar",@"Kalp",@"Yaprak",@"Dağ",@"Bulut",@"Gökkuşağı",@"Bahçe",nil];
+    else if(c==1) titles=[NSArray arrayWithObjects:@"Balık",@"Kelebek",@"Kedi",@"Kaplumbağa",@"Kuş",@"Tavşan",@"Balina",@"Köpek",@"Arı",@"Uğur Böceği",nil];
+    else if(c==2) titles=[NSArray arrayWithObjects:@"Araba",@"Roket",@"Gemi",@"Tren",@"Uçurtma",@"Otobüs",@"Uçak",@"Bisiklet",@"Kamyon",@"Helikopter",nil];
+    else titles=[NSArray arrayWithObjects:@"Ev",@"Robot",@"Dondurma",@"Şemsiye",@"Hediye",@"Kale",@"Balon",@"Yıldız",@"Taç",@"Oyuncak",nil];
 
     UIAlertView *a=[[[UIAlertView alloc] initWithTitle:@"Boyama" message:@"Bir resim seç." delegate:self cancelButtonTitle:@"Vazgeç" otherButtonTitles:nil] autorelease];
     NSInteger i; for(i=0;i<[titles count];i++) [a addButtonWithTitle:[titles objectAtIndex:i]];
@@ -458,13 +764,13 @@
 }
 - (NSInteger)templateForCategory:(NSInteger)c item:(NSInteger)item
 {
-    static const NSInteger map[4][7]={
-        {0,7,8,13,19,0,8},
-        {2,3,6,14,18,6,2},
-        {4,5,10,15,12,4,5},
-        {1,9,11,16,17,1,9}
+    static const NSInteger map[4][10]={
+        {0,7,8,13,19,20,21,22,23,24},
+        {2,3,6,14,18,25,26,27,28,29},
+        {4,5,10,15,12,30,31,32,33,34},
+        {1,9,11,16,17,35,36,37,38,39}
     };
-    if(c<0||c>3||item<0||item>6) return 0;
+    if(c<0||c>3||item<0||item>9) return 0;
     return map[c][item];
 }
 
@@ -474,6 +780,31 @@
 
 - (void)alertView:(UIAlertView *)a clickedButtonAtIndex:(NSInteger)i
 {
+    if(a.tag==646){
+        if(i==1){ [self toggleFavoriteBrush]; return; }
+        if(i==2){ [self showBrushList:_favoriteBrushes title:@"Favori Fırçalar" tag:647]; return; }
+        if(i==3){ [self showBrushList:_recentBrushes title:@"Son Kullanılanlar" tag:648]; return; }
+    }
+    if((a.tag==647||a.tag==648)&&i>=1){
+        NSArray *arr=(a.tag==647)?_favoriteBrushes:_recentBrushes;
+        NSInteger idx=i-1;
+        if(idx>=0&&idx<[arr count]){
+            _drawingView.brushStyle=(KidsBrushStyle)[[arr objectAtIndex:idx] integerValue];
+            [self selectPaintMode];
+            [self rememberBrushStyle:_drawingView.brushStyle];
+            [self showCurrentBrushPreview];
+        }
+        return;
+    }
+    if(a.tag==644&&i>=1&&i<=6){ [self showColorFamily:i-1]; return; }
+    if(a.tag>=645&&a.tag<=650&&i>=1&&i<=4){
+        UIColor *c=[self advancedColorForFamily:a.tag-645 item:i-1];
+        [_lastPaintColor release];
+        _lastPaintColor=[c retain];
+        _drawingView.strokeColor=c;
+        [self showBrushPreviewWithText:@"Renk seçildi"];
+        return;
+    }
     if(a.tag==641&&i>=1&&i<=8){
         UIColor *c=nil; KidsBrushStyle b=KidsBrushNormal;
         switch(i){
@@ -511,6 +842,7 @@
         if(i>=1&&i<=4){
             [self selectPaintMode];
             _drawingView.brushStyle=(KidsBrushStyle)(i-1);
+            [self rememberBrushStyle:_drawingView.brushStyle];
             [self playTinySound];
             return;
         }
@@ -519,10 +851,11 @@
             return;
         }
     }
-    if(a.tag==643&&i>=1&&i<=6){
+    if(a.tag==643&&i>=1&&i<=7){
         [self selectPaintMode];
-        /* 4=Fosfor, 5=Gökkuşağı, 6=Sprey, 7=Tebeşir, 8=Smudge, 9=Mixer */
+        /* 4=Fosfor,5=Gökkuşağı,6=Sprey,7=Tebeşir,8=Smudge,9=Mixer,10=Watercolor */
         _drawingView.brushStyle=(KidsBrushStyle)(i+3);
+        [self rememberBrushStyle:_drawingView.brushStyle];
         [self playTinySound];
         return;
     }
@@ -536,7 +869,7 @@
         [self selectPaintMode]; _drawingView.stampType=st; [self playTinySound]; return;
     }
     if(a.tag==670&&i>=1&&i<=4){[self showColoringCategory:i-1];return;}
-    if(a.tag>=680&&a.tag<=683&&i>=1&&i<=7){
+    if(a.tag>=680&&a.tag<=683&&i>=1&&i<=10){
         NSInteger t=[self templateForCategory:a.tag-680 item:i-1];
         [_drawingView showColoringTemplate:t];
         [self playTinySound];
@@ -743,22 +1076,85 @@
 - (UIImage *)thumbnailForImage:(UIImage *)im size:(CGSize)s { UIGraphicsBeginImageContext(s);[[UIColor whiteColor] setFill];UIRectFill(CGRectMake(0,0,s.width,s.height));CGFloat scale=MIN(s.width/im.size.width,s.height/im.size.height);CGSize z=CGSizeMake(im.size.width*scale,im.size.height*scale);[im drawInRect:CGRectMake((s.width-z.width)/2,(s.height-z.height)/2,z.width,z.height)];UIImage *out=UIGraphicsGetImageFromCurrentImageContext();UIGraphicsEndImageContext();return out; }
 - (void)showGallery
 {
-    if(_galleryOverlay)[_galleryOverlay removeFromSuperview];[_galleryOverlay release];_galleryOverlay=[[UIView alloc] initWithFrame:self.view.bounds];_galleryOverlay.backgroundColor=[UIColor colorWithWhite:.12 alpha:.96];[self.view addSubview:_galleryOverlay];
-    UIButton *close=[self textButton:@"Kapat" tag:900]; close.frame=CGRectMake(16,12,90,42);[close addTarget:self action:@selector(closeGallery) forControlEvents:UIControlEventTouchUpInside];[_galleryOverlay addSubview:close];
-    UILabel *title=[[[UILabel alloc] initWithFrame:CGRectMake(125,12,600,42)] autorelease];title.backgroundColor=[UIColor clearColor];title.textColor=[UIColor whiteColor];title.font=[UIFont boldSystemFontOfSize:24];title.text=@"Çizimlerim";[_galleryOverlay addSubview:title];
-    [_galleryFiles release];_galleryFiles=[[self galleryPaths] retain];
-    if([_galleryFiles count]==0){UILabel *e=[[[UILabel alloc] initWithFrame:CGRectMake(0,250,self.view.bounds.size.width,60)] autorelease];e.backgroundColor=[UIColor clearColor];e.textColor=[UIColor whiteColor];e.textAlignment=UITextAlignmentCenter;e.font=[UIFont boldSystemFontOfSize:22];e.text=@"Henüz kaydedilmiş resim yok.";[_galleryOverlay addSubview:e];return;}
-    UIScrollView *scroll=[[[UIScrollView alloc] initWithFrame:CGRectMake(20,70,self.view.bounds.size.width-40,self.view.bounds.size.height-90)] autorelease];[_galleryOverlay addSubview:scroll]; CGFloat tw=180,th=135,g=18; int cols=5; NSInteger i,max=MIN((NSInteger)[_galleryFiles count],30); for(i=0;i<max;i++){NSString *path=[_galleryFiles objectAtIndex:i];UIImage *im=[UIImage imageWithContentsOfFile:path];UIButton *b=[UIButton buttonWithType:UIButtonTypeCustom];b.frame=CGRectMake((i%cols)*(tw+g),(i/cols)*(th+g),tw,th);[b setImage:[self thumbnailForImage:im size:CGSizeMake(tw,th)] forState:UIControlStateNormal];b.tag=1000+i;[b addTarget:self action:@selector(openGalleryImage:) forControlEvents:UIControlEventTouchUpInside];[scroll addSubview:b];} scroll.contentSize=CGSizeMake(scroll.bounds.size.width,((max+cols-1)/cols)*(th+g));
+    if(_galleryOverlay) [_galleryOverlay removeFromSuperview];
+    [_galleryOverlay release];
+    _galleryOverlay=[[UIView alloc] initWithFrame:self.view.bounds];
+    _galleryOverlay.backgroundColor=[UIColor colorWithWhite:.12 alpha:.96];
+
+    UIButton *close=[self textButton:@"Kapat" tag:900];
+    close.frame=CGRectMake(16,12,82,42);
+    [close addTarget:self action:@selector(closeGallery) forControlEvents:UIControlEventTouchUpInside];
+    [_galleryOverlay addSubview:close];
+
+    UILabel *title=[[[UILabel alloc] initWithFrame:CGRectMake(112,12,260,42)] autorelease];
+    title.backgroundColor=[UIColor clearColor];
+    title.textColor=[UIColor whiteColor];
+    title.font=[UIFont boldSystemFontOfSize:22];
+    title.text=@"Çizimlerim";
+    [_galleryOverlay addSubview:title];
+
+    NSArray *filterTitles=[NSArray arrayWithObjects:@"Tümü",@"★ Favoriler",@"Son 10",nil];
+    NSInteger fi;
+    for(fi=0;fi<3;fi++){
+        UIButton *f=[self textButton:[filterTitles objectAtIndex:fi] tag:920+fi];
+        f.frame=CGRectMake(390+fi*120,12,112,42);
+        [f addTarget:self action:@selector(setGalleryFilter:) forControlEvents:UIControlEventTouchUpInside];
+        [_galleryOverlay addSubview:f];
+    }
+
+    [self.view addSubview:_galleryOverlay];
+
+    [_galleryFiles release];
+    _galleryFiles=[[self filteredGalleryPaths] retain];
+
+    if([_galleryFiles count]==0){
+        UILabel *e=[[[UILabel alloc] initWithFrame:CGRectMake(0,250,self.view.bounds.size.width,60)] autorelease];
+        e.backgroundColor=[UIColor clearColor];
+        e.textColor=[UIColor whiteColor];
+        e.textAlignment=UITextAlignmentCenter;
+        e.font=[UIFont boldSystemFontOfSize:22];
+        e.text=@"Bu klasörde henüz çizim yok.";
+        [_galleryOverlay addSubview:e];
+        return;
+    }
+
+    UIScrollView *scroll=[[[UIScrollView alloc] initWithFrame:CGRectMake(20,70,self.view.bounds.size.width-40,self.view.bounds.size.height-90)] autorelease];
+    [_galleryOverlay addSubview:scroll];
+
+    CGFloat tw=160,th=120,g=22;
+    int cols=5;
+    NSInteger i,max=MIN((NSInteger)[_galleryFiles count],30);
+    for(i=0;i<max;i++){
+        NSString *path=[_galleryFiles objectAtIndex:i];
+        UIButton *b=[UIButton buttonWithType:UIButtonTypeCustom];
+        b.frame=CGRectMake((i%cols)*(tw+g),(i/cols)*(th+g),tw,th);
+        UIImage *thumb=[self cachedThumbnailForPath:path size:CGSizeMake(tw,th)];
+        if(thumb) [b setImage:thumb forState:UIControlStateNormal];
+        b.tag=1000+i;
+        [b addTarget:self action:@selector(openGalleryImage:) forControlEvents:UIControlEventTouchUpInside];
+
+        if([_favoriteDrawings containsObject:path]){
+            UILabel *star=[[[UILabel alloc] initWithFrame:CGRectMake(tw-34,4,30,28)] autorelease];
+            star.backgroundColor=[UIColor colorWithWhite:0 alpha:.45];
+            star.textColor=[UIColor yellowColor];
+            star.text=@"★";
+            star.textAlignment=UITextAlignmentCenter;
+            star.font=[UIFont boldSystemFontOfSize:20];
+            [b addSubview:star];
+        }
+        [scroll addSubview:b];
+    }
+    scroll.contentSize=CGSizeMake(scroll.bounds.size.width,((max+cols-1)/cols)*(th+g));
 }
 - (void)closeGallery { [_galleryOverlay removeFromSuperview];[_galleryOverlay release];_galleryOverlay=nil;[_galleryFiles release];_galleryFiles=nil; }
-- (void)openGalleryImage:(UIButton *)b { NSInteger i=b.tag-1000;if(i>=0&&i<[_galleryFiles count]){UIImage *im=[UIImage imageWithContentsOfFile:[_galleryFiles objectAtIndex:i]];[_drawingView setRenderedImage:im];[self closeGallery];} }
+- (void)openGalleryImage:(UIButton *)b { NSInteger i=b.tag-1000;if(i>=0&&i<[_galleryFiles count]){NSString *path=[_galleryFiles objectAtIndex:i];UIImage *im=[UIImage imageWithContentsOfFile:path];[_drawingView setRenderedImage:im];[[NSUserDefaults standardUserDefaults] setObject:path forKey:@"KidsDrawCurrentGalleryPath"];[self closeGallery];} }
 
 - (void)saveDrawing
 {
     [self addRewardStar];
-    UIImage *im=[_drawingView renderedImage]; NSDateFormatter *f=[[[NSDateFormatter alloc] init] autorelease];[f setDateFormat:@"yyyyMMdd-HHmmss"];NSString *name=[NSString stringWithFormat:@"KidsDraw-%@.png",[f stringFromDate:[NSDate date]]];NSString *path=[[self galleryDirectory] stringByAppendingPathComponent:name];[UIImagePNGRepresentation(im) writeToFile:path atomically:YES]; UIImageWriteToSavedPhotosAlbum(im,self,@selector(image:didFinishSavingWithError:contextInfo:),NULL);
+    UIImage *im=[_drawingView renderedImage]; NSDateFormatter *f=[[[NSDateFormatter alloc] init] autorelease];[f setDateFormat:@"yyyyMMdd-HHmmss"];NSString *name=[NSString stringWithFormat:@"KidsDraw-%@.png",[f stringFromDate:[NSDate date]]];NSString *path=[[self galleryDirectory] stringByAppendingPathComponent:name];[UIImagePNGRepresentation(im) writeToFile:path atomically:YES];[[NSUserDefaults standardUserDefaults] setObject:path forKey:@"KidsDrawCurrentGalleryPath"]; UIImageWriteToSavedPhotosAlbum(im,self,@selector(image:didFinishSavingWithError:contextInfo:),NULL);
 }
 - (void)image:(UIImage *)image didFinishSavingWithError:(NSError *)error contextInfo:(void *)contextInfo { NSString *t=error?@"Galeriye kaydedildi":@"Kaydedildi";NSString *m=error?@"KidsDraw Çizimlerim'e kaydedildi; Fotoğraflar'a eklenemedi.":@"Resim Çizimlerim'e ve Fotoğraflar'a kaydedildi.";UIAlertView *a=[[[UIAlertView alloc] initWithTitle:t message:m delegate:nil cancelButtonTitle:@"Tamam" otherButtonTitles:nil] autorelease];[a show]; }
 - (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)o { return UIInterfaceOrientationIsLandscape(o); }
-- (void)dealloc { [[NSNotificationCenter defaultCenter] removeObserver:self];if(_autosaveTimer){[_autosaveTimer invalidate];[_autosaveTimer release];}if(_replayTimer){[_replayTimer invalidate];[_replayTimer release];}[_replayOverlay removeFromSuperview];[_replayOverlay release];[_replayFrames release];[_rewardOverlay removeFromSuperview];[_rewardOverlay release];[_secondaryPaintColor release];[_stampPinch release];[_starLabel release];[_drawingView release];[_topToolbar release];[_bottomToolbar release];[_galleryOverlay release];[_galleryFiles release];[_lastPaintColor release];[super dealloc]; }
+- (void)dealloc { [[NSNotificationCenter defaultCenter] removeObserver:self];if(_autosaveTimer){[_autosaveTimer invalidate];[_autosaveTimer release];}if(_replayTimer){[_replayTimer invalidate];[_replayTimer release];}[_replayOverlay removeFromSuperview];[_replayOverlay release];[_replayFrames release];[_rewardOverlay removeFromSuperview];[_rewardOverlay release];[_secondaryPaintColor release];[_stampPinch release];[_brushPreviewLabel release];[_brushPreview release];[_favoriteDrawings release];[_favoriteBrushes release];[_recentBrushes release];[_starLabel release];[_drawingView release];[_topToolbar release];[_bottomToolbar release];[_galleryOverlay release];[_galleryFiles release];[_lastPaintColor release];[super dealloc]; }
 @end

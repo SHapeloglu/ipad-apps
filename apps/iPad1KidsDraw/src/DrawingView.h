@@ -10,7 +10,8 @@ typedef enum {
     KidsBrushSpray,
     KidsBrushChalk,
     KidsBrushSmudge,
-    KidsBrushMixer
+    KidsBrushMixer,
+    KidsBrushWatercolor
 } KidsBrushStyle;
 
 typedef enum {
@@ -67,6 +68,12 @@ typedef enum {
     KidsBrushStyle _secondaryBrushStyle;
     CGFloat _smudgeStrength;
     CGFloat _mixerStrength;
+    CGFloat _stampRotation;
+    BOOL _eyedropperMode;
+    BOOL _smoothingEnabled;
+    CGFloat _smoothingStrength;
+    CGPoint _smoothPointA;
+    CGPoint _smoothPointB;
 
     CGPoint _lastPoint;
     CGPoint _shapeStartPoint;
@@ -101,6 +108,10 @@ typedef enum {
 @property (nonatomic, assign) KidsBrushStyle secondaryBrushStyle;
 @property (nonatomic, assign) CGFloat smudgeStrength;
 @property (nonatomic, assign) CGFloat mixerStrength;
+@property (nonatomic, assign) CGFloat stampRotation;
+@property (nonatomic, assign) BOOL eyedropperMode;
+@property (nonatomic, assign) BOOL smoothingEnabled;
+@property (nonatomic, assign) CGFloat smoothingStrength;
 @property (nonatomic, assign) KidsBrushStyle brushStyle;
 @property (nonatomic, assign) KidsStampType stampType;
 @property (nonatomic, assign) KidsShapeType shapeType;
@@ -117,5 +128,6 @@ typedef enum {
 - (void)addText:(NSString *)text;
 - (UIImage *)renderedImage;
 - (void)setRenderedImage:(UIImage *)image;
+- (UIColor *)colorAtPoint:(CGPoint)point;
 
 @end

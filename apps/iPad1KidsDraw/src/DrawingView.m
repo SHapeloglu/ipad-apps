@@ -22,6 +22,10 @@ typedef struct { int x; int y; } KidsPixelPoint;
 @synthesize secondaryBrushStyle = _secondaryBrushStyle;
 @synthesize smudgeStrength = _smudgeStrength;
 @synthesize mixerStrength = _mixerStrength;
+@synthesize stampRotation = _stampRotation;
+@synthesize eyedropperMode = _eyedropperMode;
+@synthesize smoothingEnabled = _smoothingEnabled;
+@synthesize smoothingStrength = _smoothingStrength;
 @synthesize brushStyle = _brushStyle;
 @synthesize stampType = _stampType;
 @synthesize shapeType = _shapeType;
@@ -49,6 +53,12 @@ typedef struct { int x; int y; } KidsPixelPoint;
         _secondaryBrushStyle = KidsBrushNormal;
         _smudgeStrength = 0.55f;
         _mixerStrength = 0.50f;
+        _stampRotation = 0.0f;
+        _eyedropperMode = NO;
+        _smoothingEnabled = YES;
+        _smoothingStrength = 0.35f;
+        _smoothPointA = CGPointZero;
+        _smoothPointB = CGPointZero;
         _brushStyle = KidsBrushNormal;
         _stampType = KidsStampNone;
         _shapeType = KidsShapeNone;
@@ -229,6 +239,28 @@ typedef struct { int x; int y; } KidsPixelPoint;
     [self strokeSimpleFrom:a to:b context:ctx width:MAX(2.0f,wide*0.45f) alpha:0.35f*_mixerStrength];
 }
 
+
+- (void)drawWatercolorFrom:(CGPoint)a to:(CGPoint)b context:(CGContextRef)ctx
+{
+    /*
+     * iPad 1 için hafif watercolor:
+     * gerçek fluid simulation yok; 3 düşük alfa geçiş ve geniş kenar kullanılır.
+     */
+    CGFloat w=MAX(4.0f,self.lineWidth);
+    [self strokeSimpleFrom:a to:b context:ctx width:w*1.75f alpha:0.10f];
+    [self strokeSimpleFrom:a to:b context:ctx width:w*1.30f alpha:0.16f];
+    [self strokeSimpleFrom:a to:b context:ctx width:w*0.75f alpha:0.24f];
+}
+
+- (CGPoint)smoothedPointFrom:(CGPoint)from to:(CGPoint)to previous:(CGPoint)previous
+{
+    if(!_smoothingEnabled) return to;
+    CGFloat s=MIN(0.65f,MAX(0.10f,_smoothingStrength));
+    CGPoint blended=CGPointMake(previous.x*(1.0f-s)+to.x*s,
+                                previous.y*(1.0f-s)+to.y*s);
+    return blended;
+}
+
 - (void)drawSegmentFrom:(CGPoint)fromPoint to:(CGPoint)toPoint context:(CGContextRef)ctx
 {
     CGFloat width=self.lineWidth;
@@ -244,6 +276,10 @@ typedef struct { int x; int y; } KidsPixelPoint;
     }
     if(_brushStyle==KidsBrushMixer){
         [self drawMixerFrom:fromPoint to:toPoint context:ctx];
+        return;
+    }
+    if(_brushStyle==KidsBrushWatercolor){
+        [self drawWatercolorFrom:fromPoint to:toPoint context:ctx];
         return;
     }
 
@@ -401,7 +437,11 @@ typedef struct { int x; int y; } KidsPixelPoint;
 {
     [self ensureImage]; [self pushUndoSnapshot];
     UIGraphicsBeginImageContext(self.bounds.size); [_image drawInRect:self.bounds];
-    CGContextRef ctx=UIGraphicsGetCurrentContext(); [self setStrokeInContext:ctx]; CGContextSetLineWidth(ctx,4.0f);
+    CGContextRef ctx=UIGraphicsGetCurrentContext();
+    CGContextSaveGState(ctx);
+    CGContextTranslateCTM(ctx,point.x,point.y);
+    CGContextRotateCTM(ctx,_stampRotation);
+    CGContextTranslateCTM(ctx,-point.x,-point.y); [self setStrokeInContext:ctx]; CGContextSetLineWidth(ctx,4.0f);
     CGFloat r=30.0f*MAX(0.45f,MIN(2.2f,_stampScale));
     switch(_stampType) {
         case KidsStampStar: [self drawStarAt:p context:ctx radius:r]; break;
@@ -430,6 +470,7 @@ typedef struct { int x; int y; } KidsPixelPoint;
         case KidsStampLightning: CGContextBeginPath(ctx); CGContextMoveToPoint(ctx,p.x+r*0.15f,p.y-r); CGContextAddLineToPoint(ctx,p.x-r*0.65f,p.y+r*0.1f); CGContextAddLineToPoint(ctx,p.x-r*0.05f,p.y+r*0.05f); CGContextAddLineToPoint(ctx,p.x-r*0.35f,p.y+r); CGContextAddLineToPoint(ctx,p.x+r*0.75f,p.y-r*0.25f); CGContextAddLineToPoint(ctx,p.x+r*0.1f,p.y-r*0.15f); CGContextClosePath(ctx); CGContextFillPath(ctx); break;
         default: break;
     }
+    CGContextRestoreGState(ctx);
     UIImage *newImage=UIGraphicsGetImageFromCurrentImageContext(); UIGraphicsEndImageContext();
     [_image release]; _image=[newImage retain]; [self setNeedsDisplay];
 }
@@ -445,58 +486,102 @@ static int KidsColorDistance(unsigned char *a, unsigned char *b)
     CGImageRef source=[_image CGImage];
     size_t width=CGImageGetWidth(source), height=CGImageGetHeight(source);
     if(width==0 || height==0) return;
-    int sx=(int)(point.x*self.bounds.size.width/(self.bounds.size.width));
-    int sy=(int)(point.y*self.bounds.size.height/(self.bounds.size.height));
-    if(sx<0||sy<0||sx>=(int)width||sy>=(int)height) return;
+
+    int px=(int)(point.x*(CGFloat)width/self.bounds.size.width);
+    /*
+     * CGImage/CGBitmapContext satır 0'ı UIKit'in üst satırı değildir.
+     * Context'i döndürmek yerine yalnızca dokunma Y koordinatını çeviriyoruz.
+     * Böylece her fill sonrası görüntünün orientation'ı değişmeden kalır.
+     */
+    int py=(int)((self.bounds.size.height-point.y)*(CGFloat)height/self.bounds.size.height);
+    if(py>=(int)height) py=(int)height-1;
+    if(px<0||py<0||px>=(int)width||py>=(int)height) return;
 
     size_t bytesPerRow=width*4;
     unsigned char *data=(unsigned char *)calloc(height,bytesPerRow);
     if(!data) return;
-    CGColorSpaceRef cs=CGColorSpaceCreateDeviceRGB();
-    CGContextRef ctx=CGBitmapContextCreate(data,width,height,8,bytesPerRow,cs,kCGImageAlphaPremultipliedLast|kCGBitmapByteOrder32Big);
-    if(!ctx){CGColorSpaceRelease(cs); free(data); return;}
-    CGContextTranslateCTM(ctx,0,(CGFloat)height); CGContextScaleCTM(ctx,1,-1);
-    CGContextDrawImage(ctx,CGRectMake(0,0,width,height),source);
-    CGContextTranslateCTM(ctx,0,(CGFloat)height); CGContextScaleCTM(ctx,1,-1);
 
-    int px=(int)(point.x*(CGFloat)width/self.bounds.size.width);
-    int py=(int)(point.y*(CGFloat)height/self.bounds.size.height);
-    unsigned char target[4]; memcpy(target,data+py*bytesPerRow+px*4,4);
+    CGColorSpaceRef cs=CGColorSpaceCreateDeviceRGB();
+    CGContextRef ctx=CGBitmapContextCreate(data,width,height,8,bytesPerRow,cs,
+        kCGImageAlphaPremultipliedLast|kCGBitmapByteOrder32Big);
+    if(!ctx){ CGColorSpaceRelease(cs); free(data); return; }
+
+    /* Dönüşüm yok: kaynak CGImage -> bitmap -> sonuç CGImage aynı orientation. */
+    CGContextDrawImage(ctx,CGRectMake(0,0,width,height),source);
+
+    unsigned char target[4];
+    memcpy(target,data+(size_t)py*bytesPerRow+(size_t)px*4,4);
+
     CGFloat rr=0,gg=0,bb=0,aa=1;
-    if(![self.strokeColor getRed:&rr green:&gg blue:&bb alpha:&aa]){ rr=0;gg=0;bb=0;aa=1; }
-    unsigned char replacement[4]={(unsigned char)(rr*255),(unsigned char)(gg*255),(unsigned char)(bb*255),255};
-    if(KidsColorDistance(target,replacement)<18){ CGContextRelease(ctx); CGColorSpaceRelease(cs); free(data); return; }
+    if(![self.strokeColor getRed:&rr green:&gg blue:&bb alpha:&aa]){
+        rr=0; gg=0; bb=0; aa=1;
+    }
+    unsigned char replacement[4]={
+        (unsigned char)(rr*255),
+        (unsigned char)(gg*255),
+        (unsigned char)(bb*255),
+        255
+    };
+
+    if(KidsColorDistance(target,replacement)<18){
+        CGContextRelease(ctx); CGColorSpaceRelease(cs); free(data); return;
+    }
 
     [self pushUndoSnapshot];
+
     size_t capacity=width*height;
     KidsPixelPoint *queue=(KidsPixelPoint *)malloc(sizeof(KidsPixelPoint)*capacity);
     unsigned char *visited=(unsigned char *)calloc(capacity,1);
-    if(!queue || !visited){ if(queue) free(queue); if(visited) free(visited); CGContextRelease(ctx); CGColorSpaceRelease(cs); free(data); return; }
-    size_t head=0,tail=0; queue[tail++]=(KidsPixelPoint){px,py}; visited[(size_t)py*width+(size_t)px]=1;
+    if(!queue || !visited){
+        if(queue) free(queue);
+        if(visited) free(visited);
+        CGContextRelease(ctx); CGColorSpaceRelease(cs); free(data);
+        return;
+    }
+
+    size_t head=0,tail=0;
+    queue[tail++]=(KidsPixelPoint){px,py};
+    visited[(size_t)py*width+(size_t)px]=1;
     const int tolerance=70;
-    while(head<tail) {
+
+    while(head<tail){
         KidsPixelPoint q=queue[head++];
         unsigned char *cur=data+(size_t)q.y*bytesPerRow+(size_t)q.x*4;
         if(KidsColorDistance(cur,target)>tolerance) continue;
-        cur[0]=replacement[0]; cur[1]=replacement[1]; cur[2]=replacement[2]; cur[3]=255;
+
+        cur[0]=replacement[0];
+        cur[1]=replacement[1];
+        cur[2]=replacement[2];
+        cur[3]=255;
+
         int nx[4]={q.x+1,q.x-1,q.x,q.x};
         int ny[4]={q.y,q.y,q.y+1,q.y-1};
         int k;
-        for(k=0;k<4;k++) {
-            if(nx[k]>=0 && ny[k]>=0 && nx[k]<(int)width && ny[k]<(int)height) {
+        for(k=0;k<4;k++){
+            if(nx[k]>=0 && ny[k]>=0 && nx[k]<(int)width && ny[k]<(int)height){
                 size_t vi=(size_t)ny[k]*width+(size_t)nx[k];
-                if(!visited[vi] && tail<capacity) { visited[vi]=1; queue[tail++]=(KidsPixelPoint){nx[k],ny[k]}; }
+                if(!visited[vi] && tail<capacity){
+                    visited[vi]=1;
+                    queue[tail++]=(KidsPixelPoint){nx[k],ny[k]};
+                }
             }
         }
     }
+
     free(visited);
     free(queue);
+
     CGImageRef out=CGBitmapContextCreateImage(ctx);
     UIImage *newImage=[UIImage imageWithCGImage:out];
-    [_image release]; _image=[newImage retain]; [self setNeedsDisplay];
-    CGImageRelease(out); CGContextRelease(ctx); CGColorSpaceRelease(cs); free(data);
-}
+    [_image release];
+    _image=[newImage retain];
+    [self setNeedsDisplay];
 
+    CGImageRelease(out);
+    CGContextRelease(ctx);
+    CGColorSpaceRelease(cs);
+    free(data);
+}
 - (void)drawShapeFrom:(CGPoint)a to:(CGPoint)b
 {
     [self ensureImage];
@@ -516,6 +601,38 @@ static int KidsColorDistance(unsigned char *a, unsigned char *b)
 }
 
 
+
+- (UIColor *)colorAtPoint:(CGPoint)point
+{
+    [self ensureImage];
+    CGImageRef cg=_image.CGImage;
+    if(!cg) return [UIColor blackColor];
+
+    size_t width=CGImageGetWidth(cg);
+    size_t height=CGImageGetHeight(cg);
+    if(width==0||height==0) return [UIColor blackColor];
+
+    NSInteger x=(NSInteger)(point.x*(CGFloat)width/self.bounds.size.width);
+    NSInteger y=(NSInteger)(point.y*(CGFloat)height/self.bounds.size.height);
+    if(x<0||y<0||x>=(NSInteger)width||y>=(NSInteger)height) return [UIColor blackColor];
+
+    unsigned char pixel[4]={0,0,0,255};
+    CGColorSpaceRef cs=CGColorSpaceCreateDeviceRGB();
+    CGContextRef ctx=CGBitmapContextCreate(pixel,1,1,8,4,cs,kCGImageAlphaPremultipliedLast|kCGBitmapByteOrder32Big);
+    if(!ctx){ CGColorSpaceRelease(cs); return [UIColor blackColor]; }
+
+    CGContextTranslateCTM(ctx,-x,(CGFloat)y-(CGFloat)height+1.0f);
+    CGContextDrawImage(ctx,CGRectMake(0,0,width,height),cg);
+
+    CGContextRelease(ctx);
+    CGColorSpaceRelease(cs);
+
+    return [UIColor colorWithRed:pixel[0]/255.0f
+                           green:pixel[1]/255.0f
+                            blue:pixel[2]/255.0f
+                           alpha:1.0f];
+}
+
 - (BOOL)hasActiveFreehandTouch
 {
     return (_touchA!=nil || _touchB!=nil);
@@ -523,8 +640,8 @@ static int KidsColorDistance(unsigned char *a, unsigned char *b)
 
 - (void)assignFreehandTouch:(UITouch *)touch point:(CGPoint)p
 {
-    if(_touchA==nil){ _touchA=touch; _lastPointA=p; }
-    else if(_touchB==nil){ _touchB=touch; _lastPointB=p; }
+    if(_touchA==nil){ _touchA=touch; _lastPointA=p; _smoothPointA=p; }
+    else if(_touchB==nil){ _touchB=touch; _lastPointB=p; _smoothPointB=p; }
 }
 
 - (void)removeFreehandTouch:(UITouch *)touch
@@ -545,17 +662,21 @@ static int KidsColorDistance(unsigned char *a, unsigned char *b)
         CGPoint p=[touch locationInView:self];
         if(touch==_touchA){
             CGPoint from=drawDots?p:_lastPointA;
-            CGFloat dx=p.x-from.x, dy=p.y-from.y;
+            CGPoint target=drawDots?p:[self smoothedPointFrom:from to:p previous:_smoothPointA];
+            CGFloat dx=target.x-from.x, dy=target.y-from.y;
             if(drawDots || dx*dx+dy*dy>=1.0f){
-                [self drawSegmentFrom:from to:p context:ctx touch:touch];
-                _lastPointA=p;
+                [self drawSegmentFrom:from to:target context:ctx touch:touch];
+                _lastPointA=target;
+                _smoothPointA=target;
             }
         } else if(touch==_touchB){
             CGPoint from=drawDots?p:_lastPointB;
-            CGFloat dx=p.x-from.x, dy=p.y-from.y;
+            CGPoint target=drawDots?p:[self smoothedPointFrom:from to:p previous:_smoothPointB];
+            CGFloat dx=target.x-from.x, dy=target.y-from.y;
             if(drawDots || dx*dx+dy*dy>=1.0f){
-                [self drawSegmentFrom:from to:p context:ctx touch:touch];
-                _lastPointB=p;
+                [self drawSegmentFrom:from to:target context:ctx touch:touch];
+                _lastPointB=target;
+                _smoothPointB=target;
             }
         }
     }
@@ -572,6 +693,15 @@ static int KidsColorDistance(unsigned char *a, unsigned char *b)
     CGPoint firstPoint=[first locationInView:self];
 
     /* Dolgu, damga ve şekil tek dokunuşlu araçlardır. Çift kalem serbest çizimde aktiftir. */
+    if(_eyedropperMode){
+        UIColor *picked=[self colorAtPoint:firstPoint];
+        self.strokeColor=picked;
+        [[NSNotificationCenter defaultCenter] postNotificationName:@"KidsDrawColorPicked"
+                                                            object:self
+                                                          userInfo:[NSDictionary dictionaryWithObject:picked forKey:@"color"]];
+        _eyedropperMode=NO;
+        return;
+    }
     if(_bucketMode){ [self floodFillAt:firstPoint]; [self notifyCanvasChanged]; return; }
     if(_stampType!=KidsStampNone){ [self placeStampAt:firstPoint]; [self notifyCanvasChanged]; return; }
     if(_shapeType!=KidsShapeNone){
@@ -667,7 +797,29 @@ static int KidsColorDistance(unsigned char *a, unsigned char *b)
     else if(t==16){ CGContextBeginPath(ctx);CGContextAddArc(ctx,cx,cy,170,(CGFloat)M_PI,(CGFloat)M_PI*2,0);CGContextStrokePath(ctx); for(i=-3;i<=3;i++){CGContextBeginPath(ctx);CGContextMoveToPoint(ctx,cx+i*45,cy);CGContextAddLineToPoint(ctx,cx+i*38,cy+190);CGContextStrokePath(ctx);} }
     else if(t==17){ CGContextStrokeRect(ctx,CGRectMake(cx-160,cy-100,320,220)); CGContextBeginPath(ctx);CGContextMoveToPoint(ctx,cx,cy-100);CGContextAddLineToPoint(ctx,cx,cy+120);CGContextMoveToPoint(ctx,cx-160,cy);CGContextAddLineToPoint(ctx,cx+160,cy);CGContextStrokePath(ctx); }
     else if(t==18){ CGContextStrokeEllipseInRect(ctx,CGRectMake(cx-120,cy-100,240,180)); CGContextBeginPath(ctx);CGContextMoveToPoint(ctx,cx+105,cy-45);CGContextAddLineToPoint(ctx,cx+190,cy-120);CGContextMoveToPoint(ctx,cx+105,cy+10);CGContextAddLineToPoint(ctx,cx+195,cy+85);CGContextStrokePath(ctx); }
-    else { CGContextBeginPath(ctx);CGContextMoveToPoint(ctx,cx,cy+170);CGContextAddCurveToPoint(ctx,cx-260,cy,cx-170,cy-180,cx,cy-50);CGContextAddCurveToPoint(ctx,cx+170,cy-180,cx+260,cy,cx,cy+170);CGContextClosePath(ctx);CGContextStrokePath(ctx); }
+    else if(t==19){ CGContextBeginPath(ctx);CGContextMoveToPoint(ctx,cx,cy+170);CGContextAddCurveToPoint(ctx,cx-260,cy,cx-170,cy-180,cx,cy-50);CGContextAddCurveToPoint(ctx,cx+170,cy-180,cx+260,cy,cx,cy+170);CGContextClosePath(ctx);CGContextStrokePath(ctx); }
+    /* 20-29: yeni özgün doğa/hayvan şablonları */
+    else if(t==20){ for(i=0;i<3;i++){CGFloat yy=cy-110+i*95;CGContextBeginPath(ctx);CGContextMoveToPoint(ctx,cx-150,yy);CGContextAddCurveToPoint(ctx,cx-60,yy-75,cx+60,yy+75,cx+150,yy);CGContextStrokePath(ctx);} }
+    else if(t==21){ CGContextBeginPath(ctx);CGContextMoveToPoint(ctx,cx-240,cy+120);CGContextAddLineToPoint(ctx,cx-100,cy-100);CGContextAddLineToPoint(ctx,cx,cy+20);CGContextAddLineToPoint(ctx,cx+120,cy-150);CGContextAddLineToPoint(ctx,cx+250,cy+120);CGContextStrokePath(ctx); }
+    else if(t==22){ for(i=0;i<5;i++){CGFloat xx=cx-220+i*110;CGContextStrokeEllipseInRect(ctx,CGRectMake(xx-35,cy-90,70,120));CGContextBeginPath(ctx);CGContextMoveToPoint(ctx,xx,cy+30);CGContextAddLineToPoint(ctx,xx,cy+170);CGContextStrokePath(ctx);} }
+    else if(t==23){ CGContextBeginPath(ctx);CGContextAddArc(ctx,cx,cy-20,150,0,(CGFloat)M_PI*2,0);CGContextStrokePath(ctx); for(i=0;i<6;i++){CGFloat a=i*(CGFloat)M_PI/3;CGContextStrokeEllipseInRect(ctx,CGRectMake(cx+cosf(a)*120-25,cy-20+sinf(a)*120-25,50,50));} }
+    else if(t==24){ CGContextStrokeEllipseInRect(ctx,CGRectMake(cx-145,cy-100,290,190));CGContextBeginPath(ctx);CGContextMoveToPoint(ctx,cx-120,cy-30);CGContextAddCurveToPoint(ctx,cx-220,cy-140,cx-230,cy+100,cx-125,cy+70);CGContextStrokePath(ctx);CGContextStrokeEllipseInRect(ctx,CGRectMake(cx+65,cy-55,18,18)); }
+    else if(t==25){ CGContextStrokeEllipseInRect(ctx,CGRectMake(cx-115,cy-115,230,230));CGContextBeginPath(ctx);CGContextMoveToPoint(ctx,cx-80,cy-80);CGContextAddLineToPoint(ctx,cx-135,cy-175);CGContextAddLineToPoint(ctx,cx-20,cy-125);CGContextMoveToPoint(ctx,cx+80,cy-80);CGContextAddLineToPoint(ctx,cx+135,cy-175);CGContextAddLineToPoint(ctx,cx+20,cy-125);CGContextStrokePath(ctx);CGContextStrokeEllipseInRect(ctx,CGRectMake(cx-55,cy-20,18,18));CGContextStrokeEllipseInRect(ctx,CGRectMake(cx+37,cy-20,18,18)); }
+    else if(t==26){ CGContextStrokeEllipseInRect(ctx,CGRectMake(cx-190,cy-100,380,210));CGContextBeginPath(ctx);CGContextMoveToPoint(ctx,cx+170,cy-30);CGContextAddCurveToPoint(ctx,cx+260,cy-70,cx+250,cy+60,cx+180,cy+70);CGContextStrokePath(ctx);CGContextStrokeEllipseInRect(ctx,CGRectMake(cx-130,cy-45,20,20)); }
+    else if(t==27){ CGContextStrokeEllipseInRect(ctx,CGRectMake(cx-80,cy-90,160,180)); for(i=0;i<6;i++){CGFloat a=i*(CGFloat)M_PI/3;CGContextBeginPath(ctx);CGContextMoveToPoint(ctx,cx+cosf(a)*70,cy+sinf(a)*75);CGContextAddLineToPoint(ctx,cx+cosf(a)*160,cy+sinf(a)*145);CGContextStrokePath(ctx);} }
+    else if(t==28){ CGContextStrokeEllipseInRect(ctx,CGRectMake(cx-135,cy-100,270,190));CGContextBeginPath(ctx);CGContextMoveToPoint(ctx,cx-135,cy);CGContextAddLineToPoint(ctx,cx-230,cy-75);CGContextAddLineToPoint(ctx,cx-230,cy+75);CGContextClosePath(ctx);CGContextStrokePath(ctx); for(i=0;i<3;i++)CGContextStrokeEllipseInRect(ctx,CGRectMake(cx-50+i*45,cy-20,20,20)); }
+    else if(t==29){ CGContextStrokeEllipseInRect(ctx,CGRectMake(cx-100,cy-80,200,170));CGContextBeginPath(ctx);CGContextMoveToPoint(ctx,cx-60,cy-60);CGContextAddLineToPoint(ctx,cx-120,cy-145);CGContextMoveToPoint(ctx,cx+60,cy-60);CGContextAddLineToPoint(ctx,cx+120,cy-145);CGContextStrokePath(ctx);CGContextStrokeEllipseInRect(ctx,CGRectMake(cx-42,cy-15,18,18));CGContextStrokeEllipseInRect(ctx,CGRectMake(cx+24,cy-15,18,18)); }
+    /* 30-39: yeni özgün araç/eğlence şablonları */
+    else if(t==30){ CGContextStrokeRect(ctx,CGRectMake(cx-220,cy-65,440,130));CGContextStrokeRect(ctx,CGRectMake(cx-110,cy-150,220,85));for(i=0;i<4;i++)CGContextStrokeEllipseInRect(ctx,CGRectMake(cx-180+i*115,cy+40,55,55)); }
+    else if(t==31){ CGContextBeginPath(ctx);CGContextMoveToPoint(ctx,cx-230,cy+80);CGContextAddLineToPoint(ctx,cx+210,cy+80);CGContextAddLineToPoint(ctx,cx+100,cy-110);CGContextAddLineToPoint(ctx,cx-100,cy-110);CGContextClosePath(ctx);CGContextStrokePath(ctx);CGContextBeginPath(ctx);CGContextMoveToPoint(ctx,cx,cy-110);CGContextAddLineToPoint(ctx,cx,cy-220);CGContextStrokePath(ctx); }
+    else if(t==32){ CGContextStrokeEllipseInRect(ctx,CGRectMake(cx-210,cy-50,90,90));CGContextStrokeEllipseInRect(ctx,CGRectMake(cx+120,cy-50,90,90));CGContextBeginPath(ctx);CGContextMoveToPoint(ctx,cx-165,cy-5);CGContextAddLineToPoint(ctx,cx-40,cy-110);CGContextAddLineToPoint(ctx,cx+35,cy-5);CGContextAddLineToPoint(ctx,cx-70,cy-5);CGContextAddLineToPoint(ctx,cx-165,cy-5);CGContextMoveToPoint(ctx,cx+165,cy-5);CGContextAddLineToPoint(ctx,cx+35,cy-5);CGContextStrokePath(ctx); }
+    else if(t==33){ CGContextStrokeRect(ctx,CGRectMake(cx-190,cy-110,380,190)); for(i=0;i<3;i++)CGContextStrokeRect(ctx,CGRectMake(cx-140+i*100,cy-75,70,75));CGContextStrokeEllipseInRect(ctx,CGRectMake(cx-145,cy+55,55,55));CGContextStrokeEllipseInRect(ctx,CGRectMake(cx+90,cy+55,55,55)); }
+    else if(t==34){ CGContextBeginPath(ctx);CGContextMoveToPoint(ctx,cx,cy-190);CGContextAddLineToPoint(ctx,cx-150,cy+160);CGContextMoveToPoint(ctx,cx,cy-190);CGContextAddLineToPoint(ctx,cx+150,cy+160);CGContextMoveToPoint(ctx,cx-150,cy+160);CGContextAddLineToPoint(ctx,cx+150,cy+160);CGContextStrokePath(ctx);for(i=0;i<3;i++)CGContextStrokeEllipseInRect(ctx,CGRectMake(cx-85+i*60,cy-20+i*45,30,30)); }
+    else if(t==35){ CGContextStrokeRect(ctx,CGRectMake(cx-220,cy-75,440,150));CGContextBeginPath(ctx);CGContextMoveToPoint(ctx,cx-120,cy-75);CGContextAddLineToPoint(ctx,cx-50,cy-160);CGContextAddLineToPoint(ctx,cx+100,cy-160);CGContextAddLineToPoint(ctx,cx+170,cy-75);CGContextStrokePath(ctx);for(i=0;i<2;i++)CGContextStrokeEllipseInRect(ctx,CGRectMake(cx-135+i*230,cy+50,60,60)); }
+    else if(t==36){ CGContextBeginPath(ctx);CGContextMoveToPoint(ctx,cx,cy-190);CGContextAddLineToPoint(ctx,cx-180,cy+130);CGContextAddLineToPoint(ctx,cx+180,cy+130);CGContextClosePath(ctx);CGContextStrokePath(ctx);CGContextStrokeEllipseInRect(ctx,CGRectMake(cx-55,cy-20,110,110)); }
+    else if(t==37){ for(i=0;i<5;i++){CGFloat a=-1.25f+i*.62f;CGContextBeginPath(ctx);CGContextMoveToPoint(ctx,cx,cy+130);CGContextAddLineToPoint(ctx,cx+cosf(a)*220,cy+sinf(a)*220);CGContextStrokePath(ctx);} CGContextStrokeEllipseInRect(ctx,CGRectMake(cx-55,cy+75,110,110)); }
+    else if(t==38){ CGContextStrokeRect(ctx,CGRectMake(cx-130,cy-145,260,290));CGContextStrokeRect(ctx,CGRectMake(cx-65,cy-80,130,80));CGContextBeginPath(ctx);CGContextMoveToPoint(ctx,cx-130,cy+40);CGContextAddLineToPoint(ctx,cx-215,cy+130);CGContextMoveToPoint(ctx,cx+130,cy+40);CGContextAddLineToPoint(ctx,cx+215,cy+130);CGContextStrokePath(ctx); }
+    else { CGContextBeginPath(ctx);CGContextMoveToPoint(ctx,cx,cy-190); for(i=1;i<10;i++){CGFloat a=-M_PI/2+i*M_PI*2/10.0f;CGFloat r=(i%2)?80:190;CGContextAddLineToPoint(ctx,cx+cosf(a)*r,cy+sinf(a)*r);} CGContextClosePath(ctx);CGContextStrokePath(ctx); }
     UIImage *n=UIGraphicsGetImageFromCurrentImageContext(); UIGraphicsEndImageContext(); [_image release]; _image=[n retain]; [self setNeedsDisplay]; [self notifyCanvasChanged];
 }
 
