@@ -77,19 +77,15 @@
     NSInteger bottomType=[d integerForKey:@"outfit.bottomType"];
     NSInteger bottomStyle=[d integerForKey:@"outfit.bottomStyle"];
 
-    // v1.3 architecture is first enabled for Style 1.
+    // Style 1 rigged set.
     if(topStyle==1 && topType==1) {
-        UIImageView *body=[self part:@"rig_tshirt_body_style1"];
-        [_topBody addSubview:body];
-
+        [_topBody addSubview:[self part:@"rig_tshirt_body_style1"]];
         _leftSleeve=[[self part:@"rig_tshirt_sleeve_left_style1"] retain];
         _rightSleeve=[[self part:@"rig_tshirt_sleeve_right_style1"] retain];
         [_topFront addSubview:_leftSleeve];
         [_topFront addSubview:_rightSleeve];
     } else if(topStyle==1 && topType==2) {
-        UIImageView *body=[self part:@"rig_crop_body_style1"];
-        [_topBody addSubview:body];
-
+        [_topBody addSubview:[self part:@"rig_crop_body_style1"]];
         _leftSleeve=[[self part:@"rig_crop_sleeve_left_style1"] retain];
         _rightSleeve=[[self part:@"rig_crop_sleeve_right_style1"] retain];
         [_topFront addSubview:_leftSleeve];
@@ -97,8 +93,7 @@
     }
 
     if(bottomStyle==1 && bottomType==1) {
-        UIImageView *waist=[self part:@"rig_pants_waist_style1"];
-        [_bottomBody addSubview:waist];
+        [_bottomBody addSubview:[self part:@"rig_pants_waist_style1"]];
 
         _leftLeg=[[self part:@"rig_pants_leg_left_style1"] retain];
         _rightLeg=[[self part:@"rig_pants_leg_right_style1"] retain];
@@ -133,9 +128,9 @@
 
 - (void)setPoseWave {
     [UIView animateWithDuration:0.18 animations:^{
-        _leftSleeve.transform=CGAffineTransformMakeRotation(-0.22);
+        _leftSleeve.transform=CGAffineTransformMakeRotation(-0.18);
     } completion:^(BOOL f){
-        [UIView animateWithDuration:0.22 animations:^{
+        [UIView animateWithDuration:0.20 animations:^{
             _leftSleeve.transform=CGAffineTransformIdentity;
         }];
     }];
@@ -143,22 +138,22 @@
 
 - (void)setPoseJump {
     [UIView animateWithDuration:0.15 animations:^{
-        _topBody.transform=CGAffineTransformMakeScale(1.03,0.97);
+        _topBody.transform=CGAffineTransformMakeScale(1.02,0.98);
         _bottomBody.transform=CGAffineTransformMakeScale(1.02,0.98);
-        _bottomFront.transform=CGAffineTransformMakeTranslation(0,-3);
+        _bottomFront.transform=CGAffineTransformMakeTranslation(0,-2);
     } completion:^(BOOL f){
-        [UIView animateWithDuration:0.18 animations:^{ [self setPoseNeutral]; }];
+        [UIView animateWithDuration:0.17 animations:^{ [self setPoseNeutral]; }];
     }];
 }
 
 - (void)setPoseDance {
     [UIView animateWithDuration:0.15 animations:^{
-        _topBody.transform=CGAffineTransformMakeRotation(-0.025);
-        _bottomFront.transform=CGAffineTransformMakeRotation(0.02);
+        _topBody.transform=CGAffineTransformMakeRotation(-0.02);
+        _bottomFront.transform=CGAffineTransformMakeRotation(0.018);
     } completion:^(BOOL f){
         [UIView animateWithDuration:0.15 animations:^{
-            _topBody.transform=CGAffineTransformMakeRotation(0.025);
-            _bottomFront.transform=CGAffineTransformMakeRotation(-0.02);
+            _topBody.transform=CGAffineTransformMakeRotation(0.02);
+            _bottomFront.transform=CGAffineTransformMakeRotation(-0.018);
         } completion:^(BOOL f2){
             [UIView animateWithDuration:0.16 animations:^{ [self setPoseNeutral]; }];
         }];
@@ -167,7 +162,7 @@
 
 - (void)setPoseStretch {
     [UIView animateWithDuration:0.20 animations:^{
-        _topBody.transform=CGAffineTransformMakeScale(0.99,1.04);
+        _topBody.transform=CGAffineTransformMakeScale(0.99,1.03);
     } completion:^(BOOL f){
         [UIView animateWithDuration:0.22 animations:^{ [self setPoseNeutral]; }];
     }];

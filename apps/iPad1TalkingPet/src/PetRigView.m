@@ -18,7 +18,7 @@
         self.backgroundColor=[UIColor clearColor];
         CGFloat W=self.bounds.size.width,H=self.bounds.size.height;
 
-        _base=[[self image:@"pet_base.png" frame:self.bounds] retain];
+        _base=[[self image:@"pet_base_neutral.png" frame:self.bounds] retain];
         [self addSubview:_base];
 
         _eyeLeft=[[self image:@"Rig/eye_left.png" frame:CGRectMake(W*0.355,H*0.195,W*0.12,H*0.075)] retain];

@@ -1,53 +1,31 @@
-# iPad1TalkingPet v1.3 — Clothing Rig & Mask System
+# iPad1TalkingPet v1.4 — Neutral Base Clothing Rig
 
-## Amaç
-Kıyafetlerin karakterin üstüne yapıştırılmış gibi görünmesi sorununu çözmek.
+## En önemli değişiklik
+Kıyafet sistemi artık eski kıyafetli karakter yerine `pet_base_neutral.png` kullanır.
 
-## Yeni mimari
-`ClothingRigManager`:
-- attachment mantığı
-- CALayer mask kullanımı
-- kıyafeti parçalara bölme
-- hareket anında kıyafet parçasını ilgili bölgeyle birlikte transform etme
+Bu sayede:
+- kıyafet kıyafetin üstüne binmez
+- bel/kalça/gövde bölgeleri daha temiz görünür
+- ClothingRigManager maskeleri daha anlamlı çalışır
+- tişört/crop/pantolon/etek karakterin nötr anatomisine bağlanır
 
-### Tişört Stil 1
-- gövde
-- sol kol
-- sağ kol
-- torso mask
+## Mimari
+- neutral base character
+- ClothingRigManager
+- torso / hips / left leg / right leg masks
+- segmented top/bottom clothing
+- attachment-like transforms
+- no mesh engine / no physics
+- iPad 1 friendly
 
-### Crop Stil 1
-- gövde
-- sol kol
-- sağ kol
-- torso mask
-
-### Pantolon Stil 1
-- bel
-- sol paça
-- sağ paça
-- hips + leg masks
-
-### Etek Stil 1
-- arka panel
-- bel
-- ön panel
-
-## Neden sadece Stil 1?
-Önce mimarinin gerçek cihazda doğru çalıştığını kanıtlamak için.
-Stil 1 düzgün görünürse Stil 2'ler aynı sisteme kolayca taşınabilir.
-
-## iPad 1 performans yaklaşımı
-- mesh engine yok
-- physics yok
-- 3D yok
-- sadece UIImageView/CALayer/mask/transform
-- az sayıda katman
-- MRC uyumlu
+## Not
+Bu sürümde nötr karakter görseli yüklenen referanstan hazırlanmıştır.
+Arka planı temizlemek için hafif alfa ayrıştırması uygulanmıştır.
+Gerçek cihazda kenar kalitesi ve olası arka plan kalıntıları kontrol edilmelidir.
 
 ## Derleme
 ```bash
-cd ~/projects/iPad1TalkingPet-v1.3
+cd ~/projects/iPad1TalkingPet-v1.4
 rm -rf .theos packages
 FINALPACKAGE=1 make package
 ```

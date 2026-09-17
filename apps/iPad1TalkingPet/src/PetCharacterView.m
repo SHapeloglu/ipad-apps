@@ -15,7 +15,7 @@
         _motionLayer.backgroundColor=[UIColor clearColor];
         [self addSubview:_motionLayer];
 
-        _body=[[UIImageView alloc] initWithImage:[UIImage imageNamed:@"pet_base.png"]];
+        _body=[[UIImageView alloc] initWithImage:[UIImage imageNamed:@"pet_base_neutral.png"]];
         _body.frame=_motionLayer.bounds;
         _body.contentMode=UIViewContentModeScaleAspectFit;
         _body.hidden=_useRig;
