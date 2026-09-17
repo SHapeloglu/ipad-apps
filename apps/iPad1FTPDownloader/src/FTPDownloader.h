@@ -25,6 +25,5 @@
             password:(NSString *)password
           remotePath:(NSString *)remotePath
      destinationPath:(NSString *)destinationPath;
-
 - (void)cancel;
 @end

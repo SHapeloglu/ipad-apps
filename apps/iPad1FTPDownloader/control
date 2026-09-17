@@ -1,8 +1,8 @@
 Package: com.olap.ipad1ftpdownloader
 Name: iPad1 FTP Downloader
-Version: 1.0.0
+Version: 1.1.0
 Architecture: iphoneos-arm
-Description: Lightweight FTP downloader for iPad 1 / iOS 5.1.1
+Description: Lightweight FTP browser and downloader for iPad 1 / iOS 5.1.1
 Maintainer: OLAP
 Author: OLAP
 Section: Utilities

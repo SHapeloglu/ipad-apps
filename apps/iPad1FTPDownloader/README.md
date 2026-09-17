@@ -1,59 +1,32 @@
-# iPad 1 FTP Downloader
+# iPad 1 FTP Downloader v1.1
 
-Legacy iPad 1 / iOS 5.1.1 için hafif FTP dosya indirme uygulaması.
+iPad 1 / iOS 5.1.1 için FTP browser + downloader.
 
-## Hedef
-- iPad 1
-- iOS 5.1.1
-- ARMv7
-- Jailbreak
-- Theos
-- Objective-C / UIKit / CFNetwork
-- ARC kapalı
+## v1.1
+- FTP klasör listeleme
+- Klasörlere dokunarak gezinme
+- Üst klasöre çıkma
+- Dosyaya dokunarak indirme
+- KB/MB indirme göstergesi
+- Kayıt: /var/mobile/Media/iPad1FTPDownloads/
 
-## Özellikler
-- FTP sunucu/IP
-- Port
-- Kullanıcı adı
-- Şifre
-- Uzak dosya yolu
-- Yerel dosya adı
-- İndirilen byte/KB/MB göstergesi
-- Dosyaları `/var/mobile/Media/iPad1FTPDownloads/` altına kaydeder
-
-## Build
-
+## Derleme
 ```bash
 cd ~/projects/ipad1ftp/iPad1FTPDownloader
 make clean
-make package
+make package FINALPACKAGE=1
 ```
-
-Paket `packages/` altında oluşur.
 
 ## Kurulum
-
-`.deb` dosyasını iPad'e örneğin `/var/mobile/` altına kopyala:
-
 ```bash
-ssh root@IPAD_IP
-dpkg -i /var/mobile/com.olap.ipad1ftpdownloader_1.0.0_iphoneos-arm.deb
-killall SpringBoard
+scp -o HostKeyAlgorithms=+ssh-rsa \
+packages/com.olap.ipad1ftpdownloader_1.1.0_iphoneos-arm.deb \
+root@192.168.1.101:/var/mobile/
 ```
 
-## Kullanım örneği
-
-- Sunucu: `95.111.242.96`
-- Port: `21`
-- Kullanıcı: `ftpuser`
-- Şifre: `********`
-- Uzak yol: `/files/movie.mp4`
-- Yerel ad: `movie.mp4`
-
-İndirilen dosya:
-
-`/var/mobile/Media/iPad1FTPDownloads/movie.mp4`
-
-## Notlar
-
-Bu ilk sürüm klasik FTP içindir. SFTP, FTPS, klasör listeleme, pause/resume ve indirme kuyruğu bu sürümde yoktur.
+```bash
+ssh -o HostKeyAlgorithms=+ssh-rsa root@192.168.1.101
+dpkg -i /var/mobile/com.olap.ipad1ftpdownloader_1.1.0_iphoneos-arm.deb
+su mobile -c "/usr/bin/uicache"
+killall SpringBoard
+```
