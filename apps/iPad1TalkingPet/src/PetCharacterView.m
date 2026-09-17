@@ -76,23 +76,23 @@
 
     // Tops tailored to torso
     if(topType==1 && topStyle==1)
-        [self addImage:@"tshirt_style1.png" layer:_shirtLayer rect:CGRectMake(W*0.22,H*0.405,W*0.56,H*0.34)];
+        [self addImage:@"tshirt_style1.png" layer:_shirtLayer rect:CGRectMake(W*0.205,H*0.405,W*0.59,H*0.315)];
     else if(topType==1 && topStyle==2)
-        [self addImage:@"tshirt_style2.png" layer:_shirtLayer rect:CGRectMake(W*0.22,H*0.405,W*0.56,H*0.34)];
+        [self addImage:@"tshirt_style2.png" layer:_shirtLayer rect:CGRectMake(W*0.205,H*0.405,W*0.59,H*0.315)];
     else if(topType==2 && topStyle==1)
-        [self addImage:@"crop_style1.png" layer:_shirtLayer rect:CGRectMake(W*0.24,H*0.43,W*0.52,H*0.24)];
+        [self addImage:@"crop_style1.png" layer:_shirtLayer rect:CGRectMake(W*0.215,H*0.43,W*0.57,H*0.215)];
     else if(topType==2 && topStyle==2)
-        [self addImage:@"crop_style2.png" layer:_shirtLayer rect:CGRectMake(W*0.24,H*0.43,W*0.52,H*0.24)];
+        [self addImage:@"crop_style2.png" layer:_shirtLayer rect:CGRectMake(W*0.215,H*0.43,W*0.57,H*0.215)];
 
     // Bottoms tailored to hip/leg area
     if(bottomType==1 && bottomStyle==1)
-        [self addImage:@"pants_style1.png" layer:_pantsLayer rect:CGRectMake(W*0.25,H*0.63,W*0.50,H*0.24)];
+        [self addImage:@"pants_style1.png" layer:_pantsLayer rect:CGRectMake(W*0.205,H*0.615,W*0.59,H*0.205)];
     else if(bottomType==1 && bottomStyle==2)
-        [self addImage:@"pants_style2.png" layer:_pantsLayer rect:CGRectMake(W*0.25,H*0.63,W*0.50,H*0.24)];
+        [self addImage:@"pants_style2.png" layer:_pantsLayer rect:CGRectMake(W*0.205,H*0.615,W*0.59,H*0.205)];
     else if(bottomType==2 && bottomStyle==1)
-        [self addImage:@"skirt_style1.png" layer:_pantsLayer rect:CGRectMake(W*0.23,H*0.62,W*0.54,H*0.25)];
+        [self addImage:@"skirt_style1.png" layer:_pantsLayer rect:CGRectMake(W*0.20,H*0.605,W*0.60,H*0.235)];
     else if(bottomType==2 && bottomStyle==2)
-        [self addImage:@"skirt_style2.png" layer:_pantsLayer rect:CGRectMake(W*0.23,H*0.62,W*0.54,H*0.25)];
+        [self addImage:@"skirt_style2.png" layer:_pantsLayer rect:CGRectMake(W*0.20,H*0.605,W*0.60,H*0.235)];
 
     if(shoes==1) [self addImage:@"shoes_red.png" layer:_shoesLayer rect:CGRectMake(W*0.22,H*0.87,W*0.56,H*0.13)];
     else if(shoes==2) [self addImage:@"shoes_blue.png" layer:_shoesLayer rect:CGRectMake(W*0.22,H*0.87,W*0.56,H*0.13)];

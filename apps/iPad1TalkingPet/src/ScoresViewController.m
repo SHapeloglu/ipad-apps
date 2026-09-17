@@ -1,6 +1,7 @@
 #import "ScoresViewController.h"
 #import "HighScoreManager.h"
 #import <QuartzCore/QuartzCore.h>
+#import <QuartzCore/QuartzCore.h>
 
 @implementation ScoresViewController
 

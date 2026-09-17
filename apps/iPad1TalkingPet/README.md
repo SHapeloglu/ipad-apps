@@ -1,3 +1,14 @@
+# iPad1TalkingPet v1.0.1 — Wardrobe Fit Fix
+
+Bu hotfix, gerçek cihazda görülen blok şeklindeki alt kıyafet problemini düzeltir.
+
+- Pantolon/şortta bacak arası artık transparan kesiklidir.
+- Kalça/bel formu daraltıldı.
+- Tişört ve crop gövdeye daha sıkı oturur.
+- Etek silüeti revize edildi.
+- Kıyafet katmanlarının yerleşimi mevcut karakter oranlarına göre yeniden ayarlandı.
+- v1.0 duygu, high-score, combo ve etkinlik özellikleri korunur.
+
 # iPad1TalkingPet v1.0 — Emotion & Polish
 
 ## v1.0 yenilikleri
