@@ -5,7 +5,7 @@
 - `ARCHS=armv7`, deployment target 5.1, iPhoneOS 6.1 SDK, ARC kapalı.
 - `./scripts/validate_project.sh` geçmeli.
 - Derleyici uyarıları incelenmeli; modern API veya sahiplik uyarısı kalmamalı.
-- Üretilen paketin mimarisi ve sürümü `iphoneos-arm / 0.5.0-alpha5` olmalı.
+- Üretilen paketin mimarisi ve sürümü `iphoneos-arm / 0.7.0-alpha7` olmalı.
 
 ## Sahiplenme ve kayıt geçişi
 
@@ -13,7 +13,7 @@
 2. Evde 500 pati, yatak ve mama kabını doğrula.
 3. Pet shop yolunda 300 pati, top sahipliği ve topun odada olduğunu doğrula.
 4. Uygulamayı kapat/aç; Devam Et ile tüm değerlerin korunduğunu doğrula.
-5. 0.1.0-alpha1, 0.2.0-alpha2, 0.3.0-alpha3 ve 0.4.0-alpha4 kayıtlarını ayrı ayrı 0.5'te aç; eski yavru, ekonomi, ihtiyaç, oda ve dolap verilerinin korunduğunu doğrula.
+5. 0.1.0-alpha1 ile 0.6.0-alpha6 arasındaki kayıtları ayrı ayrı 0.7'de aç; eski yavru, ekonomi, ihtiyaç, oda ve dolap verilerinin korunduğunu doğrula.
 6. Kaydet, uygulamayı yeniden aç ve eşya yerleşimi ile takılan aksesuarların aynı kaldığını doğrula.
 7. Yeni Oyun seçeneğinde onaydan sonra eski kayıt ve fotoğraf klasörünün temizlendiğini doğrula.
 
@@ -22,14 +22,27 @@
 - Besle 5 pati harcamalı; mama kabı yerleştirilmişse ek bonus vermeli.
 - Para yetersizse besleme ve tur ilerlemesi olmamalı.
 - Oyna, Uyut, Temizle ve Sev beklenen ihtiyaçları değiştirmeli; bütün değerler 0–100 kalmalı.
-- Hayvana dokunmak sevgi eylemi, kalp tepkisi, kısa animasyon ve metin vermeli.
+- Baş, karın, pati ve kuyruğa ayrı ayrı dokun; sırasıyla okşanma, gıdıklanma, el sallama ve şaşırma tepkisi görülmeli. Bu dokunuşlar para, ihtiyaç, gün veya eylem sayısını değiştirmemeli.
 - Eylem simgeleri yaklaşık 0,4 saniyede temizlenmeli; ekran kapanınca gecikmiş çağrı çökmemeli.
 - Evdeki yavru önceki görünür boyutun dörtte biri olmalı; buna rağmen merkezdeki dokunma hedefi en az 54×54 çalışmalı.
 - Evdeki yavru yavaşça en fazla yaklaşık 5 punto hareket etmeli; başka ekrana geçildiğinde katman animasyonu kalmamalı.
 - Yavru beş bakım düğmesinin her birine sürüklenebilmeli; geçerli bırakma tek eylem çalıştırmalı, boş alana bırakma değer veya para değiştirmemeli.
+- Mama, top ve fırça hem tek dokunmayla hem yavrunun üzerine sürüklenerek çalışmalı; hedefte nesne çerçevesi sarıya dönmeli ve yavru hafif büyümeli.
+- Nesne geçersiz alana bırakılınca başlangıç yuvasına dönmeli; para, ihtiyaç, eylem sayısı veya gün değişmemeli.
+- Beslemede mama kabı yavruya yaklaşmalı, yavru çiğnemeli, mama görünür biçimde azalmalı ve nesne yuvasına dolu dönmeli.
+- Oyunda top iki yönde yuvarlanmalı ve yavru kısa süre topun peşinden gitmeli.
+- Uyut eyleminde yavru varsa odadaki yatağa doğru gitmeli, küçülüp yatmalı ve iki gözü çizgi olarak kapanmalı.
+- Temizle eyleminde fırça yavruya gitmeli, yavru silkelenmeli ve birden çok köpük görünmeli; Sev eyleminde yavru yaklaşmalı ve kalpler görünmeli.
+- Ev düşünce balonu en düşük ihtiyaca uygun simgeyi ve kısa metni göstermeli; uzun görev/ödül satırları balonu taşırmamalı.
 - Ses anahtarı anında çalışmalı ve yeniden açılışta korunmalı.
+- Normal mama, balık, havuç ve kurabiye seçimi kabın çizimini/etiketini yenilemeli; kap hem dokunma hem sürüklemeyle çalışmalı.
+- Kedi balığı, köpek normal mamayı, tavşan havucu, panda kurabiyeyi favori saymalı; favori tokluğu daha fazla artırıp mutlu tepki, sevilmeyen seçenek daha küçük artış ve komik yüz buruşturma üretmeli.
+- Bakım sonrasında göz kırpma, etrafa bakma, esneme, kulak oynatma ve el sallama eylem sayısına göre görülmeli; her tepki bitmeli ve ikinci etkileşimi kalıcı olarak kilitlememeli.
+- Yeme, uyku, top, köpük, kahkaha ve şaşırma sesleri birbirinden ayırt edilmeli; Ses Kapalı iken hiçbiri çalmamalı.
+- `Konuş` en fazla üç saniye kayıt almalı, `Durdur` ile erken bitirilebilmeli ve sesi aynı cihazda geri oynatmalı. Uygulama dosyalarında kalıcı ses birikmemeli; ekran değiştirince kayıt/oynatma durmalı.
 - Her dört anlamlı eylemde gün +1 ve para +20 olmalı.
-- Her üçüncü eylemde seçilen kişiliğe uygun özgür irade metni görülebilmeli.
+- Her üçüncü başarılı eylemde seçilen kişiliğe uygun özgür irade düşüncesi ve kısa hedef yolculuğu görülmeli; başarısız besleme üçüncü eylem sayılmamalı.
+- Özerk an tamamlanmadan ikinci bakım eylemi başlamamalı; tamamlanınca bütün nesne/yavru dönüşümleri başlangıç değerine dönmeli.
 
 ## Rehber, büyüme ve zaman
 
@@ -51,6 +64,11 @@
 - Mama kabı gövde, koyu üst kenar, görünür mama taneleri ve ön pati işaretiyle ilk bakışta ayırt edilmeli.
 - Yatak oval dış çeper, iç minder, yükseltilmiş ön kenar ve pati motifiyle gerçek hayvan yatağı olarak ayırt edilmeli.
 - Yavru yatak, mama kabı, top, halı ve dört beceri mobilyasına sürüklenebilmeli; hedef sarı halka göstermeli ve geçerli bırakma yalnızca bir etkileşim çalıştırmalı.
+- Mama kabı kullanıldığında yavru kaba gitmeli, hareketli mama kabı yaklaşmalı ve içindeki mama azalmalı; sabit oda resmi değişmeden kalmalı.
+- Top kullanıldığında hareketli top oda içinde yuvarlanmalı ve yavru peşinden gitmeli; yatakta yavru hedefe gidip kapalı gözle kısa süre yatmalı.
+- Halıda sevgi/kalp, piyano ve diğer beceri mobilyalarında ilgili simge ve kısa hedef hareketi görünmeli.
+- Oda düşünce balonu tepki sırasında eylem simgesini, boşta beklerken ihtiyaca uygun simgeyi göstermeli.
+- Her üçüncü başarılı oda etkileşiminde kişilik uygun yerleştirilmiş eşyayı seçmeli; eşya yoksa yavru ekran içindeki güvenli hedefe gidip geri dönmeli.
 - Bitki, kitaplık, piyano ve sanat masası ilgili dersi doğrudan başlatmalı; 10 pati ve yerleşik eşya bonusu uygulanmalı.
 - Üst üste gelen halı/eşya dokunma alanlarında görünür küçük eşya halıdan önce seçilmeli.
 
@@ -100,6 +118,8 @@
 - Yanlış çift 0,65 saniye sonra kapanmalı; doğru çift kilitlenmeli.
 - Dört çift tamamlanınca günün ilk turunda 30 pati verilmeli.
 - Matematikte doğru cevaplar sayılmalı, yanlışta doğru sonuç gösterilmeli ve beş doğruda 30 pati verilmeli.
+- Top Yakala sekiz tur boyunca topu farklı konumlara kısa hareketlerle götürmeli; aynı turda art arda dokunmak yalnızca bir skor vermeli.
+- Beş veya daha fazla yakalamada günün ilk turu 30 pati vermeli; dört veya altında ödül vermeden tekrar düğmesini açmalı.
 - Aynı oyunu aynı gün tekrar bitirmek para vermemeli ama oyun çalışmaya devam etmeli.
 
 ## Albüm ve fotoğraf
@@ -115,5 +135,7 @@
 - Türkçe karakterler, simgeler ve küçük WAV sesleri doğru çalışmalı.
 - Tablolar, harita bölgeleri, dolap düğmeleri ve oda eşyaları rahat dokunulmalı; mini oyunlarda gecikme hissedilmemeli.
 - 15 dakika boyunca harita/park/meydan/okul/dolap/oda arasında dolaş, tüm aksesuarları dene, 12 fotoğraf çek ve mini oyun oyna; bellek uyarısı veya kapanma olmamalı.
-- Aynı 15 dakikalık turda ekranlara en az 20 kez girip çık; boşta bekleme ve ortam animasyonları birikmemeli, giderek hızlanmamalı veya takılmamalı.
+- Aynı 15 dakikalık turda ekranlara en az 20 kez girip çık; bakımın ortasında da ekran değiştir. Boşta bekleme, bakım, özerk an ve ortam animasyonları birikmemeli, giderek hızlanmamalı veya takılmamalı.
+- Mama/top/fırça eylemlerini arka arkaya 30 kez, oda eşyalarını 20 kez çalıştır; bellek uyarısı, kayıp nesne, donmuş dokunma veya üst üste binen gecikmiş hareket olmamalı.
+- Dört dokunma bölgesini toplam 40 kez, Top Yakala'yı 10 tur ve üç saniyelik ses tekrarını 10 kez çalıştır; geçici kayıt büyümemeli, ses oturumu kilitlenmemeli ve mikro hareketler birikmemeli.
 - Askıya alıp geri dönünce kayıt korunmalı.

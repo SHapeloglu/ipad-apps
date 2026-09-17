@@ -8,7 +8,7 @@ Pati Kasabası; ihtiyaç, kişilik, ilişki, beceri, meslek ve ev kurma sistemle
 
 - iPad 1 / iOS 5.1.1 / armv7
 - Apple A4 / 256 MB RAM
-- Objective-C / UIKit / Foundation / Core Graphics / AudioToolbox
+- Objective-C / UIKit / Foundation / Core Graphics / AudioToolbox / AVFoundation
 - Theos / legacy iPhoneOS 6.1 SDK
 - non-ARC / MRC
 - Swift, Auto Layout, Storyboard, SpriteKit, Metal, SceneKit ve modern API yok
@@ -26,8 +26,8 @@ Pati Kasabası; ihtiyaç, kişilik, ilişki, beceri, meslek ve ev kurma sistemle
 
 ## Güncel kilometre taşı
 
-`0.5.0-alpha5`: Park, Okul ve Meydan metin tabloları hafif Core Graphics sahnelerine ve büyük etkinlik kartlarına dönüştürüldü. Yavru ev eylemlerine, oda eşyalarına, ders/meslek kartlarına, komşulara ve meydan etkinliklerine sürüklenebiliyor. Okula `Evimiz` üst menüsü eklendi; yatak gerçek hayvan yatağı biçiminde yeniden çizildi. Sürekli ağır simülasyon yerine olay tabanlı kısa yolculuk/tepki ve tek katmanlı boşta hareket kullanılıyor. Kayıt sürümü 3 ve eski kayıt anahtarı değişmedi.
+`0.7.0-alpha7`: Evde baş, karın, pati ve kuyruk için ayrı dokunma tepkileri; göz kırpma, etrafa bakma, esneme, kulak oynatma ve el sallama mikro hareketleri var. Mama kabı normal mama, balık, havuç ve kurabiye arasında seçilebiliyor; dört türün sevdiği ve sevmediği yiyecekler farklı yüz, düşünce ve ihtiyaç sonucu üretiyor. Altı kısa eylem sesi, üç saniyeyle sınırlı yalnızca cihaz içi ses tekrar ve olay tabanlı `Top Yakala` mini oyunu eklendi. Hareketler kısa `UIView` dizileri; ses kaydı geçici dosyada, ağ aktarımı yok. Sürekli zamanlayıcı, GIF, kare dizisi veya SVG yorumlayıcı yok. Kayıt sürümü 3 ve eski kayıt anahtarı değişmedi.
 
 ## Immediate next action
 
-Projeyi legacy Theos ortamında derle. Fiziksel iPad 1'e yükleyip özellikle Ev/oda/okul/park/meydan sürüklemelerini, görsel kartların kırpılmamasını, okulun `Evimiz` düğmesini, hayvan yatağını, hareketlerin ekran geçişinde durmasını ve `TESTING.md` içindeki 15 dakikalık bellek testini uygula.
+Alpha7'yi legacy Theos ortamında derle. Fiziksel iPad 1'e yükleyip dört dokunma bölgesini, beş mikro hareketi, dört mama ve tür tercihlerini, ses seviyelerini, mikrofon kaydet/geri oynat akışını, `Top Yakala` tur zamanlamasını, ekran geçişinde gecikmiş çağrıların durmasını ve `TESTING.md` içindeki 15 dakikalık bellek testini uygula.

@@ -1,5 +1,27 @@
 # Değişiklik Günlüğü
 
+## 0.7.0-alpha7
+
+- Ev avatarına baş, karın, pati ve kuyruk dokunma bölgeleri ile dört ayrı kısa tepki eklendi.
+- Göz kırpma, etrafa bakma, esneme, kulak oynatma ve el sallama; bakım sonrasında bir kez çalışan sonlu mikro hareketler olarak eklendi.
+- Mama paleti normal mama, balık, havuç ve kurabiye arasında seçim yapacak şekilde genişletildi; kedi, köpek, tavşan ve pandanın favori/sevmediği seçenekleri farklı ihtiyaç kazancı ve komik yüz tepkisi üretiyor.
+- Yeme, uyku, top, köpük, kahkaha ve şaşırma için altı kısa 22,05 kHz mono PCM ses eklendi; mevcut dokunma/başarı sesleri korundu.
+- `AVAudioRecorder`/`AVAudioPlayer` ile en fazla üç saniyelik, yalnızca geçici yerel dosyayı kullanan çevrimdışı ses tekrar akışı eklendi.
+- Mini oyun ekranına sekiz turluk `Top Yakala` eklendi; en az beş isabet mevcut günlük 30 pati ödül kuralını kullanıyor.
+- Yeni görsel davranışlar kısa `UIView` animasyonları ve gecikmiş tek seferlik çağrılarla sınırlandı; `NSTimer`, `CADisplayLink`, GIF veya sprite dizisi eklenmedi.
+- Kayıt biçimi sürüm 3 olarak korundu; alpha7 yeni kalıcı alan gerektirmiyor.
+
+## 0.6.0-alpha6
+
+- Ev ekranına Core Graphics ile çizilen mama, top ve fırça paleti eklendi; nesneler yavrunun üzerine sürüklenebiliyor veya tek dokunuşla kullanılabiliyor.
+- Besleme için kabın yaklaşması, çiğneme ve mamanın azalması; oyun için topun yuvarlanması ve yavrunun peşinden gitmesi eklendi.
+- Uyku için yatağa gidiş ve kapalı gözler; temizlik için fırça, köpük ve silkelenme; sevgi için yaklaşma ve kalp tepkisi eklendi.
+- Ev ve oda ekranlarına kısa metinli, ihtiyaca göre simge değiştiren Core Graphics düşünce balonları eklendi.
+- Oda etkileşimleri yatağa, mama kabına, topa, halıya ve beceri mobilyalarına doğru gerçek yavru hareketleriyle görselleştirildi.
+- Her üçüncü başarılı eylemden sonra kişiliğe göre pencereyi inceleme, yatağa gitme, halıda sosyalleşme, piyano çalma veya topa yönelme anı eklendi.
+- Yeni davranışların tamamı kısa `UIView` transform/alpha dizileridir; GIF, bitmap kare dizisi, SVG yorumlayıcı, `NSTimer` veya `CADisplayLink` eklenmedi.
+- Kayıt biçimi sürüm 3 olarak korundu; alpha6 yeni kalıcı alan gerektirmiyor.
+
 ## 0.5.0-alpha5
 
 - Dostluk Parkı, Pati Okulu ve Kasaba Meydanındaki metin ağırlıklı tablolar, Core Graphics ile çizilen hafif sahneler ve büyük görsel etkinlik kartlarıyla değiştirildi.

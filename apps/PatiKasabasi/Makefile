@@ -7,7 +7,7 @@ APPLICATION_NAME = PatiKasabasi
 
 PatiKasabasi_FILES = main.m \
 	$(wildcard src/*.m)
-PatiKasabasi_FRAMEWORKS = UIKit Foundation CoreGraphics QuartzCore AudioToolbox
+PatiKasabasi_FRAMEWORKS = UIKit Foundation CoreGraphics QuartzCore AudioToolbox AVFoundation
 PatiKasabasi_CFLAGS = -fno-objc-arc -Wall -Wextra -Wno-deprecated-declarations
 PatiKasabasi_RESOURCE_DIRS = Resources
 

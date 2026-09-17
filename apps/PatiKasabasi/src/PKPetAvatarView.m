@@ -84,15 +84,31 @@ static void PKStrokeLine(CGContextRef context, CGPoint a, CGPoint b, UIColor *co
     [self setNeedsDisplay];
 }
 
+- (CGRect)interactionFrame {
+    CGFloat stageScale = [_lifeStageIdentifier isEqualToString:@"adult"] ? 1.0f : ([_lifeStageIdentifier isEqualToString:@"young"] ? 0.91f : 0.82f);
+    CGFloat scale = MIN(self.bounds.size.width / 220.0f, self.bounds.size.height / 260.0f) * stageScale * _visualScale;
+    CGFloat hitWidth = MAX(106.0f, (220.0f * scale) + 30.0f);
+    CGFloat hitHeight = MAX(126.0f, (260.0f * scale) + 30.0f);
+    return CGRectMake((self.bounds.size.width - hitWidth) * 0.5f,
+                      (self.bounds.size.height - hitHeight) * 0.5f,
+                      hitWidth,
+                      hitHeight);
+}
+
+- (NSString *)interactionZoneAtPoint:(CGPoint)point {
+    CGRect frame = [self interactionFrame];
+    if (!CGRectContainsPoint(frame, point)) return nil;
+    CGFloat x = (point.x - CGRectGetMinX(frame)) / frame.size.width;
+    CGFloat y = (point.y - CGRectGetMinY(frame)) / frame.size.height;
+    if (x > 0.72f && y > 0.35f && y < 0.78f) return @"tail";
+    if (y < 0.42f) return @"head";
+    if (y > 0.72f) return @"paw";
+    return @"belly";
+}
+
 - (BOOL)pointInside:(CGPoint)point withEvent:(UIEvent *)event {
     (void)event;
-    CGFloat hitWidth = MAX(54.0f, self.bounds.size.width * _visualScale);
-    CGFloat hitHeight = MAX(54.0f, self.bounds.size.height * _visualScale);
-    CGRect hitFrame = CGRectMake((self.bounds.size.width - hitWidth) * 0.5f,
-                                 (self.bounds.size.height - hitHeight) * 0.5f,
-                                 hitWidth,
-                                 hitHeight);
-    return CGRectContainsPoint(hitFrame, point);
+    return CGRectContainsPoint([self interactionFrame], point);
 }
 
 - (void)drawTriangleInContext:(CGContextRef)context
@@ -138,8 +154,19 @@ static void PKStrokeLine(CGContextRef context, CGPoint a, CGPoint b, UIColor *co
         accent = [UIColor colorWithWhite:0.14f alpha:1.0f];
     }
 
-    /* Soft shadow and body. */
+    /* Soft shadow, tail and body. */
     PKFillEllipse(context, CGRectMake(38.0f, 232.0f, 145.0f, 18.0f), [UIColor colorWithWhite:0.0f alpha:0.13f]);
+    if ([_speciesIdentifier isEqualToString:@"rabbit"] || [_speciesIdentifier isEqualToString:@"panda"]) {
+        PKFillEllipse(context, CGRectMake(160.0f, 154.0f, 44.0f, 44.0f), body);
+    } else {
+        CGContextSetStrokeColorWithColor(context, body.CGColor);
+        CGContextSetLineWidth(context, 24.0f);
+        CGContextSetLineCap(context, kCGLineCapRound);
+        CGContextMoveToPoint(context, 158.0f, 174.0f);
+        CGContextAddCurveToPoint(context, 205.0f, 158.0f, 205.0f, 119.0f, 181.0f, 117.0f);
+        CGContextStrokePath(context);
+        CGContextSetLineCap(context, kCGLineCapButt);
+    }
     NSString *bodyAccessory = [_equippedAccessories objectForKey:@"body"];
     if ([bodyAccessory isEqualToString:@"starcape"]) {
         [self drawTriangleInContext:context
@@ -195,14 +222,36 @@ static void PKStrokeLine(CGContextRef context, CGPoint a, CGPoint b, UIColor *co
         CGContextRestoreGState(context);
     }
 
+    BOOL sleeping = [_reactionIdentifier isEqualToString:@"sleep"];
+    BOOL eyesClosed = sleeping || [_reactionIdentifier isEqualToString:@"blink"] || [_reactionIdentifier isEqualToString:@"yawn"];
+    BOOL disliked = [_reactionIdentifier isEqualToString:@"feed_disliked"];
+    BOOL looking = [_reactionIdentifier isEqualToString:@"look"];
     UIColor *eyeColor = outline;
-    PKFillEllipse(context, CGRectMake(72.0f, 99.0f, 15.0f, 22.0f), eyeColor);
-    PKFillEllipse(context, CGRectMake(133.0f, 99.0f, 15.0f, 22.0f), eyeColor);
-    PKFillEllipse(context, CGRectMake(77.0f, 102.0f, 5.0f, 7.0f), [UIColor whiteColor]);
-    PKFillEllipse(context, CGRectMake(138.0f, 102.0f, 5.0f, 7.0f), [UIColor whiteColor]);
+    if (disliked) {
+        PKStrokeLine(context, CGPointMake(68.0f, 105.0f), CGPointMake(90.0f, 114.0f), eyeColor, 4.0f);
+        PKStrokeLine(context, CGPointMake(130.0f, 114.0f), CGPointMake(152.0f, 105.0f), eyeColor, 4.0f);
+    } else if (eyesClosed) {
+        PKStrokeLine(context, CGPointMake(70.0f, 111.0f), CGPointMake(89.0f, 111.0f), eyeColor, 4.0f);
+        PKStrokeLine(context, CGPointMake(131.0f, 111.0f), CGPointMake(150.0f, 111.0f), eyeColor, 4.0f);
+    } else {
+        CGFloat lookOffset = looking ? 5.0f : 0.0f;
+        PKFillEllipse(context, CGRectMake(72.0f + lookOffset, 99.0f, 15.0f, 22.0f), eyeColor);
+        PKFillEllipse(context, CGRectMake(133.0f + lookOffset, 99.0f, 15.0f, 22.0f), eyeColor);
+        PKFillEllipse(context, CGRectMake(77.0f + lookOffset, 102.0f, 5.0f, 7.0f), [UIColor whiteColor]);
+        PKFillEllipse(context, CGRectMake(138.0f + lookOffset, 102.0f, 5.0f, 7.0f), [UIColor whiteColor]);
+    }
 
     PKFillEllipse(context, CGRectMake(101.0f, 124.0f, 18.0f, 13.0f), accent);
-    if (_happy) {
+    if ([_reactionIdentifier isEqualToString:@"yawn"] || [_reactionIdentifier isEqualToString:@"tickle"] || [_reactionIdentifier isEqualToString:@"surprise"]) {
+        PKFillEllipse(context, CGRectMake(99.0f, 138.0f, 22.0f, 18.0f), outline);
+        PKFillEllipse(context, CGRectMake(104.0f, 148.0f, 12.0f, 5.0f), inner);
+    } else if ([_reactionIdentifier isEqualToString:@"feed"] || [_reactionIdentifier isEqualToString:@"feed_favorite"]) {
+        PKFillEllipse(context, CGRectMake(103.0f, 139.0f, 14.0f, 10.0f), outline);
+    } else if (disliked) {
+        PKStrokeLine(context, CGPointMake(98.0f, 149.0f), CGPointMake(105.0f, 145.0f), outline, 3.0f);
+        PKStrokeLine(context, CGPointMake(105.0f, 145.0f), CGPointMake(113.0f, 149.0f), outline, 3.0f);
+        PKStrokeLine(context, CGPointMake(113.0f, 149.0f), CGPointMake(122.0f, 145.0f), outline, 3.0f);
+    } else if (_happy) {
         CGContextSetStrokeColorWithColor(context, outline.CGColor);
         CGContextSetLineWidth(context, 3.0f);
         CGContextAddArc(context, 110.0f, 137.0f, 13.0f, 0.18f, 2.96f, 0);
@@ -260,6 +309,11 @@ static void PKStrokeLine(CGContextRef context, CGPoint a, CGPoint b, UIColor *co
     /* Paws. */
     PKFillEllipse(context, CGRectMake(43.0f, 210.0f, 57.0f, 34.0f), body);
     PKFillEllipse(context, CGRectMake(120.0f, 210.0f, 57.0f, 34.0f), body);
+    if ([_reactionIdentifier isEqualToString:@"wave"]) {
+        PKFillEllipse(context, CGRectMake(162.0f, 137.0f, 35.0f, 61.0f), body);
+        PKStrokeLine(context, CGPointMake(203.0f, 142.0f), CGPointMake(215.0f, 132.0f), accent, 3.0f);
+        PKStrokeLine(context, CGPointMake(207.0f, 155.0f), CGPointMake(222.0f, 153.0f), accent, 3.0f);
+    }
 
     /* Short-lived action symbols; no sprite sheets or continuous animation. */
     if ([_reactionIdentifier isEqualToString:@"play"]) {
@@ -270,11 +324,15 @@ static void PKStrokeLine(CGContextRef context, CGPoint a, CGPoint b, UIColor *co
     } else if ([_reactionIdentifier isEqualToString:@"clean"]) {
         PKFillEllipse(context, CGRectMake(175.0f, 70.0f, 25.0f, 25.0f), [UIColor colorWithRed:0.52f green:0.85f blue:0.94f alpha:0.75f]);
         PKFillEllipse(context, CGRectMake(187.0f, 105.0f, 17.0f, 17.0f), [UIColor colorWithRed:0.52f green:0.85f blue:0.94f alpha:0.75f]);
-    } else if ([_reactionIdentifier isEqualToString:@"cuddle"] || [_reactionIdentifier isEqualToString:@"touch"]) {
+        PKFillEllipse(context, CGRectMake(27.0f, 113.0f, 19.0f, 19.0f), [UIColor colorWithRed:0.52f green:0.85f blue:0.94f alpha:0.72f]);
+        PKFillEllipse(context, CGRectMake(32.0f, 77.0f, 13.0f, 13.0f), [UIColor colorWithRed:0.52f green:0.85f blue:0.94f alpha:0.72f]);
+    } else if ([_reactionIdentifier isEqualToString:@"cuddle"] || [_reactionIdentifier isEqualToString:@"touch"] || [_reactionIdentifier isEqualToString:@"head"] || [_reactionIdentifier isEqualToString:@"feed_favorite"]) {
         PKFillEllipse(context, CGRectMake(172.0f, 55.0f, 24.0f, 24.0f), [UIColor colorWithRed:0.94f green:0.30f blue:0.42f alpha:1.0f]);
         PKFillEllipse(context, CGRectMake(190.0f, 55.0f, 24.0f, 24.0f), [UIColor colorWithRed:0.94f green:0.30f blue:0.42f alpha:1.0f]);
         [self drawTriangleInContext:context a:CGPointMake(172.0f, 68.0f) b:CGPointMake(214.0f, 68.0f) c:CGPointMake(193.0f, 98.0f) color:[UIColor colorWithRed:0.94f green:0.30f blue:0.42f alpha:1.0f]];
-    } else if ([_reactionIdentifier isEqualToString:@"feed"]) {
+        PKFillEllipse(context, CGRectMake(153.0f, 35.0f, 12.0f, 12.0f), [UIColor colorWithRed:0.97f green:0.48f blue:0.60f alpha:0.92f]);
+        PKFillEllipse(context, CGRectMake(217.0f, 91.0f, 10.0f, 10.0f), [UIColor colorWithRed:0.97f green:0.48f blue:0.60f alpha:0.92f]);
+    } else if ([_reactionIdentifier isEqualToString:@"feed"] || [_reactionIdentifier isEqualToString:@"feed_disliked"]) {
         UIColor *bowlBlue = [UIColor colorWithRed:0.27f green:0.58f blue:0.72f alpha:1.0f];
         UIColor *bowlRim = [UIColor colorWithRed:0.13f green:0.38f blue:0.52f alpha:1.0f];
         PKFillEllipse(context, CGRectMake(164.0f, 226.0f, 52.0f, 8.0f), [UIColor colorWithWhite:0.0f alpha:0.13f]);
@@ -291,6 +349,17 @@ static void PKStrokeLine(CGContextRef context, CGPoint a, CGPoint b, UIColor *co
         PKFillEllipse(context, CGRectMake(176.0f, 205.0f, 7.0f, 6.0f), [UIColor colorWithRed:0.43f green:0.27f blue:0.16f alpha:1.0f]);
         PKFillEllipse(context, CGRectMake(187.0f, 208.0f, 8.0f, 6.0f), [UIColor colorWithRed:0.43f green:0.27f blue:0.16f alpha:1.0f]);
         PKFillEllipse(context, CGRectMake(199.0f, 205.0f, 7.0f, 6.0f), [UIColor colorWithRed:0.43f green:0.27f blue:0.16f alpha:1.0f]);
+    } else if ([_reactionIdentifier isEqualToString:@"curious"]) {
+        [@"?" drawAtPoint:CGPointMake(178.0f, 43.0f) withFont:[UIFont boldSystemFontOfSize:34.0f]];
+    } else if ([_reactionIdentifier isEqualToString:@"music"]) {
+        [@"♪" drawAtPoint:CGPointMake(174.0f, 40.0f) withFont:[UIFont boldSystemFontOfSize:39.0f]];
+    } else if ([_reactionIdentifier isEqualToString:@"tickle"]) {
+        [@"Ha!" drawAtPoint:CGPointMake(165.0f, 38.0f) withFont:[UIFont boldSystemFontOfSize:24.0f]];
+    } else if ([_reactionIdentifier isEqualToString:@"tail"] || [_reactionIdentifier isEqualToString:@"surprise"]) {
+        [@"!" drawAtPoint:CGPointMake(191.0f, 92.0f) withFont:[UIFont boldSystemFontOfSize:34.0f]];
+    } else if ([_reactionIdentifier isEqualToString:@"ear"]) {
+        PKStrokeLine(context, CGPointMake(37.0f, 36.0f), CGPointMake(24.0f, 23.0f), accent, 4.0f);
+        PKStrokeLine(context, CGPointMake(48.0f, 27.0f), CGPointMake(44.0f, 10.0f), accent, 4.0f);
     }
 
     CGContextRestoreGState(context);

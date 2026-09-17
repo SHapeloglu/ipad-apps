@@ -16,6 +16,14 @@
     UILabel *_feedbackLabel;
     NSInteger _mathAnswer;
     NSInteger _mathCorrectCount;
+    UIView *_ballBoard;
+    UIButton *_ballButton;
+    UIButton *_ballStartButton;
+    UILabel *_ballStatusLabel;
+    NSInteger _ballRound;
+    NSInteger _ballScore;
+    BOOL _ballGameActive;
+    BOOL _ballCaughtThisRound;
 }
 
 - (id)initWithGameState:(PKGameState *)gameState;

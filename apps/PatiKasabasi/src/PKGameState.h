@@ -50,6 +50,7 @@
             personality:(NSString *)personality;
 
 - (NSString *)performActionIdentifier:(NSString *)identifier;
+- (NSString *)performFeedWithFoodIdentifier:(NSString *)foodIdentifier;
 - (NSString *)buyItemIdentifier:(NSString *)identifier;
 - (NSString *)togglePlacementOfItemIdentifier:(NSString *)identifier;
 - (BOOL)ownsItemIdentifier:(NSString *)identifier;

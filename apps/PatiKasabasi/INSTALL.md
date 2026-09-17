@@ -30,7 +30,7 @@ ls -lh packages/
 scp \
   -o HostKeyAlgorithms=+ssh-rsa \
   -o PubkeyAcceptedAlgorithms=+ssh-rsa \
-  packages/com.olapteknoloji.patikasabasi_0.5.0-alpha5_iphoneos-arm.deb \
+  packages/com.olapteknoloji.patikasabasi_0.7.0-alpha7_iphoneos-arm.deb \
   root@IPAD_IP:/var/mobile/
 ```
 
@@ -46,11 +46,11 @@ ssh \
 iPad terminalinde:
 
 ```bash
-dpkg -i /var/mobile/com.olapteknoloji.patikasabasi_0.5.0-alpha5_iphoneos-arm.deb
+dpkg -i /var/mobile/com.olapteknoloji.patikasabasi_0.7.0-alpha7_iphoneos-arm.deb
 uicache
 killall -9 SpringBoard
 ```
 
 ## 5. Fiziksel test
 
-`TESTING.md` içindeki tüm senaryoları uygula. Özellikle Ev/oda/okul/park/meydan sürüklemelerini, görsel sahneleri, okulun `Evimiz` düğmesini, hayvan yatağını, hareketlerin ekran geçişinde durmasını, eski kayıt geçişini ve 15 dakikalık ekran dolaşımını gerçek iPad 1 üzerinde doğrula. Cihazda görülmeyen davranış doğrulanmış kabul edilmez.
+`TESTING.md` içindeki tüm senaryoları uygula. Özellikle dört dokunma bölgesini, dört mama tercihini, mikro tepkileri, yeni sesleri, üç saniyelik çevrimdışı ses tekrarı ve `Top Yakala` zamanlamasını; ardından mevcut bakım/oda/kasaba sürüklemelerini, ekran geçişinde hareketlerin durmasını, eski kayıt geçişini ve 15 dakikalık ekran dolaşımını gerçek iPad 1 üzerinde doğrula. Cihazda görülmeyen davranış doğrulanmış kabul edilmez.

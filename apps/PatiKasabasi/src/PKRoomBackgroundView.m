@@ -34,6 +34,10 @@
     return nil;
 }
 
+- (CGRect)frameForItemIdentifier:(NSString *)identifier {
+    return [self itemFrameForIdentifier:identifier];
+}
+
 - (id)initWithFrame:(CGRect)frame {
     self = [super initWithFrame:frame];
     if (self) {

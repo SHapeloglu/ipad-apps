@@ -17,5 +17,6 @@
 @property(nonatomic, assign) CGFloat visualScale;
 
 - (id)initWithFrame:(CGRect)frame speciesIdentifier:(NSString *)speciesIdentifier;
+- (NSString *)interactionZoneAtPoint:(CGPoint)point;
 
 @end

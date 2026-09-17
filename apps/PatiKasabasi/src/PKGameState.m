@@ -254,15 +254,11 @@ static NSString * const PKSavedGameKey = @"PatiKasabasiSavedGameV1";
 
 - (NSString *)performActionIdentifier:(NSString *)identifier {
     if (!_pet) return @"Önce bir yavru sahiplenmelisin.";
-    if ([identifier isEqualToString:@"feed"] && _coins < 5) return @"Mama için 5 pati parası gerekiyor.";
+    if ([identifier isEqualToString:@"feed"]) return [self performFeedWithFoodIdentifier:@"food_kibble"];
     NSString *oldStage = [_pet lifeStageIdentifier];
     [self applyCommonNeedDecay];
     NSString *message = nil;
-    if ([identifier isEqualToString:@"feed"]) {
-        _coins -= 5;
-        _pet.satiety += 33 + ([self hasFunctionalItemForIdentifier:@"feed"] ? 5 : 0);
-        message = @"Mamasını afiyetle yedi.";
-    } else if ([identifier isEqualToString:@"play"]) {
+    if ([identifier isEqualToString:@"play"]) {
         NSInteger bonus = [_pet.personalityIdentifier isEqualToString:@"playful"] ? 8 : 0;
         if ([self hasFunctionalItemForIdentifier:@"play"]) bonus += 5;
         _pet.fun += 25 + bonus;
@@ -289,6 +285,32 @@ static NSString * const PKSavedGameKey = @"PatiKasabasiSavedGameV1";
         return @"Bu eylem henüz hazır değil.";
     }
     NSString *extra = [self finishActivityWithQuestEvent:identifier oldStage:oldStage];
+    return [message stringByAppendingString:extra];
+}
+
+- (NSString *)performFeedWithFoodIdentifier:(NSString *)foodIdentifier {
+    if (!_pet) return @"Önce bir yavru sahiplenmelisin.";
+    if (_coins < 5) return @"Mama için 5 pati parası gerekiyor.";
+    NSString *resolvedFood = [foodIdentifier length] > 0 ? foodIdentifier : @"food_kibble";
+    NSString *preference = [_pet foodPreferenceForIdentifier:resolvedFood];
+    NSString *oldStage = [_pet lifeStageIdentifier];
+    [self applyCommonNeedDecay];
+    _coins -= 5;
+    NSInteger bowlBonus = [self hasFunctionalItemForIdentifier:@"feed"] ? 5 : 0;
+    NSString *message = nil;
+    if ([preference isEqualToString:@"favorite"]) {
+        _pet.satiety += 42 + bowlBonus;
+        _pet.affection += 3;
+        message = [NSString stringWithFormat:@"%@ bu mamaya bayıldı!", _pet.name];
+    } else if ([preference isEqualToString:@"disliked"]) {
+        _pet.satiety += 20 + bowlBonus;
+        _pet.fun -= 2;
+        message = [NSString stringWithFormat:@"%@ yüzünü buruşturdu ama biraz yedi.", _pet.name];
+    } else {
+        _pet.satiety += 33 + bowlBonus;
+        message = [NSString stringWithFormat:@"%@ mamasını afiyetle yedi.", _pet.name];
+    }
+    NSString *extra = [self finishActivityWithQuestEvent:@"feed" oldStage:oldStage];
     return [message stringByAppendingString:extra];
 }
 

@@ -13,5 +13,6 @@
 @property(nonatomic, copy) NSString *highlightedItemIdentifier;
 
 - (NSString *)itemIdentifierAtPoint:(CGPoint)point;
+- (CGRect)frameForItemIdentifier:(NSString *)identifier;
 
 @end

@@ -145,6 +145,24 @@ static NSInteger PKClampedNeed(NSInteger value) {
     return @"Yavru";
 }
 
+- (NSString *)favoriteFoodIdentifier {
+    if ([_speciesIdentifier isEqualToString:@"cat"]) return @"food_fish";
+    if ([_speciesIdentifier isEqualToString:@"rabbit"]) return @"food_carrot";
+    if ([_speciesIdentifier isEqualToString:@"panda"]) return @"food_cookie";
+    return @"food_kibble";
+}
+
+- (NSString *)dislikedFoodIdentifier {
+    if ([_speciesIdentifier isEqualToString:@"rabbit"] || [_speciesIdentifier isEqualToString:@"panda"]) return @"food_fish";
+    return @"food_carrot";
+}
+
+- (NSString *)foodPreferenceForIdentifier:(NSString *)identifier {
+    if ([identifier isEqualToString:[self favoriteFoodIdentifier]]) return @"favorite";
+    if ([identifier isEqualToString:[self dislikedFoodIdentifier]]) return @"disliked";
+    return @"neutral";
+}
+
 - (NSInteger)skillLevelForIdentifier:(NSString *)identifier {
     NSNumber *value = [_skills objectForKey:identifier];
     return value ? [value integerValue] : 0;

@@ -38,6 +38,9 @@
 - (NSString *)moodText;
 - (NSString *)lifeStageIdentifier;
 - (NSString *)lifeStageDisplayName;
+- (NSString *)favoriteFoodIdentifier;
+- (NSString *)dislikedFoodIdentifier;
+- (NSString *)foodPreferenceForIdentifier:(NSString *)identifier;
 - (NSInteger)skillLevelForIdentifier:(NSString *)identifier;
 - (NSInteger)increaseSkillIdentifier:(NSString *)identifier amount:(NSInteger)amount;
 - (NSInteger)friendshipForNeighborIdentifier:(NSString *)identifier;

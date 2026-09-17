@@ -12,6 +12,7 @@
 - Hayvan ölümü, hastalık baskısı, kalıcı kayıp veya yetişkin ilişki içeriği yok
 - İhtiyaçlar sıfırda ceza üretmez; yalnızca yardımcı yönlendirme verir
 - Uygulama kapalıyken zaman ve ihtiyaçlar ilerlemez
+- Mikrofon yalnızca çocuğun açıkça bastığı `Konuş` akışında en fazla üç saniye çalışır; ses geçici yerel dosyadan geri oynatılır, kayda/albüme veya ağa gönderilmez
 
 ## Başlangıç
 
@@ -26,6 +27,11 @@ Barınak 500 pati ve `Yeni Bir Yuva` rozeti verir. Pet shop 300 pati ve renkli t
 
 - İhtiyaçlar: Tokluk, Enerji, Temizlik, Eğlence, Sosyal ve Sevgi; her biri 0–100.
 - Eylemler: Besle, Oyna, Uyut, Temizle, Sev. Yerleştirilmiş yatak, mama kabı ve top ilgili eyleme bonus verir.
+- Ev ekranında mama, top ve fırça yavrunun üzerine sürüklenebilir; Besle, Oyna, Uyut, Temizle ve Sev düğmeleri eşdeğer dokunma yolu olarak kalır.
+- Mama kabında normal mama, balık, havuç veya kurabiye seçilebilir. Her türün bir favorisi ve sevmediği bir seçenek vardır; sonuç öngörülebilir, olumlu/komik ve gerçek para içermeyen bir tepkidir.
+- Baş, karın, pati ve kuyruğa dokunmak farklı kısa tepki verir; bu oyun ekonomisini ilerletmez. Bakım sonrasında göz kırpma, bakma, esneme, kulak oynatma veya el sallama tek seferlik mikro hareketi görülebilir.
+- Bakım sonucu yalnızca yazıyla anlatılmaz: mama azalır ve yavru çiğner, top yuvarlanır ve yavru kovalar, yavru yatağa gidip gözlerini kapatır, fırçalamada köpük ve silkelenme, sevgide yaklaşma ve kalpler görünür.
+- İhtiyaç ve anlık istekler kısa metinli düşünce balonunda simgeyle gösterilir; ayrıntılı sistem sonucu küçük geribildirim alanında tutulur.
 - Büyüme: 0–7 puan Yavru, 8–23 Genç, 24+ Yetişkin. Yetişkinlik son aşamadır; yaşlanma veya ölüm yoktur.
 - Her anlamlı etkinlik bir büyüme/eylem puanı verir. Her dört eylem yeni gün ve 20 pati harçlığı getirir.
 - Günün bölümü Sabah, Öğle, Akşam, Gece; mevsimler üç günde bir İlkbahar, Yaz, Sonbahar, Kış olarak döner.
@@ -34,7 +40,7 @@ Barınak 500 pati ve `Yeni Bir Yuva` rozeti verir. Pet shop 300 pati ve renkli t
 
 - Envanter: yatak, mama kabı, top, bitki, kitaplık, piyano, sanat masası ve pati halısı.
 - Odada en fazla altı eşya, önceden belirlenmiş güvenli yuvalara yerleşir.
-- Ayrı oda görünümünde yatağa, mama kabına, topa, halıya veya beceri mobilyasına dokunmak ya da yavruyu eşyanın üzerine bırakmak ilgili eylemi doğrudan başlatır.
+- Ayrı oda görünümünde yatağa, mama kabına, topa, halıya veya beceri mobilyasına dokunmak ya da yavruyu eşyanın üzerine bırakmak ilgili eylemi doğrudan başlatır; yavru eşyanın yanına gider ve sonuç kısa bir görsel diziyle oynar.
 - Hayvan çizimleri önceki görünür boyutun dörtte biri ölçeğindedir; dokunma hedefi görselden bağımsız olarak en az 54×54 kalır.
 - Mama kabı gövde, belirgin üst kenar, görünür mama taneleri ve ön yüzde pati işaretiyle diğer oda nesnelerinden ayrılır.
 - Yatak, gerçek bir hayvan yatağı gibi oval dış çeper, yumuşak iç minder, yükseltilmiş ön kenar ve pati motifi taşır.
@@ -54,7 +60,7 @@ Barınak 500 pati ve `Yeni Bir Yuva` rozeti verir. Pet shop 300 pati ve renkli t
 - İstek tamamlama 20 pati, 12 arkadaşlık ve 1 ilgili beceri verir.
 - Günlük Çiçek Pikniği, Müzik Günü, Renk Şenliği ve Yıldız Gecesi dönüşümlü gelir; katılım 25 pati ve rozet verir.
 - Etkinlikler kaybolmaz; döngü halinde yeniden gelir.
-- Kişiliğe bağlı küçük bağımsız davranışlar her üçüncü eylemde metin olayı olarak görünür.
+- Kişiliğe bağlı küçük bağımsız davranışlar her üçüncü başarılı eylemde görsel olay olarak görünür: Meraklı pencereye, Uykucu yatağa, Sosyal halıya, Müziksever piyanoya, Oyuncu topa yönelir. Uygun eşya yoksa güvenli sabit hedef kullanılır.
 - Haritadaki yavru bir bölgeye sürüklenebilir; bölge düğmelerine dokunma her zaman eşdeğer alternatif olarak kalır.
 - Park, Okul ve Meydan metin listeleri yerine görsel bir sahne kullanır; yavru komşuya, ders/meslek kartına, şenliğe veya günlük isteğe sürüklenebilir.
 - Pati Okulu üst menüde `Evimiz` dönüşünü her zaman gösterir; Dersler ve Meslekler aynı sahnede büyük kartlarla değiştirilir.
@@ -63,7 +69,7 @@ Barınak 500 pati ve `Yeni Bir Yuva` rozeti verir. Pet shop 300 pati ve renkli t
 
 - Bayrak, ağaç ve fener Core Graphics ile bir kez çizilir; hareket sırasında yalnızca küçük görünüm katmanlarının dönüşümü veya şeffaflığı değişir.
 - Ev, oda, dolap, harita, okul, park ve meydandaki tek yavruda en fazla 5 punto yavaş boşta bekleme hareketi kullanılır.
-- Dokunulan kartta yavru kısa süre hedefe gider ve geri döner; sürüklemede parmağı doğrudan izler. Bu, sürekli yapay zekâ döngüsü olmadan Sims benzeri canlılık verir.
+- Dokunulan kartta yavru kısa süre hedefe gider ve geri döner; sürüklemede parmağı doğrudan izler. Bakımda tek bir çizilmiş nesne kısa bir yol izler ve durumu değişir. Bu, sürekli yapay zekâ döngüsü olmadan Sims benzeri canlılık verir.
 - Ekran görünmez olunca animasyonlar kaldırılır. GIF, kare dizisi, SVG yorumlayıcı, sürekli oyun döngüsü veya zamanlayıcı kullanılmaz.
 - Parktaki dört komşu aynı anda sürekli canlandırılmaz; iPad 1 bellek ve işlemci bütçesi önceliklidir.
 
@@ -71,14 +77,15 @@ Barınak 500 pati ve `Yeni Bir Yuva` rozeti verir. Pet shop 300 pati ve renkli t
 
 - Pati Eşleştirme: dört kart çiftini bul.
 - Mama Matematiği: basit toplama sorularından beşini doğru yanıtla.
+- Top Yakala: sekiz kısa turda hareket eden topa en az beş kez dokun.
 - Her mini oyunun günlük ilk tamamlanışı 30 pati verir; oyun hiçbir zaman kilitlenmez.
 - Ev ekranı 512×352 anı fotoğrafı kaydeder. Büyüme, etkinlik, meslek ve rehber anıları otomatik eklenir.
 - Albüm en fazla 12 anı tutar; kasaba rozetleri ayrı koleksiyonda gösterilir.
 
 ## Sanal evcil hayvan oyunlarından güvenli ürün adayları
 
-- Mama çeşitleri: birkaç küçük katalog girdisi, yavrunun sevdiği mama ve kısa komik/olumlu tepki; gerçek para veya rastgele ödül olmadan.
+- Mama çeşitleri: birkaç küçük katalog girdisi, yavrunun sevdiği mama ve kısa komik/olumlu tepki; gerçek para veya rastgele ödül olmadan. İlk sürümü Alpha7'de uygulanmıştır.
 - Oyun parkı oyuncakları: salıncak ya da trambolinde tek dokunuşla başlayan kısa, zamanlayıcısız etkileşim.
 - Bağlamsal tepkiler: seçili oda nesnesine göre özgün yüz/simge tepkisi; hazır karakter veya görsel kopyalanmaz.
 - Anı çıkartmaları: bakım, oyun ve keşiflerden öngörülebilir koleksiyon; ödül çarkı veya sürpriz kutu yoktur.
-- Ses tekrar özelliği bu sürüm için seçilmedi; mikrofon gizliliği, ses belleği ve eski cihaz uyumluluğu ayrıca tasarlanmadan eklenmez.
+- Ses tekrar: açık kullanıcı eylemi, üç saniye sınırı, tek geçici dosya, ekran kapanınca iptal ve sıfır ağ aktarımı kurallarıyla Alpha7'de uygulanmıştır.
