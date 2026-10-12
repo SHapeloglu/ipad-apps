@@ -1,0 +1,8 @@
+Package: com.olap.iphone6sticket
+Name: iPhone6sTicket
+Version: 0.1.0
+Architecture: iphoneos-arm
+Description: iPhone 6s icin native AVFoundation QR etkinlik katilim dogrulama uygulamasi.
+Maintainer: OLAP
+Author: OLAP
+Section: Utilities

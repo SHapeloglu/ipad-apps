@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDisplayName</key>
+    <string>iPhone6s Ticket</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.olap.iphone6sticket</string>
+    <key>CFBundleName</key>
+    <string>iPhone6sTicket</string>
+    <key>CFBundleExecutable</key>
+    <string>iPhone6sTicket</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleVersion</key>
+    <string>0.1.0</string>
+    <key>CFBundleShortVersionString</key>
+    <string>0.1.0</string>
+    <key>LSRequiresIPhoneOS</key>
+    <true/>
+    <key>NSCameraUsageDescription</key>
+    <string>Etkinlik katilim QR kodlarini okumak icin kamera kullanilir.</string>
+    <key>UIDeviceFamily</key>
+    <array><integer>1</integer></array>
+    <key>UIRequiredDeviceCapabilities</key>
+    <array>
+        <string>armv7</string>
+        <string>camera-flash</string>
+    </array>
+    <key>UISupportedInterfaceOrientations</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+    </array>
+</dict>
+</plist>
