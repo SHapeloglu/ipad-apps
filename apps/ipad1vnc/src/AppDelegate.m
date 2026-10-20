@@ -89,6 +89,7 @@
 - (void)migrateSecretsToKeychain;
 - (void)terminalSessionEnded:(NSString*)reason;
 - (void)disconnectManually;
+- (BOOL)handleVNCURL:(NSURL*)url;
 @end
 
 @implementation AppDelegate
@@ -193,7 +194,7 @@
 
 
 - (void)tightChanged { [self saveConnectionSettings]; _statusLabel.text=(_tightSwitch.on?@"Tight ON: 24-bit transport; reconnect":@"Hextile/RAW mode; reconnect"); }
-- (void)tlsChanged { [self saveConnectionSettings]; _statusLabel.text=(_tlsSwitch.on?@"X509 VeNCrypt TLS enabled — reconnect":@"Direct VNC security mode"); }
+- (void)tlsChanged { [self saveConnectionSettings]; _statusLabel.text=(_tlsSwitch.on?@"TLS requested — reconnect required":@"Plain VNC requested — reconnect required"); }
 - (void)vncClientStatsFPS:(CGFloat)fps avgFPS:(CGFloat)avgFPS kbps:(CGFloat)kbps latency:(CGFloat)latency avgLatency:(CGFloat)avgLatency maxLatency:(CGFloat)maxLatency encoding:(NSString*)encoding quality:(NSString*)quality uptime:(NSTimeInterval)uptime totalFrames:(unsigned long long)totalFrames {
     NSInteger sec=(NSInteger)uptime;NSInteger hh=sec/3600,mm=(sec%3600)/60,ss=sec%60;
     NSString *health=@"Excellent";
@@ -539,7 +540,7 @@
     [_tightSwitch addTarget:self action:@selector(tightChanged) forControlEvents:UIControlEventValueChanged];[_connectionPanel addSubview:_tightSwitch];
 
     UILabel *tlsLabel=[[[UILabel alloc] initWithFrame:CGRectMake(185,216,70,28)] autorelease];
-    tlsLabel.backgroundColor=[UIColor clearColor];tlsLabel.textColor=[UIColor whiteColor];tlsLabel.font=[UIFont systemFontOfSize:12];tlsLabel.text=@"X509 TLS";tlsLabel.tag=503;[_connectionPanel addSubview:tlsLabel];
+    tlsLabel.backgroundColor=[UIColor clearColor];tlsLabel.textColor=[UIColor whiteColor];tlsLabel.font=[UIFont systemFontOfSize:12];tlsLabel.text=@"TLS";tlsLabel.tag=503;[_connectionPanel addSubview:tlsLabel];
     _tlsSwitch=[[UISwitch alloc] initWithFrame:CGRectMake(250,216,80,28)];
     _tlsSwitch.on=[defaults boolForKey:@"preferX509TLS"];[_tlsSwitch addTarget:self action:@selector(tlsChanged) forControlEvents:UIControlEventValueChanged];[_connectionPanel addSubview:_tlsSwitch];
 
@@ -724,6 +725,8 @@
     [self saveConnectionSettings];
     NSString *host=[_hostField.text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
     NSInteger port=[_portField.text integerValue];if(![host length]||port<=0){_statusLabel.text=@"Host/port required";return;}
+    BOOL requestedTLS=(_tlsSwitch&&_tlsSwitch.on);
+    _statusLabel.text=(requestedTLS?@"Connecting — TLS requested":@"Connecting — Plain requested");
     [_client disconnect];[_client release];_client=nil;
     NSString *connectHost=host;NSInteger connectPort=port;
 
@@ -745,7 +748,7 @@
     NSInteger qm=_qualityControl.selectedSegmentIndex;
     _client.adaptiveQualityEnabled=(qm==0);
     _client.qualityProfile=(qm==0?VNCQualityBalanced:(VNCQualityProfile)(qm-1));
-    _client.preferTight=_tightSwitch.on;_client.preferX509TLS=_tlsSwitch.on;
+    _client.preferTight=_tightSwitch.on;_client.preferX509TLS=requestedTLS;
     _vncView.client=_client;_vncView.inputMode=(VNCInputMode)_inputModeControl.selectedSegmentIndex;
     _shouldAutoReconnect=YES;[_connectButton setTitle:@"Disconnect" forState:UIControlStateNormal];
     [_client connect];
@@ -918,7 +921,7 @@
 
 - (void)vncClientStatus:(NSString *)status {
     _statusLabel.text=status;
-    if([status isEqualToString:@"Connected"]){if(_reconnectTimer){[_reconnectTimer invalidate];[_reconnectTimer release];_reconnectTimer=nil;}[self setControlsCollapsed:YES animated:YES];[self startClipboardTimer];}
+    if([status hasPrefix:@"Connected"]){if(_reconnectTimer){[_reconnectTimer invalidate];[_reconnectTimer release];_reconnectTimer=nil;}[self setControlsCollapsed:YES animated:YES];[self startClipboardTimer];}
 }
 - (void)vncClientFramebuffer:(UIImage *)image width:(NSUInteger)width height:(NSUInteger)height { (void)width;(void)height;[_vncView updateImage:image]; }
 - (void)vncClientClipboardText:(NSString *)text { if(![text length])return; UIPasteboard *pb=[UIPasteboard generalPasteboard]; pb.string=text; _lastPasteboardChangeCount=[pb changeCount]; _statusLabel.text=@"Clipboard received"; }
@@ -960,21 +963,26 @@
 - (void)buildFilesPanel {
     CGFloat w=_controller.view.bounds.size.width,h=_controller.view.bounds.size.height,pw=MIN(760.0,w-20),ph=MIN(620.0,h-20);
     _filesPanel=[[UIView alloc] initWithFrame:CGRectMake((w-pw)/2,(h-ph)/2,pw,ph)];_filesPanel.autoresizingMask=(UIViewAutoresizingFlexibleLeftMargin|UIViewAutoresizingFlexibleRightMargin|UIViewAutoresizingFlexibleTopMargin|UIViewAutoresizingFlexibleBottomMargin);_filesPanel.backgroundColor=[UIColor colorWithWhite:0.10 alpha:0.98];_filesPanel.hidden=YES;
-    UILabel *title=[[[UILabel alloc] initWithFrame:CGRectMake(15,8,pw-300,30)] autorelease];title.backgroundColor=[UIColor clearColor];title.textColor=[UIColor whiteColor];title.text=@"Remote Files";title.font=[UIFont boldSystemFontOfSize:16];[_filesPanel addSubview:title];
-    _filesUpButton=[[UIButton buttonWithType:UIButtonTypeRoundedRect] retain];_filesUpButton.frame=CGRectMake(pw-280,6,60,32);[_filesUpButton setTitle:@"Up" forState:UIControlStateNormal];[_filesUpButton addTarget:self action:@selector(filesUpTapped) forControlEvents:UIControlEventTouchUpInside];[_filesPanel addSubview:_filesUpButton];
-    UIButton *mkdir=[UIButton buttonWithType:UIButtonTypeRoundedRect];mkdir.frame=CGRectMake(pw-215,6,60,32);[mkdir setTitle:@"New" forState:UIControlStateNormal];[mkdir addTarget:self action:@selector(mkdirRemote) forControlEvents:UIControlEventTouchUpInside];[_filesPanel addSubview:mkdir];
-    UIButton *queue=[UIButton buttonWithType:UIButtonTypeRoundedRect];queue.frame=CGRectMake(pw-330,6,70,32);[queue setTitle:@"Queue" forState:UIControlStateNormal];[queue addTarget:self action:@selector(showTransferQueueTapped) forControlEvents:UIControlEventTouchUpInside];[_filesPanel addSubview:queue];
-    UIButton *pause=[UIButton buttonWithType:UIButtonTypeRoundedRect];pause.frame=CGRectMake(pw-255,6,70,32);[pause setTitle:@"Pause" forState:UIControlStateNormal];[pause addTarget:self action:@selector(pauseTransferTapped) forControlEvents:UIControlEventTouchUpInside];[_filesPanel addSubview:pause];
-    UIButton *upload=[UIButton buttonWithType:UIButtonTypeRoundedRect];upload.frame=CGRectMake(pw-180,6,90,32);[upload setTitle:@"Upload" forState:UIControlStateNormal];[upload addTarget:self action:@selector(uploadLocalFile) forControlEvents:UIControlEventTouchUpInside];[_filesPanel addSubview:upload];
-    UIButton *close=[UIButton buttonWithType:UIButtonTypeRoundedRect];close.frame=CGRectMake(pw-85,6,70,32);[close setTitle:@"Close" forState:UIControlStateNormal];[close addTarget:self action:@selector(closeFilesTapped) forControlEvents:UIControlEventTouchUpInside];[_filesPanel addSubview:close];
+    CGFloat margin=15.0,gap=6.0,buttonH=32.0;
+    UILabel *title=[[[UILabel alloc] initWithFrame:CGRectMake(margin,8,pw-175,30)] autorelease];title.backgroundColor=[UIColor clearColor];title.textColor=[UIColor whiteColor];title.text=@"Remote Files";title.font=[UIFont boldSystemFontOfSize:16];[_filesPanel addSubview:title];
 
-    _downloadURLField=[[UITextField alloc] initWithFrame:CGRectMake(15,44,pw-230,34)];_downloadURLField.borderStyle=UITextBorderStyleRoundedRect;_downloadURLField.placeholder=@"http://server:8085";_downloadURLField.autocorrectionType=UITextAutocorrectionTypeNo;_downloadURLField.autocapitalizationType=UITextAutocapitalizationTypeNone;NSString *saved=[[NSUserDefaults standardUserDefaults] stringForKey:@"filesBaseURL"];if([saved length])_downloadURLField.text=saved;[_filesPanel addSubview:_downloadURLField];
-    _filesTokenField=[[UITextField alloc] initWithFrame:CGRectMake(pw-210,44,120,34)];_filesTokenField.borderStyle=UITextBorderStyleRoundedRect;_filesTokenField.placeholder=@"API token";_filesTokenField.secureTextEntry=YES;_filesTokenField.text=[KeychainStore stringForService:@"com.olap.ipad1vnc" account:@"files.default"];
+    _filesUpButton=[[UIButton buttonWithType:UIButtonTypeRoundedRect] retain];_filesUpButton.frame=CGRectMake(pw-145,6,60,buttonH);[_filesUpButton setTitle:@"Up" forState:UIControlStateNormal];[_filesUpButton addTarget:self action:@selector(filesUpTapped) forControlEvents:UIControlEventTouchUpInside];[_filesPanel addSubview:_filesUpButton];
+    UIButton *mkdir=[UIButton buttonWithType:UIButtonTypeRoundedRect];mkdir.frame=CGRectMake(pw-79,6,64,buttonH);[mkdir setTitle:@"New" forState:UIControlStateNormal];[mkdir addTarget:self action:@selector(mkdirRemote) forControlEvents:UIControlEventTouchUpInside];[_filesPanel addSubview:mkdir];
+
+    CGFloat actionY=42.0;
+    CGFloat actionW=(pw-(margin*2.0)-(gap*3.0))/4.0;
+    UIButton *queue=[UIButton buttonWithType:UIButtonTypeRoundedRect];queue.frame=CGRectMake(margin,actionY,actionW,buttonH);[queue setTitle:@"Queue" forState:UIControlStateNormal];[queue addTarget:self action:@selector(showTransferQueueTapped) forControlEvents:UIControlEventTouchUpInside];[_filesPanel addSubview:queue];
+    UIButton *pause=[UIButton buttonWithType:UIButtonTypeRoundedRect];pause.frame=CGRectMake(margin+(actionW+gap),actionY,actionW,buttonH);[pause setTitle:@"Pause" forState:UIControlStateNormal];[pause addTarget:self action:@selector(pauseTransferTapped) forControlEvents:UIControlEventTouchUpInside];[_filesPanel addSubview:pause];
+    UIButton *upload=[UIButton buttonWithType:UIButtonTypeRoundedRect];upload.frame=CGRectMake(margin+2.0*(actionW+gap),actionY,actionW,buttonH);[upload setTitle:@"Upload" forState:UIControlStateNormal];[upload addTarget:self action:@selector(uploadLocalFile) forControlEvents:UIControlEventTouchUpInside];[_filesPanel addSubview:upload];
+    UIButton *close=[UIButton buttonWithType:UIButtonTypeRoundedRect];close.frame=CGRectMake(margin+3.0*(actionW+gap),actionY,actionW,buttonH);[close setTitle:@"Close" forState:UIControlStateNormal];[close addTarget:self action:@selector(closeFilesTapped) forControlEvents:UIControlEventTouchUpInside];[_filesPanel addSubview:close];
+
+    _downloadURLField=[[UITextField alloc] initWithFrame:CGRectMake(15,82,pw-230,34)];_downloadURLField.borderStyle=UITextBorderStyleRoundedRect;_downloadURLField.placeholder=@"http://server:8085";_downloadURLField.autocorrectionType=UITextAutocorrectionTypeNo;_downloadURLField.autocapitalizationType=UITextAutocapitalizationTypeNone;NSString *saved=[[NSUserDefaults standardUserDefaults] stringForKey:@"filesBaseURL"];if([saved length])_downloadURLField.text=saved;[_filesPanel addSubview:_downloadURLField];
+    _filesTokenField=[[UITextField alloc] initWithFrame:CGRectMake(pw-210,82,120,34)];_filesTokenField.borderStyle=UITextBorderStyleRoundedRect;_filesTokenField.placeholder=@"API token";_filesTokenField.secureTextEntry=YES;_filesTokenField.text=[KeychainStore stringForService:@"com.olap.ipad1vnc" account:@"files.default"];
     if(![_filesTokenField.text length])_filesTokenField.text=[[NSUserDefaults standardUserDefaults] stringForKey:@"filesToken"];[_filesPanel addSubview:_filesTokenField];
-    _browseFilesButton=[[UIButton buttonWithType:UIButtonTypeRoundedRect] retain];_browseFilesButton.frame=CGRectMake(pw-85,44,70,34);[_browseFilesButton setTitle:@"Browse" forState:UIControlStateNormal];[_browseFilesButton addTarget:self action:@selector(browseFilesTapped) forControlEvents:UIControlEventTouchUpInside];[_filesPanel addSubview:_browseFilesButton];
+    _browseFilesButton=[[UIButton buttonWithType:UIButtonTypeRoundedRect] retain];_browseFilesButton.frame=CGRectMake(pw-85,82,70,34);[_browseFilesButton setTitle:@"Browse" forState:UIControlStateNormal];[_browseFilesButton addTarget:self action:@selector(browseFilesTapped) forControlEvents:UIControlEventTouchUpInside];[_filesPanel addSubview:_browseFilesButton];
 
     _remoteEntries=[[NSMutableArray alloc] init];_selectedRemoteIndex=-1;
-    _remoteFilesTable=[[UITableView alloc] initWithFrame:CGRectMake(15,86,pw-30,ph-248) style:UITableViewStylePlain];_remoteFilesTable.delegate=self;_remoteFilesTable.dataSource=self;[_filesPanel addSubview:_remoteFilesTable];
+    _remoteFilesTable=[[UITableView alloc] initWithFrame:CGRectMake(15,124,pw-30,ph-286) style:UITableViewStylePlain];_remoteFilesTable.delegate=self;_remoteFilesTable.dataSource=self;[_filesPanel addSubview:_remoteFilesTable];
     _downloadProgress=[[UIProgressView alloc] initWithProgressViewStyle:UIProgressViewStyleDefault];_downloadProgress.frame=CGRectMake(15,ph-152,pw-120,18);[_filesPanel addSubview:_downloadProgress];
     UIButton *cancel=[UIButton buttonWithType:UIButtonTypeRoundedRect];cancel.frame=CGRectMake(pw-95,ph-163,80,34);[cancel setTitle:@"Cancel" forState:UIControlStateNormal];[cancel addTarget:self action:@selector(cancelDownloadTapped) forControlEvents:UIControlEventTouchUpInside];[_filesPanel addSubview:cancel];
     _downloadStatusLabel=[[UILabel alloc] initWithFrame:CGRectMake(15,ph-132,pw-30,22)];_downloadStatusLabel.backgroundColor=[UIColor clearColor];_downloadStatusLabel.textColor=[UIColor whiteColor];_downloadStatusLabel.font=[UIFont systemFontOfSize:12];_downloadStatusLabel.text=@"Files v2: enter server and token.";[_filesPanel addSubview:_downloadStatusLabel];
@@ -1149,4 +1157,96 @@
     [_exitFullScreenButton release];[_fullScreenButton release];[_settingsButton release];[_filesButton release];[_keyboardButton release];[_qualityControl release];[_inputModeControl release];[_tightSwitch release];[_statsLabel release];[_profilesButton release];[_profiles release];[_speedSlider release];[_speedLabel release];
     [_vncView release];[_keyboardField release];[_statusLabel release];[_connectButton release];[_passwordField release];[_portField release];[_hostField release];[_connectionPanel release];[_controller release];[_window release];[super dealloc];
 }
+
+
+- (NSDictionary*)ipad1vncQueryDictionary:(NSURL*)url {
+    NSMutableDictionary *out=[NSMutableDictionary dictionary];
+    NSString *q=[url query];
+    if(![q length])return out;
+    for(NSString *part in [q componentsSeparatedByString:@"&"]){
+        NSRange eq=[part rangeOfString:@"="];
+        NSString *k=nil,*v=nil;
+        if(eq.location==NSNotFound){k=part;v=@"";}
+        else{k=[part substringToIndex:eq.location];v=[part substringFromIndex:eq.location+1];}
+        k=[k stringByReplacingPercentEscapesUsingEncoding:NSUTF8StringEncoding];
+        v=[v stringByReplacingPercentEscapesUsingEncoding:NSUTF8StringEncoding];
+        if([k length])[out setObject:(v?:@"") forKey:k];
+    }
+    return out;
+}
+
+- (BOOL)handleVNCURL:(NSURL*)url {
+    if(!url||![[[url scheme] lowercaseString] isEqualToString:@"ipad1vnc"])return NO;
+    NSString *action=[[url host] lowercaseString];
+    NSDictionary *q=[self ipad1vncQueryDictionary:url];
+    BOOL autoConnect=[[[q objectForKey:@"autoconnect"] description] boolValue];
+
+    if([action isEqualToString:@"profile"]){
+        NSString *pid=[q objectForKey:@"id"];
+        if(![pid length]){_statusLabel.text=@"External VNC profile request missing id";return YES;}
+        NSInteger found=-1;
+        for(NSUInteger i=0;i<[_profiles count];i++){
+            NSDictionary *p=[_profiles objectAtIndex:i];
+            if([[[p objectForKey:@"id"] description] isEqualToString:pid]){found=(NSInteger)i;break;}
+        }
+        if(found<0){_statusLabel.text=@"External VNC profile not found";return YES;}
+        [self loadProfileAtIndex:found];
+        _statusLabel.text=@"External VNC profile loaded";
+        if(autoConnect&&!_client)[self connectTapped];
+        return YES;
+    }
+
+    if(![action isEqualToString:@"connect"]){_statusLabel.text=@"Unsupported iPad1VNC URL action";return YES;}
+
+    NSString *host=[q objectForKey:@"host"];
+    if(![host length]||[host length]>255){_statusLabel.text=@"External VNC request has invalid host";return YES;}
+
+    // Direct host requests are configuration-only. Never reuse a password left in the UI
+    // for a different externally supplied host. Password-bearing auto-connect belongs to
+    // the saved-profile route, where the secret is loaded locally from Keychain.
+    _hostField.text=host;
+    _passwordField.text=@"";
+
+    NSString *portText=[q objectForKey:@"port"];
+    if([portText length]){
+        NSInteger port=[portText integerValue];
+        if(port<1||port>65535){_statusLabel.text=@"External VNC request has invalid port";return YES;}
+        _portField.text=[NSString stringWithFormat:@"%ld",(long)port];
+    }
+
+    NSString *tls=[q objectForKey:@"tls"];
+    if([tls length])_tlsSwitch.on=[tls boolValue];
+    NSString *tight=[q objectForKey:@"tight"];
+    if([tight length])_tightSwitch.on=[tight boolValue];
+
+    NSString *quality=[q objectForKey:@"quality"];
+    if([quality length]){
+        NSInteger n=[quality integerValue];
+        if(n>=0&&n<=3)_qualityControl.selectedSegmentIndex=n;
+    }
+    NSString *input=[q objectForKey:@"input"];
+    if([input length]){
+        NSInteger n=[input integerValue];
+        if(n>=0&&n<=1){_inputModeControl.selectedSegmentIndex=n;_vncView.inputMode=(VNCInputMode)n;}
+    }
+
+    [self saveConnectionSettings];
+    if(autoConnect){
+        _statusLabel.text=@"External VNC loaded — enter password, then Connect";
+    }else{
+        _statusLabel.text=@"External VNC request loaded";
+    }
+    return YES;
+}
+
+- (BOOL)application:(UIApplication *)application handleOpenURL:(NSURL *)url {
+    (void)application;
+    return [self handleVNCURL:url];
+}
+
+- (BOOL)application:(UIApplication *)application openURL:(NSURL *)url sourceApplication:(NSString *)sourceApplication annotation:(id)annotation {
+    (void)application;(void)sourceApplication;(void)annotation;
+    return [self handleVNCURL:url];
+}
+
 @end
