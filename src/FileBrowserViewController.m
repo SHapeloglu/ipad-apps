@@ -17,13 +17,26 @@
 @implementation FileBrowserViewController
 
 - (id)initWithPath:(NSString *)path {
+    return [self initWithPath:path pickerCallbackScheme:nil];
+}
+
+- (id)initWithPath:(NSString *)path
+pickerCallbackScheme:(NSString *)callbackScheme {
     self = [super initWithStyle:UITableViewStylePlain];
     if (self) {
         _path = [path copy];
+        _pickerCallbackScheme = [callbackScheme copy];
         _showHidden = NO;
         _selectionMode = NO;
         _selectedPaths = [[NSMutableArray alloc] init];
-        self.title = ([[_path lastPathComponent] length] > 0) ? [_path lastPathComponent] : @"Files";
+
+        if ([_pickerCallbackScheme length]) {
+            self.title = @"Dosya Seç";
+        } else {
+            self.title = ([[_path lastPathComponent] length] > 0)
+                ? [_path lastPathComponent]
+                : @"Files";
+        }
     }
     return self;
 }
@@ -67,6 +80,16 @@
 }
 
 - (void)configureNavigation {
+    /*
+     * Picker mode is read-only selection/navigation.
+     * File-manager modification actions must not be exposed here.
+     */
+    if ([_pickerCallbackScheme length]) {
+        self.navigationItem.rightBarButtonItems = nil;
+        self.navigationItem.rightBarButtonItem = nil;
+        return;
+    }
+
     if (_selectionMode) {
         UIBarButtonItem *cancel =
             [[[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemCancel
@@ -194,7 +217,11 @@
     cell.textLabel.text = item.name;
     cell.detailTextLabel.text = [item formattedSize];
 
-    if (_selectionMode) {
+    if ([_pickerCallbackScheme length]) {
+        cell.accessoryType = item.isDirectory
+            ? UITableViewCellAccessoryDisclosureIndicator
+            : UITableViewCellAccessoryNone;
+    } else if (_selectionMode) {
         cell.accessoryType = [_selectedPaths containsObject:item.path]
             ? UITableViewCellAccessoryCheckmark
             : UITableViewCellAccessoryNone;
@@ -222,8 +249,42 @@
 
     if (item.isDirectory) {
         FileBrowserViewController *browser =
-            [[[FileBrowserViewController alloc] initWithPath:item.path] autorelease];
+            [[[FileBrowserViewController alloc]
+                initWithPath:item.path
+                pickerCallbackScheme:_pickerCallbackScheme] autorelease];
         [self.navigationController pushViewController:browser animated:YES];
+        return;
+    }
+
+    /*
+     * In picker mode iPad1Files does not inspect, copy, move or render
+     * the selected file. It returns the same physical absolute path.
+     * File-type validation belongs to the receiving application.
+     */
+    if ([_pickerCallbackScheme length]) {
+        CFStringRef encodedRef =
+            CFURLCreateStringByAddingPercentEscapes(
+                kCFAllocatorDefault,
+                (CFStringRef)item.path,
+                NULL,
+                CFSTR(":/?#[]@!$&'()*+,;=%"),
+                kCFStringEncodingUTF8);
+
+        NSString *encodedPath = (NSString *)encodedRef;
+
+        NSString *urlString =
+            [NSString stringWithFormat:@"%@://open?path=%@",
+                                       _pickerCallbackScheme,
+                                       encodedPath];
+
+        NSURL *callbackURL = [NSURL URLWithString:urlString];
+
+        if (encodedRef) CFRelease(encodedRef);
+
+        if (callbackURL) {
+            [[UIApplication sharedApplication] openURL:callbackURL];
+        }
+
         return;
     }
 
@@ -744,6 +805,7 @@
     [_selectedPaths release];
     [_pendingOperation release];
     [_pendingDestination release];
+    [_pickerCallbackScheme release];
     [super dealloc];
 }
 
