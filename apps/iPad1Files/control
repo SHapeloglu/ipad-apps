@@ -1,0 +1,9 @@
+Package: com.olap.ipad1files
+Name: iPad1 Files
+Version: 1.0.0-beta1
+Architecture: iphoneos-arm
+Description: Lightweight shared file manager and storage foundation for iPad 1 / iOS 5.1.1 applications.
+Maintainer: OLAP
+Author: OLAP
+Section: Utilities
+Depends: firmware (>= 5.0)
