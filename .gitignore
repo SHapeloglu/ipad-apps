@@ -1,0 +1,5 @@
+paketler/
+.theos/
+obj/
+*.deb
+node_modules/
