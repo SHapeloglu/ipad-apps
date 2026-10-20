@@ -1,0 +1,28 @@
+#import <UIKit/UIKit.h>
+#import <CoreGraphics/CoreGraphics.h>
+#import "ThumbnailViewController.h"
+#import "SearchViewController.h"
+#import "OutlineViewController.h"
+#import "DocumentNavigatorViewController.h"
+@class PDFPageView,AnnotationOverlayView;
+@interface PDFReaderViewController : UIViewController <UIScrollViewDelegate,UIActionSheetDelegate,ThumbnailViewControllerDelegate,SearchViewControllerDelegate,OutlineViewControllerDelegate,DocumentNavigatorViewControllerDelegate,UIAlertViewDelegate> {
+    NSString *_pdfPath; CGPDFDocumentRef _document; NSUInteger _currentPage,_pageCount;
+    UIScrollView *_scrollView; PDFPageView *_pageView; AnnotationOverlayView *_overlay;
+    UIToolbar *_toolbar; UILabel *_pageLabel; UIBarButtonItem *_previousButton,*_nextButton,*_bookmarkButton,*_referenceButton;
+    UIPopoverController *_referencePopover;
+    NSUInteger _referencePage;
+    CGFloat _sessionZoomScale;
+    NSArray *_bookmarkSheetPages;
+    NSArray *_noteSheetIndexes;
+    NSArray *_highlightSheetIndexes;
+    NSUInteger _editingAnnotationIndex;
+    NSUInteger _editingHighlightIndex;
+    UITapGestureRecognizer *_doubleTapRecognizer;
+    UITapGestureRecognizer *_edgeTapRecognizer;
+    NSMutableArray *_backHistory;
+    NSMutableArray *_forwardHistory;
+    BOOL _restoringHistory;
+    BOOL _pageLocked;
+}
+- (id)initWithPDFPath:(NSString *)path;
+@end
