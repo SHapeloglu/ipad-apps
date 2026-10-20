@@ -1,0 +1,66 @@
+#import "GameView.h"
+#import <QuartzCore/QuartzCore.h>
+#import "Game.h"
+#import "Car.h"
+#import "Road.h"
+
+static void CGContextFillRoundedRect(CGContextRef c, CGRect r, CGFloat radius) {
+    CGFloat x=CGRectGetMinX(r), y=CGRectGetMinY(r), w=CGRectGetWidth(r), h=CGRectGetHeight(r);
+    CGFloat rr=MIN(radius, MIN(w,h)/2.0f);
+    CGContextBeginPath(c);
+    CGContextMoveToPoint(c,x+rr,y); CGContextAddLineToPoint(c,x+w-rr,y); CGContextAddArcToPoint(c,x+w,y,x+w,y+rr,rr);
+    CGContextAddLineToPoint(c,x+w,y+h-rr); CGContextAddArcToPoint(c,x+w,y+h,x+w-rr,y+h,rr);
+    CGContextAddLineToPoint(c,x+rr,y+h); CGContextAddArcToPoint(c,x,y+h,x,y+h-rr,rr);
+    CGContextAddLineToPoint(c,x,y+rr); CGContextAddArcToPoint(c,x,y,x+rr,y,rr); CGContextClosePath(c); CGContextFillPath(c);
+}
+
+@interface GameView () { Game *_game; Car *_car; Road *_road; CADisplayLink *_displayLink; NSTimeInterval _lastTime; BOOL _paused; }
+@end
+@implementation GameView
+- (id)initWithFrame:(CGRect)frame {
+    if((self=[super initWithFrame:frame])) {
+        self.opaque=YES; self.multipleTouchEnabled=YES;
+        _game=[[Game alloc] init]; _car=[[Car alloc] init]; _road=[[Road alloc] init];
+        _displayLink=[CADisplayLink displayLinkWithTarget:self selector:@selector(tick:)];
+        [_displayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
+        _lastTime=0;
+    } return self;
+}
+- (void)tick:(CADisplayLink *)link {
+    if(_paused) return;
+    if(_lastTime==0) _lastTime=link.timestamp;
+    float dt=(float)(link.timestamp-_lastTime); _lastTime=link.timestamp;
+    [_game update:dt]; [self setNeedsDisplay];
+}
+- (void)drawRect:(CGRect)rect {
+    CGContextRef c=UIGraphicsGetCurrentContext();
+    CGContextSetFillColorWithColor(c,[UIColor colorWithRed:0.38 green:0.68 blue:0.92 alpha:1].CGColor); CGContextFillRect(c,rect);
+    [_road drawInRect:rect scroll:_game.roadScroll];
+    CGFloat w=CGRectGetWidth(rect);
+    CGContextSetFillColorWithColor(c,[UIColor colorWithWhite:0 alpha:0.55].CGColor); CGContextFillRect(c,CGRectMake(0,0,w,54));
+    NSString *spd=[NSString stringWithFormat:@"SPEED %03d",(int)_game.speed]; NSString *time=[NSString stringWithFormat:@"TIME %05.1f",_game.elapsed];
+    [[UIColor whiteColor] set];
+    UIFont *hudFont = [UIFont boldSystemFontOfSize:22];
+    [spd drawAtPoint:CGPointMake(18,14) withFont:hudFont];
+    [time drawAtPoint:CGPointMake(w-145,14) withFont:hudFont];
+    [_car drawInRect:rect centerX:_game.playerX steering:(_game.playerX*0.2f)];
+    [self drawControls:rect];
+}
+- (void)drawControls:(CGRect)r {
+    CGContextRef c=UIGraphicsGetCurrentContext(); CGFloat h=CGRectGetHeight(r), w=CGRectGetWidth(r);
+    CGContextSetFillColorWithColor(c,[UIColor colorWithWhite:0 alpha:0.30].CGColor);
+    CGContextFillRoundedRect(c,CGRectMake(20,h-88,150,64),12); CGContextFillRoundedRect(c,CGRectMake(w-170,h-88,150,64),12);
+    [[UIColor whiteColor] set];
+    UIFont *controlFont = [UIFont boldSystemFontOfSize:18];
+    [@"<   STEER   >" drawAtPoint:CGPointMake(42,h-70) withFont:controlFont];
+    [@"BRAKE     GAS" drawAtPoint:CGPointMake(w-157,h-70) withFont:controlFont];
+}
+- (void)updateTouch:(NSSet *)touches { BOOL l=NO,r=NO,g=NO,b=NO; CGFloat w=self.bounds.size.width,h=self.bounds.size.height; for(UITouch *t in touches){CGPoint p=[t locationInView:self]; if(p.y>h-105){if(p.x< w*0.24)l=YES; else if(p.x<w*0.42)r=YES; else if(p.x>w*0.78)g=YES; else if(p.x>w*0.58)b=YES;}} [_game setLeft:l];[_game setRight:r];[_game setAccelerate:g];[_game setBrake:b];}
+- (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event { [self updateTouch:touches]; }
+- (void)touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event { [self updateTouch:touches]; }
+- (void)touchesEnded:(NSSet *)touches withEvent:(UIEvent *)event { [self updateTouch:[NSSet set]]; }
+- (void)touchesCancelled:(NSSet *)touches withEvent:(UIEvent *)event { [self updateTouch:[NSSet set]]; }
+- (void)pauseGame { _paused=YES; }
+- (void)resumeGame { _paused=NO; _lastTime=0; }
+- (void)dealloc { [_displayLink invalidate]; [_displayLink release]; [_game release]; [_car release]; [_road release]; [super dealloc]; }
+@end
