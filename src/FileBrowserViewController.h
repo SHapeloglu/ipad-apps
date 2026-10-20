@@ -13,8 +13,16 @@
     NSMutableArray *_selectedPaths;
     NSString *_pendingOperation;
     NSString *_pendingDestination;
+
+    /*
+     * External file-picker mode.
+     * nil in normal iPad1Files operation.
+     */
+    NSString *_pickerCallbackScheme;
 }
 
 - (id)initWithPath:(NSString *)path;
+- (id)initWithPath:(NSString *)path
+pickerCallbackScheme:(NSString *)callbackScheme;
 
 @end
