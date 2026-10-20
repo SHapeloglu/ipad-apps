@@ -1,12 +1,12 @@
-# iPad1Files Fiziksel Cihaz Testleri
+# iPad1Files Physical Device Testing
 
-Hedef:
+Target:
 ```text
 iPad 1 / 256 MB / iOS 5.1.1 / armv7
 IP: 192.168.1.100
 ```
 
-Derleme:
+Build:
 ```bash
 cd ~/projects/iPad1Files-v1.0.0-beta1
 make clean
@@ -14,50 +14,54 @@ rm -rf .theos
 make package FINALPACKAGE=1
 ```
 
-## Çekirdek regresyon
+## Core regression
 
-- [x] derleme / paketleme / kurulum / açılış
-- [x] kopyala / taşı / sil
-- [x] çoklu seçim / tümünü seç
-- [x] çakışmaya karşı güvenli adlandırma
-- [x] köke gitme
-- [x] korumalı alanda "tümünü seç" gizli
-- [x] korumalı hedefte üzerine yazma engelli
-- [x] normal üzerine yaz / yeni ad akışı
-- [x] ZIP entegrasyonu çekirdek dosya işlemlerini bozmadı
-- [ ] Türkçe yollar
-- [ ] favorilerin kalıcılığı
-- [ ] büyük dizin / görsel bellek kullanımı
+- [x] compile/package/install/launch
+- [x] copy/move/delete
+- [x] multi-select/select-all
+- [x] collision-safe naming
+- [x] root navigation
+- [x] protected area select-all hidden
+- [x] protected destination overwrite blocked
+- [x] normal overwrite/new-name flow
+- [x] ZIP integration did not break core file operations
+- [ ] Turkish paths
+- [ ] favorites persistence
+- [ ] large directory/image memory
 
-## ZIP 1. aşama — GEÇTİ
+## ZIP Phase 1 — PASS
 
-- [x] ZIP arşiv içerik ekranında açılıyor
-- [x] ZIP içerik listesi
-- [x] klasör yapılı ZIP
-- [x] bulunulan klasöre "Tümünü Çıkar"
-- [x] tekrar çıkarma `(2)` oluşturuyor
-- [x] Klasör Seçici ile çıkarma
-- [x] çoklu seçimden ZIP oluşturma
-- [x] oluşturulan ZIP'i yeniden açma / çıkarma
+- [x] ZIP opens to archive content screen
+- [x] ZIP content list
+- [x] folder-structured ZIP
+- [x] Extract All to current folder
+- [x] repeated extract creates `(2)`
+- [x] extract via Folder Picker
+- [x] multi-select ZIP creation
+- [x] created ZIP reopen/extract
+- [x] `../` traversal ZIP rejected; controlled error; no outside write
+- [x] absolute-path ZIP rejected; controlled error; no outside write
+- [x] CRC-corrupt ZIP rejected during extraction after `8ea31d7`
+- [x] CRC failure: no crash, no partial output file, no leftover extraction directory
 
-## ZIP 1. aşama — bekleyen
+## ZIP Phase 1 — pending / failures
 
-- [ ] Türkçe karakterli ZIP dosya adı
-- [ ] Türkçe karakterli öğe adı
-- [ ] boş ZIP
-- [ ] bozuk ZIP
-- [ ] yarım kalmış ZIP
-- [ ] `../` ZIP Slip örneği
-- [ ] mutlak yol örneği
-- [ ] symlink örneği
-- [ ] çok sayıda küçük öğe
-- [ ] tek büyük öğe
-- [ ] yetersiz disk alanı
-- [ ] bellek baskısı
-- [ ] şifreli ZIP'in reddedilmesi
-- [ ] ZIP64'ün reddedilmesi
+- [ ] Turkish-character ZIP filename
+- [ ] Turkish-character entry name
+- [ ] empty ZIP — FAIL: valid empty ZIP shows `ZIP dosyası açılamadı.`
+- [x] CRC-corrupt ZIP
+- [ ] truncated ZIP
+- [x] `../` ZIP Slip sample
+- [x] absolute path sample
+- [ ] symlink sample
+- [ ] many small entries
+- [ ] large single entry
+- [ ] insufficient disk space
+- [ ] memory pressure
+- [ ] encrypted ZIP rejection
+- [ ] ZIP64 rejection
 
-Beklenen:
+Expected:
 ```text
 ../ traversal -> reject
 absolute path -> reject
@@ -66,19 +70,17 @@ encrypted ZIP -> unsupported
 ZIP64 -> unsupported in Phase 1
 ```
 
-(`../` yol geçişi, mutlak yol ve symlink reddedilir; şifreli ZIP ve ZIP64 1. aşamada desteklenmez.)
+## Open With
 
-## "Birlikte Aç"
-
-- [ ] PDFReader yokken çökme yok
-- [ ] alıcı uygulama kayıttan çözümleniyor
-- [ ] yüzde-kodlanmış mutlak yol
-- [ ] yinelenen PDF yok
+- [ ] PDFReader yokken crash yok
+- [ ] receiver registry resolve
+- [ ] percent-encoded absolute path
+- [ ] no duplicate PDF
 
 ## Downloads
 
-- [ ] PDF -> PDFs önerisi
-- [ ] görsel -> Images
-- [ ] ses -> Music
-- [ ] arşiv -> Archives
-- [ ] otomatik taşıma yok
+- [ ] PDF -> PDFs suggestion
+- [ ] image -> Images
+- [ ] audio -> Music
+- [ ] archive -> Archives
+- [ ] no auto-move

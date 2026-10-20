@@ -9,7 +9,7 @@
 + (IP1FileType)typeForPath:(NSString *)path {
     NSString *ext = [[path pathExtension] lowercaseString];
 
-    if ([self extension:ext inList:[NSArray arrayWithObjects:@"txt", @"log", @"md", @"csv", @"json", @"xml", @"plist", nil]]) {
+    if ([self extension:ext inList:[NSArray arrayWithObjects:@"txt", @"log", @"csv", @"json", @"xml", @"plist", nil]]) {
         return IP1FileTypeText;
     }
     if ([self extension:ext inList:[NSArray arrayWithObjects:@"jpg", @"jpeg", @"png", @"gif", @"bmp", nil]]) {
@@ -21,7 +21,7 @@
     if ([self extension:ext inList:[NSArray arrayWithObjects:@"mp3", @"m4a", @"aac", @"wav", nil]]) {
         return IP1FileTypeAudio;
     }
-    if ([self extension:ext inList:[NSArray arrayWithObjects:@"mp4", @"m4v", @"mov", @"avi", nil]]) {
+    if ([self extension:ext inList:[NSArray arrayWithObjects:@"mkv", @"mp4", @"m4v", @"mov", @"avi", nil]]) {
         return IP1FileTypeVideo;
     }
     if ([self extension:ext inList:[NSArray arrayWithObjects:@"zip", @"rar", @"7z", @"tar", @"gz", nil]]) {

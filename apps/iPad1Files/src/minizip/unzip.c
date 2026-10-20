@@ -683,8 +683,25 @@ local unzFile unzOpenInternal (const void *path,
     else
     {
         central_pos = unz64local_SearchCentralDir(&us.z_filefunc,us.filestream);
+
+        /*
+         * A valid classic empty ZIP consists only of the 22-byte
+         * End Of Central Directory record. In that case the EOCD
+         * signature is legitimately located at offset 0.
+         *
+         * The legacy search helper also returns 0 for "not found",
+         * so distinguish those two cases by checking the signature
+         * directly at file offset 0.
+         */
         if (central_pos==0)
-            err=UNZ_ERRNO;
+        {
+            if ((ZSEEK64(us.z_filefunc, us.filestream,
+                         0, ZLIB_FILEFUNC_SEEK_SET)!=0) ||
+                (unz64local_getLong(&us.z_filefunc,
+                                    us.filestream,&uL)!=UNZ_OK) ||
+                (uL != 0x06054b50))
+                err=UNZ_ERRNO;
+        }
 
         us.isZip64 = 0;
 

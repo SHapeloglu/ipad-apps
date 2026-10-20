@@ -14,6 +14,8 @@ iPad1Files_FILES = \
 	src/IP1FileManager.m \
 	src/IP1AppLauncher.m \
 	src/IP1FavoritesManager.m \
+	src/IP1RecentManager.m \
+	src/IP1RootAuthorization.m \
 	src/IP1DiskInfo.m \
 	src/IP1AppRegistry.m \
 	src/ArchiveManager.m \
