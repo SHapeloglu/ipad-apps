@@ -152,7 +152,8 @@ Do not begin until Phase 2 hardware tests pass and the Phase 3 screen model is u
 ### Authentication
 
 - [ ] existing SSH key usage
-- [ ] optional identity-file selection
+- [ ] optional identity-file path usage
+- [ ] identity-file chooser handoff to iPad1Files (do not embed file browser)
 - [ ] legacy algorithm options only if actually needed
 
 ---
@@ -161,7 +162,8 @@ Do not begin until Phase 2 hardware tests pass and the Phase 3 screen model is u
 
 - [ ] quick commands
 - [ ] command history UX
-- [ ] iPad1Files shortcut
+- [ ] `Shared Root` shell shortcut -> `cd /var/mobile/Media/iPad1Files/`
+- [ ] optional `Files App` launcher -> iPad1Files (integration only)
 - [ ] paste safety for large text
 - [ ] font size persistence
 - [ ] profile persistence
@@ -173,7 +175,7 @@ Suggested quick commands:
 ```text
 Disk       -> df -h
 Processes  -> ps
-Files      -> cd /var/mobile/Media/iPad1Files/
+Shared Root -> cd /var/mobile/Media/iPad1Files/
 ```
 
 Do not add too many hardcoded commands.
@@ -193,6 +195,23 @@ Do not add too many hardcoded commands.
 - [ ] child shell exits unexpectedly
 - [ ] PTY read error
 - [ ] app memory warning behavior
+
+---
+
+## Ownership guardrails
+
+Do not add these capabilities inside iPad1Terminal:
+
+- [ ] general file browser / file picker — owner: iPad1Files
+- [ ] copy/move/delete/archive GUI — owner: iPad1Files
+- [ ] graphical SFTP browser — owner: iPad1Files
+- [ ] PDF/text reader UI — owner: iPad1PDFReader
+- [ ] managed FTP/download queue/resume UI — owner: iPad1FTPDownloader
+- [ ] graphical remote desktop — owner: iPad1VNC
+
+Terminal may expose lightweight launchers/handoffs to these applications after the common integration contract is implemented and physically validated.
+
+Manual shell commands such as `cd`, `cat`, `less`, `scp`, `sftp`, `ftp`, `curl`, and `wget` remain valid terminal behavior when binaries are present.
 
 ---
 

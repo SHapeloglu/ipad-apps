@@ -4,17 +4,22 @@
 #import "TerminalANSIParser.h"
 
 @interface TerminalViewController : UIViewController
-    <LocalTerminalSessionDelegate, TerminalInputViewDelegate>
+    <LocalTerminalSessionDelegate, TerminalInputViewDelegate, UIAlertViewDelegate>
 {
     UITextView *_terminalView;
     TerminalInputView *_inputCaptureView;
-    UIView *_specialKeyBar;
+    UIScrollView *_specialKeyBar;
+    UIButton *_controlModifierButton;
 
     LocalTerminalSession *_session;
     TerminalANSIParser *_ansiParser;
 
     NSMutableString *_scrollback;
     NSUInteger _maxScrollbackCharacters;
+
+    CGFloat _terminalFontSize;
+    BOOL _controlModifierActive;
+    NSString *_pendingPaste;
 }
 
 - (id)initWithLocalShell;

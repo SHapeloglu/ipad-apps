@@ -66,6 +66,48 @@ The user explicitly wants a real terminal application, not merely a thin SSH lau
 
 ---
 
+## Feature ownership gate
+
+Before proposing, implementing, or accepting any feature, determine which iPad1 Suite application owns the capability.
+
+Ownership:
+
+```text
+iPad1Terminal      = local shell + PTY + terminal emulation + SSH
+iPad1Files         = file/folder browsing, selection, management, archive UI
+iPad1PDFReader     = PDF/text reading and reader-specific UI
+iPad1FTPDownloader = managed downloads, queue/resume/retry/destination workflow
+iPad1VNC           = graphical remote desktop
+```
+
+Mandatory decision gate:
+
+```text
+1. Is this intrinsically a terminal/SSH capability?
+   -> yes: Terminal may own it.
+
+2. Is it naturally owned by Files / Reader / Downloader / VNC?
+   -> yes: do NOT implement it in Terminal.
+
+3. Can Terminal satisfy the use case by launching the specialist app?
+   -> yes: use the integration contract instead of duplicating functionality.
+```
+
+Examples that must NOT be implemented inside iPad1Terminal:
+
+- general file browser or file picker
+- copy/move/delete/archive GUI
+- graphical SFTP browser
+- PDF/text reader UI
+- download manager / queue / resume UI
+- VNC or graphical remote desktop renderer
+
+Normal shell commands such as `cd`, `cat`, `less`, `scp`, `ftp`, or `curl` remain valid terminal behavior when the corresponding binaries exist. This does not transfer ownership of graphical file/download/reader features to Terminal.
+
+If ownership is ambiguous, stop feature implementation and resolve ownership against `INTEGRATION.md` first.
+
+---
+
 ## Code organization
 
 Keep responsibilities separate:
