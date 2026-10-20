@@ -4,7 +4,7 @@ Bu dosya yalnız **dizin**: her uygulama için sürüm, durum, ayrıntı nerede.
 
 ## Önce karar bekleyenler
 - [ ] **Dal kararları** (`dal/*`): hangileri `main`'e alınacak, hangisi silinecek?
-  - `dal/iPad1PDFReader/wsl-feature-text-reader-v1` — WSL'de **102 commit** (metin okuyucu); sunucudaki GitHub kopyasında yok. Asıl güncel iş büyük olasılıkla bu. `main`'deki 7 doküman commit'i bu dalda yok → birleştirilecek.
+  - ~~`dal/iPad1PDFReader/wsl-feature-text-reader-v1`~~ — **2026-10-20 `main`'e alındı** (metin/Markdown/DOCX okuyucular; sunucudaki "ağ bileşenlerini kaldır" ve "dosya seçimi iPad1Files'tan" değişiklikleri korundu; Makefile'a CoreText + libz eklendi). Dokümanlar (`*.md`) WSL sürümü (İngilizce) — sunucudaki Türkçe çeviri `dal/iPad1PDFReader/...`/geçmişte duruyor, gerekirse yeniden çevrilir. Derlenip fiziksel iPad 1'de denenmedi.
   - `dal/iPad1Files/*` — ZIP CRC/boş arşiv düzeltmeleri, PDFReader dosya seçici, WSL'deki commit edilmemiş 12 değişiklik (`wsl-wip`).
   - `dal/iPad1Terminal/wsl-wip` (5 dosya), `dal/ipad1docx/wsl-wip` (2 dosya) — commit edilmemişti.
   - `dal/ipad1vnc/wsl-beta3` — WSL'deki 2.2.0-beta3 sunucudaki beta3'ten **farklı kod** içeriyor (TLS etiketi, `handleVNCURL`); `dal/ipad1vnc/sunucu-wip` — sunucuda commit edilmemiş `session.md`/`task.md`.
@@ -16,7 +16,7 @@ Bu dosya yalnız **dizin**: her uygulama için sürüm, durum, ayrıntı nerede.
 | Uygulama | Güncel sürüm | Eski sürüm etiketi | Ayrıntı (klasör içinde) |
 |---|---|---|---|
 | ipad1vnc | 2.2.0-beta3 | 15 | task.md, backlog.md, session.md |
-| iPad1PDFReader | 3.1.0 (`main`); WSL dalı daha ileri | 5 | TASKS.md, BACKLOG.md |
+| iPad1PDFReader | 3.1.0 (metin okuyucu dahil) | 5 | TASKS.md, BACKLOG.md |
 | iPad1Files | 1.0.0-beta1 | 1 | TASKS.md, BACKLOG.md |
 | iPad1Terminal | 0.2.1-alpha1 | 2 | TASKS.md, BACKLOG.md |
 | ipad1docx | 0.1.0 | — | TASKS.md, BACKLOG.md |
