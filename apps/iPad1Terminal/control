@@ -1,0 +1,9 @@
+Package: com.olap.ipad1terminal
+Name: iPad1Terminal
+Version: 0.2.1-alpha1
+Architecture: iphoneos-arm
+Description: Lightweight local shell and SSH terminal for jailbroken iPad 1 / iOS 5.1.1.
+Maintainer: Olap Teknoloji
+Author: Olap Teknoloji
+Section: Utilities
+Depends: firmware (>= 5.1)
