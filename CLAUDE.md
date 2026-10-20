@@ -1,46 +1,59 @@
 # CLAUDE.md
 
-Kodu değiştirmeden önce `SESSION.md`, `ARCHITECTURE.md`, `INTEGRATION.md`, `TASKS.md`, `TESTING.md` ve `AGENTS.md` dosyalarını oku.
+Read `SESSION.md`, `ARCHITECTURE.md`, `INTEGRATION.md`, `TASKS.md`, `TESTING.md` and `AGENTS.md` before changing code.
 
-## Temel kural
-**iPad 1 kararlılığını asla özellik sayısıyla takas etme.**
+## Core rule
+**Never trade iPad 1 stability for feature count.**
 
-Kalıcı hedef:
+Permanent target:
 - iPad 1 / Apple A4
 - 256 MB RAM
 - iOS 5.1.1
 - armv7
 - non-ARC / MRC
-- Theos + eski iPhoneOS6.1 SDK
+- Theos + legacy iPhoneOS6.1 SDK
 
-## Ekosistem kuralı
-iPad1PDFReader'ı monolitik bir uygulamaya dönüştürme.
+## Ecosystem rule
+Do not turn iPad1PDFReader into a monolith.
 
-- Yerel dosya yönetimi / ortak depolama / "Birlikte Aç" iPad1Files'ındır.
-- FTP transferi / gezinme / kuyruk / devam iPad1FTPDownloader'ındır.
-- PDF okuma / arama / yeniden akış / notlandırma / sayfa işlemleri iPad1PDFReader'ındır.
+- iPad1Files owns local file management/shared storage/Open With.
+- iPad1FTPDownloader owns FTP transfer/browse/queue/resume.
+- iPad1PDFReader owns PDF reading/search/reflow/annotation/page operations plus a small read-only Text Reader.
 
-Motorları çoğaltmak yerine hafif devri tercih et.
+Text Reader must remain a viewer; file management stays in iPad1Files.
 
-## Kod stili
-- iOS 5 ile uyumlu eski Objective-C;
-- açık manuel bellek sahipliği;
-- önce Foundation / UIKit / CoreGraphics;
-- kontrolsüz eşzamanlılıktan kaçın;
-- geçici metin / görsel / geometri kısa ömürlü olsun;
-- liste ve önbelleklerde kesin üst sınırlar;
-- desteklenmeyen PDF yapılarında nazikçe başarısız ol.
+Prefer lightweight handoff over duplicated engines.
 
-## Güncel geliştirme önceliği
-Fosforlu renklerle, yalnızca sayfa bazlı gerçek metin vurgulama.
+## Coding style
+- legacy Objective-C compatible with iOS 5;
+- explicit manual memory ownership;
+- Foundation/UIKit/CoreGraphics first;
+- avoid uncontrolled concurrency;
+- keep temporary text/images/geometry short-lived;
+- use hard caps for lists/caches;
+- fail gracefully on unsupported PDF/file constructs.
 
-Tüm belgeyi kapsayan metin/glif dizini oluşturma. OCR/AI ekleme. Görsel PDF'ler için bölge vurgulamayı yedek olarak koru.
+## Current development priority
+Current branch: `feature/text-reader-v1`.
 
-## Yeni sohbette devam
-Her zaman şuradan devam et:
+Finish the lightweight Text Reader and prove it with the legacy toolchain and physical iPad 1.
+
+Rules:
+- separate `TextReaderViewController`;
+- `UITextView`, UTF-8, read-only;
+- 2 MiB source-file hard limit before full load;
+- no editor/save;
+- no syntax highlighting/render/parser stack;
+- no OCR/AI/ML;
+- existing PDF renderer/search/bookmark/highlight/note behavior must not regress.
+
+Page-local real text highlight remains bounded and still requires full physical validation; do not create whole-document glyph/text indexes.
+
+## New chat continuation
+Always continue from:
 
 ```text
-SESSION.md -> Hemen yapılacak sonraki adım
+SESSION.md -> Immediate next action
 ```
 
-Repo dokümantasyonu aksini söylüyorsa daha eski bir sohbet durumunu varsayma.
+Do not infer an older chat state if repository documentation says otherwise.

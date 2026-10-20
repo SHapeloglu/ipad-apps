@@ -1,209 +1,339 @@
 # ARCHITECTURE.md
 
-## Hedef
-**Orijinal iPad 1 / Apple A4 / 256 MB RAM / iOS 5.1.1** üzerinde, kararlılığı özellik sayısına feda etmeden, pratikte mümkün olan en yetenekli PDF okuyucuyu yapmak.
+## Goal
+Build the most capable **lightweight document reader** practical on an **original iPad 1 / Apple A4 / 256 MB RAM / iOS 5.1.1** without sacrificing stability for feature count.
 
-## Değiştirilemez platform
+The app remains named `iPad1PDFReader` for compatibility, but its read-only scope now includes:
+
+```text
+.pdf                  -> PDFReaderViewController
+.txt/.log/.csv/...     -> TextReaderViewController
+.md                   -> TextReaderViewController + optional lightweight Markdown Reading Mode
+.docx                 -> DocumentReaderViewController (planned)
+.doc                  -> DocumentReaderViewController only after separate feasibility proof
+```
+
+The goal is **reading**, not Office-compatible editing or desktop layout fidelity.
+
+## Immutable platform
 
 ```make
 ARCHS = armv7
 TARGET = iphone:clang:6.1:5.1
 ```
 
-- non-ARC / manuel retain-release;
+- non-ARC / manual retain-release;
 - Theos;
-- eski iPhoneOS 6.1 SDK;
-- isteğe bağlı ve çalışma zamanında korumalı değilse iOS 5 sonrası bağımlılık yok.
+- legacy iPhoneOS 6.1 SDK;
+- no post-iOS-5 dependency unless optional and runtime-guarded.
 
-## Özellik sınıflandırması
-Her özellik yazılmadan önce sınıflandırılır:
+## Feature classification
+Before implementation every feature is classified:
+- **Green**: low-memory, incremental, safe by design.
+- **Yellow**: useful but requires hard bounds, page-local/chunked processing and physical-device profiling.
+- **Red**: reject for on-device implementation.
 
-- **Yeşil**: düşük bellekli, kademeli, tasarım gereği güvenli.
-- **Sarı**: faydalı ama kesin sınırlar, sayfa bazlı işlem ve fiziksel cihaz profili gerektirir.
-- **Kırmızı**: cihaz üzerinde uygulanmak üzere reddedilir.
+Before memory classification, every feature also passes an **ownership gate**:
+1. Is the operation part of read-only document consumption?
+2. Does another iPad1 companion app already own the underlying subsystem?
+3. Can the specialist be called through URL handoff instead of duplicating a general-purpose engine?
 
-Kırmızı örnekler:
+Internal parsing needed to read a document format is allowed when it stays format-specific. For example, a tiny read-only ZIP/XML path used only to open a `.docx` package is part of the document reader; a general ZIP browser/extractor remains the responsibility of `iPad1Files`.
+
+Red examples:
 - OCR;
 - AI/ML;
-- tüm belgeyi bitmap olarak görüntüleme;
-- kalıcı tam belge metin dizinleri;
-- yüksek çözünürlüklü çok sayfalı önbellekler;
-- ağır bulut SDK'ları;
-- ölçülmüş kanıt olmadan ağır bir PDF motoruyla değiştirme.
+- whole-document bitmap rendering;
+- persistent full-document text indexes;
+- high-resolution multi-page caches;
+- heavy cloud SDKs;
+- embedded LibreOffice/Office engines;
+- full desktop Word pagination/layout engine.
 
-## Görüntüleme
-`PDFPageView`, Core Graphics / `CGPDFDocument` kullanır.
+## PDF Rendering
+`PDFPageView` uses Core Graphics / `CGPDFDocument`.
+Rules:
+- render one active full page at a time;
+- never pre-render an entire document;
+- never retain several full-resolution page bitmaps;
+- purge disposable state on memory warning.
 
-Kurallar:
-- aynı anda tek aktif tam sayfa görüntüle;
-- belgenin tamamını asla önceden görüntüleme;
-- birden fazla tam çözünürlüklü sayfa bitmap'ini asla tutma;
-- bellek uyarısında atılabilir durumu temizle.
+## Text Reader
+`TextReaderViewController` remains separate from `PDFReaderViewController`.
 
-## Küçük resimler
-`ThumbnailViewController` tembel (lazy) ve sınırlıdır.
-
-Kesin önbellek sınırı:
-
+Supported plain-text extensions:
 ```text
-8 thumbnails
+.txt .md .log .csv .json .xml .sql .py .sh .ini .conf
 ```
 
-## Arama
-`PDFTextExtractor` / `SearchViewController` sayfa sayfa, sıralı metin çıkarma kullanır.
+Base Text Reader rules:
+- `UITextView`;
+- read-only;
+- UTF-8 only;
+- no editing/save;
+- no syntax highlighting;
+- no JSON/XML parser;
+- file name in navigation title;
+- full path available from Info;
+- font size controls;
+- wrap toggle;
+- Find / Next / Previous over the currently loaded text only.
 
-Kurallar:
-- her kademede tek sayfa;
-- görünür ilerleme;
-- kullanıcı iptali;
-- bellekte kalıcı belge geneli metin dizini yok;
-- tutulan sonuç en fazla **40**.
+Memory rule:
+- inspect file size before reading;
+- hard full-load limit: **2 MiB**;
+- files above the limit are not loaded into `UITextView`;
+- wrap-off width is bounded;
+- no background index.
 
-## Yeniden Akış (Reflow)
-Yeniden akış sayfa kapsamlıdır. Belgenin tamamını asla tek büyük bir metinde birleştirme.
+### Markdown Reading Mode v2 — planned
+`.md` continues to open safely as plain text even if formatted mode fails or is disabled.
 
-## Notlandırma mimarisi
-`AnnotationStore` hafif sözlükleri saklar, `AnnotationOverlayView` bunları çizer.
+Planned lightweight formatted subset:
+- headings `#` through `######`;
+- bold and italic;
+- bullet/numbered lists;
+- blockquote;
+- inline code and fenced code blocks;
+- horizontal rule;
+- basic links shown as readable text/URL.
 
-Desteklenen / hafif türler:
-- çizim;
-- not;
-- basit imza;
-- bölge vurgulama;
-- planlanan sayfa bazlı anlamsal metin vurgulama.
+Rules:
+- no JavaScript;
+- no remote asset loading;
+- no general web browser behavior;
+- no full CommonMark/GFM compliance requirement;
+- no document-wide secondary index;
+- parser output must be bounded by the existing 2 MiB source-file rule;
+- plain-text mode remains the fallback and source-of-truth representation.
 
-### Gerçek metin vurgulama
-Gerçek metin vurgulama **Sarı** sınıftadır.
+Tables, embedded HTML and remote images are deferred until measured on the physical iPad 1.
 
-İzin verilen tasarım:
-- yalnızca aktif sayfanın metin geometrisini çıkar/seç;
-- geçici seçim geometrisini sayfa değişince/bellek uyarısında at;
-- yalnızca sayfa + sıkıştırılmış dikdörtgen listesi + fosforlu renk sakla;
-- belgenin tamamı önceden dizinlenmez;
-- cihaz üzerinde OCR yedeği yok.
+## DOCX Reader v1 — planned
+`DocumentReaderViewController` will be separate from both PDF and Text Reader controllers.
 
-Hedef fosforlu palet:
-- sarı;
-- yeşil;
-- pembe;
-- turuncu;
-- camgöbeği / açık mavi.
+Initial `.docx` goal is **readable content**, not pixel-identical Microsoft Word rendering.
 
-Yalnız görsel içeren/taranmış PDF'ler için bölge vurgulama yedek olarak kalır.
+Allowed v1 scope:
+- open existing local `.docx` in-place;
+- read-only;
+- extract `word/document.xml` from the DOCX package;
+- paragraphs;
+- headings when safely derivable;
+- basic bold/italic runs;
+- line breaks;
+- basic bullet/numbered list representation;
+- simple tables rendered as lightweight rows/text;
+- Find / Next / Previous over the currently loaded document text;
+- A- / A+;
+- file name, path and size Info;
+- optional embedded images only after a strict size/downscale policy is physically proven.
 
-`PDFAnnotationExporter`, ileride profil aksini kanıtlamadıkça ağır, düzenlenebilir bir `/Annots` motoru yazmak yerine yeni ve notları işlenmiş (flattened) bir PDF üretmeye devam etmelidir.
+DOCX implementation rules:
+- package decompression is read-only and DOCX-specific; it must not expose a general ZIP UI;
+- parse only required XML parts;
+- do not extract the complete package to persistent storage merely to read it;
+- avoid DOM-like full package object graphs when streaming/incremental parsing is practical;
+- no macros;
+- no external template fetching;
+- no remote relationships/network loads;
+- no editing/save;
+- no tracked-change editing;
+- no comments editor;
+- no Office SDK;
+- no LibreOffice engine;
+- no desktop page-layout/pagination engine;
+- no OCR/AI.
 
-## Belge gezinme
-`DocumentNavigatorViewController` notlar/yer imleri arasında sınırlı gezinme sağlar.
+Initial safety targets, subject to physical profiling:
+- compressed `.docx` size target: **<= 8 MiB**;
+- primary document XML/text working-set target: **<= 4 MiB**;
+- one embedded image decoded at a time;
+- reject or skip oversized embedded media rather than risking memory pressure;
+- no resident full-resolution image gallery/cache.
 
-Kesin sınırlar:
-- not özeti öğesi en fazla **80**;
-- tür başına en fazla **40**.
+These are engineering guards, not claims of Word compatibility.
 
-İçindekiler çözümlemesi hafif kalmalı ve desteklenmeyen adlandırılmış hedeflerde nazikçe başarısız olmalıdır.
+## Legacy `.doc` — deferred
+Classic binary `.doc` is a different and substantially more complex format than `.docx`.
 
-## Sayfa işlemleri
+Phase 1 does **not** ship a new binary Word engine. Before implementation, evaluate whether a compact text-extraction-only path can be built and physically profiled on iPad 1.
+
+If safe extraction cannot be achieved without a heavy dependency, `.doc` remains unsupported while `.docx` is supported.
+
+## Thumbnails
+`ThumbnailViewController` is lazy and bounded.
+Hard cache limit: **8 thumbnails**.
+
+## Search
+`PDFTextExtractor` / `SearchViewController` use serial page-by-page extraction.
+Rules:
+- one page per incremental step;
+- visible progress;
+- user cancellation;
+- no resident document-wide text index;
+- max retained results: **40**.
+
+Text/Markdown/DOCX search operates only on the currently loaded bounded reading representation and does not create a persistent index.
+
+## Reflow
+PDF Reflow is page-scoped. Never concatenate the entire PDF into one large string.
+
+## Annotation architecture
+`AnnotationStore` persists lightweight dictionaries and `AnnotationOverlayView` draws them.
+
+Supported/lightweight families:
+- drawing;
+- note;
+- simple signature;
+- region highlight;
+- page-local semantic text highlight;
+- page-local underline;
+- page-local strikeout.
+
+### Page-local text marks
+Highlight, underline and strikeout reuse only the active page's bounded text geometry.
+Rules:
+- extract/select only active-page geometry;
+- persist compact page + rect list + color only;
+- discard temporary geometry on page change/memory warning;
+- no document-wide text index;
+- no OCR fallback on-device.
+
+Highlight may fall back to a rectangular region on image/scanned pages. Underline and strikeout require selectable text and fail safely when none exists.
+
+Direct annotation interaction is page-local and bounded. `PDFReaderViewController` examines at most **80 current-page annotations** for tap hit-testing.
+
+`PDFAnnotationExporter` produces a new flattened PDF and draws highlight, underline and strikeout marks without adding a heavy editable `/Annots` engine.
+
+## Document navigation
+`DocumentNavigatorViewController` provides bounded navigation across outline/bookmarks/notes/text marks.
+Hard limits:
+- outline parse max **80** entries;
+- max annotation-summary items: **80**;
+- max **40 per kind/section**.
+
+## Page operations
 `PageManager` / `PageManagerViewController`:
-- yeniden sıralama;
-- silme;
-- döndürme;
-- **yeni bir PDF'e** dışa aktarma;
-- orijinali asla sessizce değiştirmez;
-- yalnızca açıkça kaydedildikten sonra dışa aktarır.
+- reorder;
+- delete;
+- rotate;
+- export to a **new PDF**;
+- never silently mutate the original;
+- export only after explicit save.
 
-## Ekosistem sınırı
-Uygulama ailesi bilinçli olarak modülerdir:
-
+## Ecosystem boundary
+The application family remains modular:
 ```text
-iPad1Files          -> filesystem backbone
-iPad1FTPDownloader  -> FTP/network transfer specialist
-iPad1PDFReader      -> PDF specialist
+iPad1Files          -> filesystem backbone + normal suite routing
+iPad1FTPDownloader  -> HTTP/FTP/WebDAV/network transfer specialist
+iPad1Player         -> video/audio/subtitle playback specialist
+iPad1Terminal       -> shell/system command specialist
+iPad1VNC            -> remote desktop specialist
+iPad1PDFReader      -> lightweight read-only document specialist: PDF + text + Markdown + DOCX
 ```
 
-(iPad1Files: dosya sistemi omurgası · iPad1FTPDownloader: FTP/ağ transfer uzmanı · iPad1PDFReader: PDF uzmanı)
+### iPad1Files owns
+- browse/copy/move/rename/delete;
+- shared folders;
+- file-level favorites;
+- Open With / file picker;
+- normal extension-based suite routing;
+- file classification/organization;
+- general ZIP/archive management;
+- general filesystem search.
 
-### iPad1Files'ın sorumlulukları
-- gezinme / kopyalama / taşıma / yeniden adlandırma / silme;
-- ortak klasörler;
-- favoriler;
-- "Birlikte Aç";
-- dosya sınıflandırma / düzenleme.
+### iPad1FTPDownloader owns
+- HTTP/HTTPS/FTP/WebDAV transfer work;
+- FTP remote browse;
+- download/upload;
+- queue/resume/progress/speed;
+- saved servers;
+- remote file commands.
 
-### iPad1FTPDownloader'ın sorumlulukları
-- uzak FTP gezinme;
-- indirme / yükleme;
-- kuyruk / devam / ilerleme / hız;
-- kayıtlı sunucular;
-- uzak dosya komutları.
+### iPad1Player owns
+- video/audio decode and playback;
+- local media playback UI;
+- subtitle discovery/rendering and media-session controls.
 
-### iPad1PDFReader'ın sorumlulukları
-- PDF görüntüleme / okuma deneyimi;
-- arama / yeniden akış;
-- yer imi / içindekiler;
-- notlandırma;
-- sayfa yönetimi / dışa aktarma.
+### iPad1Terminal owns
+- shell/PTY behavior;
+- command execution;
+- system utilities.
 
-Yardımcı uygulamaların motorlarını PDFReader içinde çoğaltma.
+### iPad1VNC owns
+- remote desktop sessions;
+- remote screen rendering;
+- VNC keyboard/mouse forwarding and session controls.
 
-## Ortak depolama
-Standart kök:
+### iPad1PDFReader owns
+- PDF rendering/read UX;
+- PDF search/reflow/bookmarks/outlines/annotations/page management/export;
+- lightweight read-only plain-text reading;
+- lightweight Markdown reading;
+- lightweight read-only DOCX reading;
+- receiving supported document paths through the existing receiver contract.
 
+PDFReader still does **not** own general filesystem management, network transfer, media playback, terminal or VNC functionality.
+
+## Shared storage
+Canonical root:
 ```text
 /var/mobile/Media/iPad1Files
 ```
 
-PDFReader'ın doğrudan taradığı klasörler:
-
+PDFReader directly scans PDF library locations only:
 ```text
 /var/mobile/Media/iPad1Files/PDFs
 /var/mobile/Media/iPad1Files/Downloads
 ```
 
-Uygulamalar arası sözleşme:
+Text/Markdown/DOCX are primarily opened by `iPad1Files` handoff and should open in-place. This must not evolve into a general filesystem browser.
 
+Cross-app contracts:
 ```text
 ipad1pdf://open?path=<percent-encoded-absolute-path>
+ipad1files://pick?callback=ipad1pdf
+ipad1player://open?path=<percent-encoded-absolute-path>
 ```
 
-Ortak dosyalar güvenli olduğu yerde bulundukları konumda açılır; yinelenen fiziksel kopyalardan kaçınılır.
+The historical `ipad1pdf` scheme remains for backward compatibility even though the app now reads multiple document formats.
 
-## Ağ
-PDFReader'daki mevcut HTTP/FTP/WebDAV kodu **yalnızca bakım modundadır**.
+## Networking
+Existing HTTP/FTP/WebDAV code in PDFReader is compatibility-only and scheduled for retirement after companion handoff is physically proven.
 
-Yalnızca özellik eşitliği için genişletme. iPad1FTPDownloader/iPad1Files devrini tercih et.
+## Memory management
+Project is MRC.
+Rules:
+- explicit ownership;
+- release temporary objects aggressively;
+- local autorelease pools around repeated temporary work;
+- no uncontrolled parallel heavy work;
+- clear temporary text/geometry/XML/image/list data on memory warning;
+- never raise deployment target to solve coding convenience.
 
-İleride somut bir ihtiyaç ve gerçek iPad RAM profili gerekçelendirmedikçe SMB/SFTP kütüphaneleri pakete eklenmez.
+## Engineering RAM targets
+- normal reading roughly **30–50 MB preferred**;
+- special operations ideally remain well below **70–90 MB**;
+- sustained unbounded growth fails testing.
 
-## Bellek yönetimi
-Proje MRC kullanır.
-
-Kurallar:
-- açık sahiplik;
-- geçici nesneleri agresif şekilde serbest bırak;
-- tekrarlanan geçici işlerin etrafında yerel autorelease pool'lar;
-- kontrolsüz paralel ağır iş yok;
-- bellek uyarısında geçici metin/geometri/liste verisini temizle;
-- kodlama kolaylığı için dağıtım hedefini asla yükseltme.
-
-## Mühendislik RAM hedefleri
-- normal okumada tercihen yaklaşık **30–50 MB**;
-- özel işlemler ideal olarak **70–90 MB**'nin oldukça altında kalmalı;
-- sürekli, sınırsız artış testten kalır.
-
-## Ana bileşenler
-- `AppDelegate` — başlatma + URL / "Birlikte Aç" devri.
-- `PDFLibraryViewController` — yerel/ortak PDF bulma.
-- `PDFReaderViewController` — okuyucu yönetimi.
-- `PDFPageView` — aktif sayfayı görüntüleme.
-- `BookmarkStore` — yer imi / son sayfa durumu.
-- `AppearanceStore` — okuma görünümü.
-- `ThumbnailViewController` — sınırlı küçük resimler.
-- `PDFTextExtractor` / `SearchViewController` — kademeli arama.
-- `ReflowViewController` — sayfa bazlı yeniden akış.
-- `AnnotationStore` / `AnnotationOverlayView` — hafif notlandırma.
-- `DocumentNavigatorViewController` — sınırlı belge gezinme.
-- `PDFAnnotationExporter` — notları işlenmiş dışa aktarma.
-- `PageManager` / `PageManagerViewController` — güvenli sayfa işlemleri.
-- `PDFOutlineParser` / `OutlineViewController` — içindekiler işleme.
-- eski ağ sınıfları — yalnızca uyumluluk için.
-- `MemoryBudget` — açık iPad 1 sınırları.
+## Main components
+- `AppDelegate` — bootstrap + URL/Open In handoff.
+- `PDFLibraryViewController` — PDF library convenience + document-type receiver routing.
+- `PDFReaderViewController` — PDF reader orchestration + bounded direct annotation hit-testing.
+- `TextReaderViewController` — bounded read-only UTF-8 text viewing and future Markdown mode.
+- `DocumentReaderViewController` — planned bounded DOCX read-only viewing.
+- `DOCXReader` / equivalent parser — planned DOCX-specific read-only package/XML extraction.
+- `PDFPageView` — active-page rendering.
+- `BookmarkStore` — bookmark/last-page state.
+- `AppearanceStore` — reading appearance.
+- `ThumbnailViewController` — bounded thumbnails.
+- `PDFTextExtractor` / `SearchViewController` — incremental PDF search.
+- `ReflowViewController` — page-local reflow.
+- `AnnotationStore` / `AnnotationOverlayView` — lightweight annotations/text marks.
+- `DocumentNavigatorViewController` — bounded document navigation.
+- `PDFAnnotationExporter` — flattened export.
+- `PageManager` / `PageManagerViewController` — safe page operations.
+- `PDFOutlineParser` / `OutlineViewController` — bounded outline handling.
+- legacy network classes — compatibility only until handoff retirement.
+- `MemoryBudget` — explicit iPad 1 limits.

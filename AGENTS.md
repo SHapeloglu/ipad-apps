@@ -1,7 +1,7 @@
 # AGENTS.md
 
-## Önce oku
-Bu repoda değişiklik yapmadan önce şu sırayla oku:
+## Read first
+Before editing this repository, read in this order:
 1. `SESSION.md`
 2. `ARCHITECTURE.md`
 3. `INTEGRATION.md`
@@ -10,91 +10,100 @@ Bu repoda değişiklik yapmadan önce şu sırayla oku:
 6. `README.md`
 7. `CLAUDE.md`
 
-Ardından `SESSION.md -> Hemen yapılacak sonraki adım` bölümünden devam et.
+Then continue from `SESSION.md -> Immediate next action`.
 
-## Değiştirilemez platform
+## Non-negotiable platform
 - iPad 1
 - Apple A4
 - 256 MB RAM
 - iOS 5.1.1
 - armv7
-- non-ARC / manuel retain-release
+- non-ARC / manual retain-release
 - Theos
-- eski iPhoneOS 6.1 SDK
+- legacy iPhoneOS 6.1 SDK
 
-Zorunlu Makefile hedefi:
+Required Makefile target:
 
 ```make
 ARCHS = armv7
 TARGET = iphone:clang:6.1:5.1
 ```
 
-Yalnızca kolaylık için dağıtım hedefini yükseltme veya iOS 5 sonrasına ait, mevcut olmayan API'leri ekleme.
+Never modernize deployment target or introduce unavailable post-iOS-5 APIs merely for convenience.
 
-## Üç uygulamalı ekosistem sınırı
-Kardeş uygulamaların sorumluluklarını çoğaltma.
+## Three-app ecosystem boundary
+Do not duplicate sibling-app responsibilities.
 
 ```text
 iPad1Files          = shared filesystem/file management/Open With
 iPad1FTPDownloader  = FTP browse/download/upload/queue/resume
-iPad1PDFReader      = PDF rendering/search/reflow/annotation/page management
+iPad1PDFReader      = PDF specialist + lightweight read-only Text Reader
 ```
 
-(iPad1Files = ortak dosya sistemi / dosya yönetimi / "Birlikte Aç"; iPad1FTPDownloader = FTP gezinme / indirme / yükleme / kuyruk / devam; iPad1PDFReader = PDF görüntüleme / arama / yeniden akış / notlandırma / sayfa yönetimi)
+Text Reader v1 may display supported plain-text files handed off by iPad1Files, but must not become an editor or file manager.
 
-PDFReader'daki eski HTTP/FTP/WebDAV kodu yalnızca bakım modundadır. Rakiplerle eşitlenmek için büyütme.
+PDFReader's legacy HTTP/FTP/WebDAV code is maintenance-only. Do not grow it for competitor parity.
 
-Standart ortak kök:
+Canonical shared root:
 
 ```text
 /var/mobile/Media/iPad1Files
 ```
 
-PDF devri:
+Handoff remains:
 
 ```text
 ipad1pdf://open?path=<percent-encoded-absolute-path>
 ```
 
-## Özellik sınıflandırması
-- **Yeşil**: düşük bellekli / kademeli -> genelde güvenli.
-- **Sarı**: kesin üst sınırlar, sayfa bazlı çalışma ve cihaz profili gerektirir.
-- **Kırmızı**: cihaz üzerinde reddedilir.
+Route `.pdf` to PDF Reader and supported text extensions to `TextReaderViewController`.
 
-Kırmızı örnekler:
+## Feature classification
+- **Green**: low-memory/incremental -> generally safe.
+- **Yellow**: requires hard caps/page-local work/device profiling.
+- **Red**: reject on-device.
+
+Red examples:
 - OCR;
 - AI/ML;
-- tüm belgeyi kapsayan bitmap önbellekleri;
-- kalıcı tam belge metin dizini;
-- büyük bulut SDK'ları;
-- ölçülmüş bir ihtiyaç olmadan ağır PDF/ağ motorları.
+- whole-document bitmap caches;
+- persistent full-document PDF text index;
+- large cloud SDKs;
+- heavy PDF/network engines without measured need.
 
-## Kesin bellek kuralları
-- aynı anda tek aktif tam sayfa görüntüleme;
-- küçük resim önbelleği en fazla 8;
-- arama sonucu en fazla 40;
-- arama sayfa sayfa;
-- Yeniden akış (Reflow) sayfa sayfa;
-- Belge Gezgini not özeti en fazla 80, tür başına en fazla 40;
-- paralel ağır iş yok;
-- bellek uyarısında atılabilir durum temizlenir;
-- MRC sahiplik doğruluğu zorunludur.
+## Hard memory rules
+- one active full PDF page render;
+- thumbnail cache max 8;
+- PDF search results max 40;
+- PDF search page-by-page;
+- Reflow page-by-page;
+- Belge Gezgini annotation summary max 80, max 40 per kind;
+- Text Reader source file max 2 MiB for full load;
+- no background text index/parser for Text Reader;
+- no parallel heavy work;
+- clear disposable state on memory warning;
+- MRC ownership correctness is mandatory.
 
-## Güncel öncelik
-Sayfa bazlı **gerçek metin vurgulama + fosforlu renk** deneyimini tamamla.
+## Current priority
+Current branch is `feature/text-reader-v1`.
 
-Kurallar:
-- yalnızca aktif sayfa;
-- tüm belgeyi kapsayan glif/metin dizini yok;
-- geçici seçim geometrisi sayfa değişince/bellek uyarısında serbest bırakılmalı;
-- yalnızca sıkıştırılmış dikdörtgen(ler) + renk saklanır;
-- görsel/taranmış PDF'lerde bölge vurgulama yedeği kullanılabilir;
-- taranmış PDF'leri seçilebilir yapmak için asla OCR ekleme.
+Finish legacy clean-build and physical validation of the new **read-only Text Reader** while preserving all existing PDF behavior.
 
-## "Bitti" tanımı
-Bir özellik şu koşullar sağlanmadan bitmiş sayılmaz:
-- eski toolchain ile derleme başarılı;
-- fiziksel iPad 1 testi başarılı;
-- bellek sınırlı;
-- ilgili `TESTING.md` kontrolleri geçti;
-- dokümantasyon güncellendi.
+Text Reader rules:
+- separate `TextReaderViewController`;
+- UTF-8 only;
+- read-only;
+- supported extensions only;
+- 2 MiB full-load hard limit;
+- A-/A+, Wrap, Info, Find/Next/Previous;
+- no edit/save, syntax highlighting, Markdown rendering, JSON/XML parsing, OCR, AI or ML.
+
+The page-local real-text highlight work remains present underneath this branch and is still not fully device-proven. Do not weaken its bounds.
+
+## Definition of done
+A feature is not done until:
+- legacy build succeeds;
+- physical iPad 1 test succeeds;
+- memory is bounded;
+- relevant `TESTING.md` checks pass;
+- documentation is updated.
