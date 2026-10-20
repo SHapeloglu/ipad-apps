@@ -1,0 +1,17 @@
+TARGET := iphone:clang:6.1:5.0
+ARCHS := armv7
+
+include $(THEOS)/makefiles/common.mk
+
+APPLICATION_NAME := iPad1Ticket
+iPad1Ticket_FILES := main.m AppDelegate.m TicketViewController.m APIClient.m QRScanner.m
+iPad1Ticket_FRAMEWORKS := UIKit Foundation AVFoundation
+iPad1Ticket_CFLAGS := -fno-objc-arc -Wall
+
+# ZBarSDK kullanacaksaniz ZBarSDK.h ve libzbar.a/libzbar.dylib toolchain'e eklenebilir.
+# QRScanner.m bunu otomatik algilar; ZBar yoksa manuel token girisi kullanilir.
+
+include $(THEOS_MAKE_PATH)/application.mk
+
+after-install::
+	install.exec "killall iPad1Ticket 2>/dev/null || true"
