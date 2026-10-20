@@ -1,0 +1,17 @@
+# Theos build output
+.theos/
+
+# Generated Debian packages
+packages/
+*.deb
+
+# Debug symbols / object files
+*.dSYM/
+*.o
+*.Td
+
+# Editor / OS files
+.DS_Store
+Thumbs.db
+*.swp
+*~
