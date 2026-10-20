@@ -1,149 +1,209 @@
 # TESTING.md
 
-## Doğruluk kaynağı
-Doğruluk kaynağı fiziksel **iPad 1 / Apple A4 / 256 MB RAM / iOS 5.1.1** cihazıdır. Yalnızca simülatörde başarı yeterli değildir.
+## Source of truth
+Physical **iPad 1 / Apple A4 / 256 MB RAM / iOS 5.1.1** is the source of truth. Simulator-only success is insufficient.
 
-## Derleme doğrulaması
-
+## Build validation
 ```bash
 make clean
-rm -rf .theos
+rm -rf .theos packages
 make package FINALPACKAGE=1
 ```
-
-Gerekenler:
+Required:
 - armv7;
-- en düşük iOS 5.1;
-- eski iPhoneOS 6.1 SDK;
+- minimum iOS 5.1;
+- legacy iPhoneOS 6.1 SDK;
 - non-ARC / MRC.
 
-`building for iOS 5.1.0 is deprecated` uyarısı kabul edilebilir.
-iPhoneOS9.3.sdk kaynaklı simülatör `.tbd` / armv7 bağlayıcı belirtilerini kabul etme.
+`building for iOS 5.1.0 is deprecated` warning is acceptable.
 
-## Temel duman testi
-- [ ] Uygulama açılıyor.
-- [ ] Kütüphane açılıyor.
-- [ ] Yerel PDF açılıyor.
-- [ ] Önceki/sonraki çalışıyor.
-- [ ] İki parmakla yakınlaştırma zıplamıyor / sola kaymıyor.
-- [ ] Yakınlaştırma oranı sayfa değişiminde korunuyor.
-- [ ] Yakınlaştırılmışken sayfa değişince yaklaşık okuma konumu korunuyor.
-- [ ] Çift dokunuşla yakınlaştırma çalışıyor ve 1x'e dönüyor.
-- [ ] Doğrudan sayfa numarasına gitme aralığı doğruluyor.
-- [ ] Son sayfa hatırlanıyor.
-- [ ] Yer imi hatırlanıyor.
+## Text Reader v1
+### Basic opening
+- [ ] Small `.txt` opens in Text Reader.
+- [ ] UTF-8 Turkish characters render correctly: `ç ğ ı İ ö ş ü Ç Ğ Ö Ş Ü`.
+- [ ] `.log`, `.csv`, `.json`, `.xml`, `.sql`, `.py`, `.sh`, `.ini`, `.conf` open as plain text.
+- [ ] Text remains read-only; no editing/save UI exists.
+- [ ] File name appears in navigation title.
+- [ ] Info shows full path and file size.
 
-## iPad1Files entegrasyonu
-- [ ] `/var/mobile/Media/iPad1Files/PDFs` içindeki PDF'ler görünüyor.
-- [ ] `/var/mobile/Media/iPad1Files/Downloads` içindeki PDF'ler görünüyor.
-- [ ] Ortak PDF bulunduğu yerde açılıyor.
-- [ ] Ortak PDF'i açmak uygulamanın Documents klasöründe sessizce kopya oluşturmuyor.
-- [ ] `ipad1pdf://open?path=...` istenen mevcut PDF'i açıyor.
-- [ ] Geçersiz / olmayan yol güvenle başarısız oluyor.
+### Memory / file size
+- [ ] File at or below 2 MiB loads when valid UTF-8.
+- [ ] File above 2 MiB is rejected before `UITextView` load.
+- [ ] Invalid/non-UTF-8 text fails gracefully.
+- [ ] Repeated open/close does not cause progressive memory growth.
 
-## Arama
-- [ ] 100+ sayfalık metin PDF'inde arama kademeli ilerliyor.
-- [ ] Sayfalar arasında arayüz yanıt veriyor.
-- [ ] İptal aramayı güvenle durduruyor.
-- [ ] Sonuçlar 40 ile sınırlı kalıyor.
-- [ ] Kalıcı tam belge metin dizini oluşmuyor.
-- [ ] 10 kez ara/iptal et; kademeli yavaşlama/çökme yok.
+### Search / UI
+- [ ] Find / Next / Previous work and wrap safely.
+- [ ] Missing term shows `Bulunamadı` without crash.
+- [ ] A+ / A- obey hard limits.
+- [ ] Word Wrap on/off works.
+- [ ] Rotation/relayout does not crash.
 
-## Belge Gezgini
-- [ ] Yer imleri doğru listeleniyor.
-- [ ] Notlar doğru listeleniyor.
-- [ ] Vurgular doğru listeleniyor.
-- [ ] Bir öğe seçilince doğru sayfaya gidiliyor.
-- [ ] Not özeti toplam en fazla 80, tür başına en fazla 40 kalıyor.
-- [ ] 200+ sayfalık PDF'te tekrar tekrar aç/kapat belleği kademeli büyütmüyor.
+## Markdown Reader v2
+Use `.md` files below the same 2 MiB Text Reader limit.
 
-## İçindekiler
-- [ ] Doğrudan `/Dest` içindekiler hedefi doğru sayfaya gidiyor.
-- [ ] Doğrudan `/A /GoTo` dizi hedefi doğru sayfaya gidiyor.
-- [ ] Desteklenmeyen / adlandırılmış hedef çökmeden nazikçe başarısız oluyor.
+### Reading mode
+- [ ] `.md` opens in Markdown reading mode by default.
+- [ ] `Kaynak` switches to original Markdown source.
+- [ ] `MD Oku` returns to reading mode.
+- [ ] headings `#`..`######` become readable heading markers.
+- [ ] `**bold**`, `*italic*`, `_italic_` and inline backticks remain readable with syntax markers removed.
+- [ ] `-`, `*`, `+` bullet items display as `•` items.
+- [ ] numbered-list text remains readable.
+- [ ] blockquotes display with the lightweight quote marker.
+- [ ] fenced code blocks remain visible as indented code text.
+- [ ] horizontal rules display as a lightweight text rule.
+- [ ] links display as readable `label <URL>` text.
+- [ ] Markdown image syntax does not decode/render an image; a readable text placeholder appears instead.
+- [ ] plain Markdown source is never modified on disk.
 
-## Vurgulama — güncel öncelik
-### Seçilebilir metinli PDF
-- [ ] Metin seçimi yalnızca aktif sayfanın geçici geometrisini kullanıyor.
-- [ ] Seçilen metin vurgulanabiliyor.
-- [ ] Sarı fosforlu renk doğru görünüyor.
-- [ ] Yeşil fosforlu renk doğru görünüyor.
-- [ ] Pembe fosforlu renk doğru görünüyor.
-- [ ] Turuncu fosforlu renk doğru görünüyor.
-- [ ] Camgöbeği / açık mavi fosforlu renk doğru görünüyor.
-- [ ] Vurgu saydamlığından metin okunabilir kalıyor.
-- [ ] Yazıldıysa son kullanılan renk hatırlanıyor.
-- [ ] Sayfa değişimi geçici seçim durumunu temizliyor.
-- [ ] Bellek uyarısı geçici seçim durumunu temizliyor.
-- [ ] Sayfaya dönünce kayıtlı vurgu sıkıştırılmış not verisinden yeniden çiziliyor.
+### Markdown regressions
+- [ ] Find / Next / Previous work in reading mode.
+- [ ] Find / Next / Previous work after switching to source mode.
+- [ ] A+ / A- work in both modes.
+- [ ] Word Wrap works in both modes.
+- [ ] Turkish UTF-8 survives mode switching.
+- [ ] repeat `Kaynak` / `MD Oku` 30 times without crash or progressive slowdown.
+- [ ] open/close several Markdown files repeatedly without progressive memory growth.
+- [ ] no JavaScript, browser engine or remote asset fetch starts.
 
-### Metin katmanı olmayan görsel/taranmış PDF
-- [ ] Gerçek metin seçimi nazikçe başarısız oluyor.
-- [ ] Cihazda OCR başlamıyor.
-- [ ] İsteğe bağlı bölge/dikdörtgen vurgulama yedek olarak kullanılabilir kalıyor.
+## iPad1Files handoff
+- [ ] `ipad1files://pick?callback=ipad1pdf` opens picker under `/var/mobile/Media/iPad1Files`.
+- [ ] Callback survives nested folders.
+- [ ] PDF returns through `ipad1pdf://open?path=...`.
+- [ ] Supported text/Markdown returns to Text Reader.
+- [ ] Same physical file is used; no duplicate copy.
+- [ ] Percent-encoded spaces and Turkish characters decode correctly.
+- [ ] Unsupported extension fails visibly and safely.
+- [ ] Nonexistent path fails safely.
 
-### Vurgu bakımı
-Yazıldığında:
-- [ ] Mevcut vurguya dokun/seç.
-- [ ] Rengini değiştir.
-- [ ] Vurguyu sil.
-- [ ] Notları işlenmiş dışa aktarma rengi koruyor.
+## Core PDF smoke test
+- [ ] App launches and library opens.
+- [ ] Local/shared PDF opens in `PDFReaderViewController`.
+- [ ] Previous/next works.
+- [ ] Pinch zoom stays centered.
+- [ ] Zoom survives page change.
+- [ ] Double-tap zoom works.
+- [ ] Direct page-number navigation validates range.
+- [ ] Last page and bookmark persist.
+- [ ] Search, notes, highlights and page manager still work.
 
-## Notlar
-- [ ] Not ekle.
-- [ ] Notu görüntüle.
-- [ ] Notu düzenle.
-- [ ] Notu sil.
-- [ ] Not sayfaya özgü kalıyor.
-- [ ] Özellik yazıldığında işarete dokunarak açma.
+## Reading UX
+- [ ] Day / Sepia / Night work.
+- [ ] Page Lock blocks unintended navigation/zoom.
+- [ ] Fit Page returns to full-page view.
+- [ ] Fit Width fills usable width and starts near page top.
+- [ ] Konum Geri / Konum İleri work.
+- [ ] Empty reading history shows a safe message.
+- [ ] Edge tap left/right changes page at 1x.
+- [ ] Edge tap does not fire while zoomed above ~1x.
+- [ ] Edge tap does not interfere with drawing/text-mark selection.
 
-## Sayfa Yöneticisi
-Silinebilir PDF'ler kullan.
-- [ ] Sayfaları yeniden sırala.
-- [ ] Sayfa sil.
-- [ ] Sayfa döndür.
-- [ ] Açıkça kaydetmeden çıkınca çıktı oluşmuyor.
-- [ ] `Kaydet` yeni, düzenlenmiş bir PDF oluşturuyor.
-- [ ] Orijinal bozulmadan kalıyor.
+## Gezinti Merkezi / Outline
+- [ ] İçindekiler section lists bounded outline items.
+- [ ] Yer İmleri section lists bookmarks.
+- [ ] Notlar section lists notes.
+- [ ] İşaretler section lists Highlight / Altı Çizili / Üstü Çizili.
+- [ ] Selecting any row jumps to correct page.
+- [ ] Outline parsing never retains more than 80 entries.
+- [ ] Annotation summary remains max 80 total and max 40 per section/kind.
+- [ ] Repeated open/close on 200+ page PDF does not progressively grow memory.
 
-## Küçük resim bellek testi
-- [ ] 100+ sayfalık PDF aç.
-- [ ] Sona ve geri tekrar tekrar kaydır.
-- [ ] Önbellek en fazla 8 küçük resim kalıyor.
-- [ ] Bellek baskısından sonra önbellek toparlanabiliyor.
+## Highlight
+### Selectable text PDF
+- [ ] `Metin İşaretle -> Highlight` opens color palette.
+- [ ] Yellow / green / pink / orange / cyan render correctly.
+- [ ] Text remains readable through highlight.
+- [ ] Page change clears temporary selection geometry.
+- [ ] Returning to page redraws saved highlight.
 
-## Yeniden Akış bellek testi
-- [ ] 30+ sayfa boyunca ilerle.
-- [ ] Yalnızca güncel / sayfa kapsamlı metin tutuluyor.
-- [ ] Yazı boyutu kontrolleri yanıt veriyor.
+### Scanned/image PDF
+- [ ] Highlight falls back to rectangular region selection.
+- [ ] No OCR starts on-device.
 
-## Uzun okuma kararlılığı
-- [ ] Büyük bir PDF'i 10+ dakika açık tut.
-- [ ] 1x -> en büyük -> 1x yakınlaştırmayı tekrarla.
-- [ ] 1x'te hızlı sayfa değiştir.
-- [ ] Yakınlaştırılmışken hızlı sayfa değiştir.
-- [ ] Dikey/yatay tekrar tekrar döndür.
-- [ ] Birden fazla PDF'i art arda aç/kapat.
-- [ ] Kademeli yavaşlama veya çökme yok.
+### Direct interaction
+- [ ] Tap existing highlight directly.
+- [ ] Recolor from direct tap.
+- [ ] Delete from direct tap.
+- [ ] `İşaret Düzenle` still recolors/deletes as fallback UI.
 
-## Bellek uyarısı
-Baskı altında doğrula:
-- [ ] küçük resim önbelleği temizleniyor;
-- [ ] atılabilir arama sonuçları/durumu güvenle temizlenebiliyor;
-- [ ] geçici vurgu / metin seçimi geometrisi temizleniyor;
-- [ ] Belge Gezgini geçici özeti temizlenebiliyor;
-- [ ] güncel PDF/sayfa kurtarılabilir kalıyor.
+## Underline
+- [ ] `Metin İşaretle -> Altını Çiz` works on selectable-text PDF.
+- [ ] Only active-page text geometry is used.
+- [ ] Mark follows intersected text rects; no freehand/whole-document geometry.
+- [ ] Page away/back redraws underline.
+- [ ] Reopen PDF redraws underline.
+- [ ] Tap underline directly -> recolor/delete.
+- [ ] `İşaret Düzenle` can recolor/delete underline.
+- [ ] Scanned/image-only page shows selectable-text warning.
+- [ ] No OCR or region fallback starts for underline.
 
-## Yardımcı uygulama sınırı regresyonu
-PDFReader dosya yöneticisi veya FTP istemcisi olarak genişletilmiyor.
+## Strikeout
+- [ ] `Metin İşaretle -> Üstünü Çiz` works on selectable-text PDF.
+- [ ] Only active-page text geometry is used.
+- [ ] Page away/back redraws strikeout.
+- [ ] Reopen PDF redraws strikeout.
+- [ ] Tap strikeout directly -> recolor/delete.
+- [ ] `İşaret Düzenle` can recolor/delete strikeout.
+- [ ] Scanned/image-only page shows selectable-text warning.
+- [ ] No OCR or region fallback starts for strikeout.
 
-- [ ] Mevcut eski HTTP/FTP/WebDAV uyumluluğu bozulmuyor.
-- [ ] Buraya yeni transfer kuyruğu / devam alt sistemi eklenmiyor.
-- [ ] Ortak dosya yönetimi iPad1Files'a devredilmiş kalıyor.
-- [ ] FTP transfer işi iPad1FTPDownloader'a devredilmiş kalıyor.
+## Direct Note interaction
+- [ ] Add note.
+- [ ] Tap note marker directly.
+- [ ] View note.
+- [ ] Edit note.
+- [ ] Delete note.
+- [ ] Note remains page-specific.
+- [ ] Tapping note near page edge opens note instead of changing page.
 
-## RAM mühendislik hedefleri
-- normal okuma: tercihen yaklaşık **30–50 MB**;
-- özel işlemler: ideal olarak **70–90 MB**'nin oldukça altında;
-- hiçbir özellik sınırsız diziler, tüm belge metnini tutma veya çok sayfalı tam çözünürlüklü bitmap önbelleği getiremez;
-- sürekli, sınırsız bellek artışı test başarısızlığıdır.
+## Flattened annotation export
+- [ ] Highlight color preserved.
+- [ ] Underline rendered in exported PDF.
+- [ ] Strikeout rendered in exported PDF.
+- [ ] Original PDF remains unchanged.
+- [ ] Output is a new PDF.
+
+## PDF Search
+- [ ] 100+ page search progresses incrementally.
+- [ ] Cancel stops safely.
+- [ ] Results remain capped at 40.
+- [ ] No persistent full-document text index.
+- [ ] Repeat search/cancel 10 times without progressive slowdown/crash.
+
+## Page Manager
+Use disposable PDFs.
+- [ ] Reorder pages.
+- [ ] Delete page.
+- [ ] Rotate page.
+- [ ] Leaving without save produces no output.
+- [ ] `Kaydet` creates a new edited PDF.
+- [ ] Original remains intact.
+
+## Memory / stability
+- [ ] 100+ page thumbnail scrolling; cache remains max 8.
+- [ ] Reflow remains page-local.
+- [ ] Direct annotation hit-test never scans more than 80 current-page annotations.
+- [ ] Text-mark selection uses max 160 temporary page rects and persists max 32 rects per mark.
+- [ ] Memory warning clears temporary text-mark selection geometry.
+- [ ] Text/Markdown source remains capped at 2 MiB.
+- [ ] Open/close several large PDFs sequentially.
+- [ ] Zoom/page-change for 10 minutes.
+- [ ] Rotate while zoomed repeatedly.
+- [ ] Test 50+, 200+ page PDFs.
+- [ ] No progressive slowdown or crash.
+
+## Companion-app boundary regression
+- [ ] No general file-manager functionality added to PDFReader.
+- [ ] No transfer queue/resume/download engine added to PDFReader.
+- [ ] No media decode/playback added to PDFReader.
+- [ ] Shared file management remains iPad1Files responsibility.
+- [ ] Network transfer remains iPad1FTPDownloader/iPad1Downloader responsibility.
+- [ ] Media playback remains iPad1Player responsibility.
+
+## RAM engineering targets
+- normal PDF reading: roughly **30–50 MB preferred**;
+- special operations: ideally well below **70–90 MB**;
+- Text/Markdown source full-load max **2 MiB**;
+- no unbounded arrays, document-wide PDF text retention, spatial annotation index or multi-page full-resolution bitmap cache;
+- sustained unbounded memory growth is a failure.
