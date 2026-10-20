@@ -1,8 +1,8 @@
 # AGENTS
 
-## Zorunlu ilk okuma
+## Mandatory first read
 
-Kodu değiştirmeden önce şu sırayla oku:
+Before changing code, read in this order:
 
 1. `PROJECT_CONTEXT.md`
 2. `SESSION.md`
@@ -12,15 +12,15 @@ Kodu değiştirmeden önce şu sırayla oku:
 6. `INTEGRATION.md`
 7. `README.md`
 
-`PROJECT_CONTEXT.md` kalıcı proje kısıtlarını içerir.
+`PROJECT_CONTEXT.md` contains the permanent project constraints.
 
-`SESSION.md` en son gerçek durumu ve hemen yapılacak sonraki adımı içerir.
+`SESSION.md` contains the latest actual state and the immediate next action.
 
 ---
 
-## Değiştirilemez kısıtlar
+## Non-negotiable constraints
 
-Bunları asla sessizce değiştirme:
+Never silently change:
 
 ```text
 iPad 1
@@ -34,39 +34,83 @@ MRC / non-ARC
 UIKit / Foundation
 ```
 
-Swift yok.
+No Swift.
 
-Güncel API'ye geçiş yok.
+No modern API migration.
 
-WebView tabanlı terminal yok.
+No WebView terminal.
 
-Açık onay olmadan ağır bağımlılık eklenmez.
+No heavy dependency added without explicit approval.
 
 ---
 
-## Güncel SDK kuralı
+## Current SDK rule
 
-Daha sonra belgelenmiş bir karar değiştirmedikçe şunu kullan:
+Use:
 
 ```make
 TARGET = iphone:clang:6.1:5.1
 ```
 
-Simülatör `.tbd` / armv7 bağlayıcı sorunları üreten 9.3 SDK hedefine geri dönme.
+unless a later documented decision changes it.
+
+Do not revert to the 9.3 SDK target that produced simulator `.tbd` / armv7 linker problems.
 
 ---
 
-## Güncel aşama kuralı
+## Current phase rule
 
-`SESSION.md` ve `TASKS.md`'de anlatılan güncel Yerel Terminal/girdi ve ANSI ekran tamponu kilometre taşları tamamlanmadan SSH'e başlama.
+Do not start SSH until the current Local Terminal/input and ANSI screen-buffer milestones are completed as described in `SESSION.md` and `TASKS.md`.
 
-Kullanıcı açıkça yalnızca ince bir SSH başlatıcı değil, gerçek bir terminal uygulaması istiyor.
+The user explicitly wants a real terminal application, not merely a thin SSH launcher.
 
 ---
 
-## Kod organizasyonu
+## Feature ownership gate
 
-Sorumlulukları ayrı tut:
+Before proposing, implementing, or accepting any feature, determine which iPad1 Suite application owns the capability.
+
+Ownership:
+
+```text
+iPad1Terminal      = local shell + PTY + terminal emulation + SSH
+iPad1Files         = file/folder browsing, selection, management, archive UI
+iPad1PDFReader     = PDF/text reading and reader-specific UI
+iPad1FTPDownloader = managed downloads, queue/resume/retry/destination workflow
+iPad1VNC           = graphical remote desktop
+```
+
+Mandatory decision gate:
+
+```text
+1. Is this intrinsically a terminal/SSH capability?
+   -> yes: Terminal may own it.
+
+2. Is it naturally owned by Files / Reader / Downloader / VNC?
+   -> yes: do NOT implement it in Terminal.
+
+3. Can Terminal satisfy the use case by launching the specialist app?
+   -> yes: use the integration contract instead of duplicating functionality.
+```
+
+Examples that must NOT be implemented inside iPad1Terminal:
+
+- general file browser or file picker
+- copy/move/delete/archive GUI
+- graphical SFTP browser
+- PDF/text reader UI
+- download manager / queue / resume UI
+- VNC or graphical remote desktop renderer
+
+Normal shell commands such as `cd`, `cat`, `less`, `scp`, `ftp`, or `curl` remain valid terminal behavior when the corresponding binaries exist. This does not transfer ownership of graphical file/download/reader features to Terminal.
+
+If ownership is ambiguous, stop feature implementation and resolve ownership against `INTEGRATION.md` first.
+
+---
+
+## Code organization
+
+Keep responsibilities separate:
 
 ```text
 TerminalViewController
@@ -77,114 +121,114 @@ future TerminalScreen
 future SSHSession
 ```
 
-Tüm mantığı tek bir controller'a koyma.
+Do not put all logic into one controller.
 
 ---
 
-## MRC kuralları
+## MRC rules
 
-- her `alloc/init`, `copy`, `retain` için sahiplik açık olmalı
-- sahip olunan ivar'ları `dealloc`'ta serbest bırak
-- bu eski mimaride delegate'ler genelde `assign` olmalı
-- retain döngülerinden kaçın
-- uzun süren arka plan döngülerinde autorelease pool kullan
-
----
-
-## Bellek kuralları
-
-iPad 1'de 256 MB RAM var.
-
-Gerekenler:
-
-- sınırlı geri kaydırma geçmişi (scrollback)
-- sınırlı ayrıştırıcı durumu
-- sınırlı ekran tamponu
-- küçük okuma tamponları
-- sınırsız dizi/metinlerden kaçın
-- varsayılan olarak birden fazla terminal oturumundan kaçın
-- pahalı animasyonlu arayüz yok
+- every `alloc/init`, `copy`, `retain` must have clear ownership
+- release owned ivars in `dealloc`
+- delegates should generally be `assign` in this legacy architecture
+- avoid retain cycles
+- use autorelease pools in long-running background loops
 
 ---
 
-## Uyumluluk kuralları
+## Memory rules
 
-Bir API'nin iOS 5.1.1'de var olduğunu asla varsayma.
+iPad 1 has 256 MB RAM.
 
-Daha önce karşılaşılan örnekler:
+Required:
 
-- `UITextView.selectable` mevcut değil
-- yeni SDK enum tiplemesi hata sayılan uyarılar üretebiliyor
-
-Güncel bir SDK başlığı derleniyor ama çalışma zamanı desteği belirsizse, kullanmadan önce iOS 5'te bulunduğunu doğrula.
-
----
-
-## Terminal doğruluğu
-
-ANSI davranışını tüm kaçış kodlarını kalıcı olarak silerek "düzeltme".
-
-Güncel hafif ayrıştırıcı geçicidir.
-
-Hedef, gerçek ve sınırlı bir terminal ekran modelidir.
+- bounded scrollback
+- bounded parser state
+- bounded screen buffer
+- small read buffers
+- avoid unlimited arrays/strings
+- avoid multiple terminal sessions by default
+- no expensive animated UI
 
 ---
 
-## Güvenlik
+## Compatibility rules
 
-Asla:
+Never assume an API exists on iOS 5.1.1.
 
-- şifreleri günlüğe yazma
-- özel anahtarları günlüğe yazma
-- SSH şifrelerini plist içinde düz metin saklama
-- URL scheme'leri üzerinden keyfi harici komut çalıştırmaya izin verme
+Examples already discovered:
+
+- `UITextView.selectable` is not available
+- newer SDK enum typing may create warnings treated as errors
+
+If a modern SDK header compiles but runtime support is uncertain, verify iOS 5 availability before using it.
 
 ---
 
-## Doküman güncelleme kuralı
+## Terminal correctness
 
-Anlamlı bir kodlama/test oturumundan sonra güncelle:
+Do not “fix” ANSI behavior merely by stripping all escape codes permanently.
+
+The current lightweight parser is transitional.
+
+The target is a real bounded terminal screen model.
+
+---
+
+## Security
+
+Never:
+
+- log passwords
+- log private keys
+- store plaintext SSH passwords in plist
+- allow arbitrary external command execution through URL schemes
+
+---
+
+## Documentation update rule
+
+After a meaningful coding/testing session update:
 
 - `SESSION.md`
-- testler değiştiyse `TESTING.md`
-- tasarım değiştiyse `ARCHITECTURE.md`
-- yalnızca kalıcı proje düzeyi kararlar için `PROJECT_CONTEXT.md`
 - `TASKS.md`
+- `TESTING.md` when tests change
+- `ARCHITECTURE.md` when design changes
+- `PROJECT_CONTEXT.md` only for durable project-level decisions
 
-`SESSION.md` her zaman açık bir şekilde şu bölümle bitmelidir:
+`SESSION.md` must always end with a clear:
 
 ```text
-Hemen yapılacak sonraki adım
+Immediate next action
 ```
 
-böylece yeni bir sohbet tahmin yürütmeden devam edebilir.
+so a new chat can continue without guessing.
 
 ---
 
-## Git kuralı
+## Git rule
 
-Push'tan önce:
+Before pushing:
 
 ```bash
 git status -sb
 git diff --check
 ```
 
-Commit etme:
+Do not commit:
 
 - `.theos/`
-- üretilen paket derleme klasörleri
-- geçici dosyalar
-- şifreler
-- özel anahtarlar
+- generated package build directories
+- temporary files
+- passwords
+- private keys
 
-Kaynak kodu ve proje dokümantasyonunu commit et.
+Commit source and project documentation.
 
-Üretilen `.deb` paketleri yalnızca açıkça istenirse commit edilmelidir.
+Generated `.deb` packages should only be committed if explicitly desired.
 
 ---
 
-## Geliştirme önceliği
+## Development priority
 
 ```text
 stability
@@ -195,5 +239,3 @@ usability
 SSH
 advanced features
 ```
-
-(kararlılık → uyumluluk → terminal doğruluğu → düşük RAM → kullanılabilirlik → SSH → gelişmiş özellikler)
