@@ -1,7 +1,7 @@
 #import <UIKit/UIKit.h>
 @class DocumentRichTextView;
 
-@interface DocumentReaderViewController : UIViewController <UIAlertViewDelegate, UIActionSheetDelegate> {
+@interface DocumentReaderViewController : UIViewController <UIAlertViewDelegate, UIActionSheetDelegate, UIScrollViewDelegate> {
     NSString *_filePath;
     DocumentRichTextView *_richView;
     UIScrollView *_scrollView;

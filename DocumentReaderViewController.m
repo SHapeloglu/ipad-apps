@@ -52,6 +52,7 @@ static void IP1DOCXReaderDebugLog(NSString *message) {
     _scrollView.backgroundColor=[UIColor whiteColor];
     _scrollView.alwaysBounceVertical=YES;
     _scrollView.alwaysBounceHorizontal=NO;
+    _scrollView.delegate=self;
     [self.view addSubview:_scrollView];
 
     _richView=[[DocumentRichTextView alloc] initWithFrame:CGRectZero];
@@ -73,11 +74,15 @@ static void IP1DOCXReaderDebugLog(NSString *message) {
 
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
+    IP1DOCXReaderDebugLog(@"READER layout begin");
     CGRect b=self.view.bounds;
+    IP1DOCXReaderDebugLog([NSString stringWithFormat:@"READER view bounds %.0fx%.0f",b.size.width,b.size.height]);
     CGFloat toolbarHeight=44.0f;
     _toolbar.frame=CGRectMake(0,b.size.height-toolbarHeight,b.size.width,toolbarHeight);
     _scrollView.frame=CGRectMake(0,0,b.size.width,MAX(0.0f,b.size.height-toolbarHeight));
+    IP1DOCXReaderDebugLog([NSString stringWithFormat:@"READER scroll bounds %.0fx%.0f",_scrollView.bounds.size.width,_scrollView.bounds.size.height]);
     [self relayoutPreservingOffset:YES];
+    IP1DOCXReaderDebugLog(@"READER layout end");
 }
 
 - (void)showSimpleAlert:(NSString *)title message:(NSString *)message {
@@ -117,18 +122,45 @@ static void IP1DOCXReaderDebugLog(NSString *message) {
 
 - (void)relayoutPreservingOffset:(BOOL)preserve {
     if(!_richView || !_scrollView) return;
-    CGPoint old=_scrollView.contentOffset;
+
     CGFloat width=_scrollView.bounds.size.width;
-    CGFloat height=[_richView contentHeightForWidth:width];
     CGFloat minimum=_scrollView.bounds.size.height;
-    _richView.frame=CGRectMake(0,0,width,MAX(height,minimum));
+
+    if(width<=32.0f || minimum<=1.0f) {
+        [self.view setNeedsLayout];
+        return;
+    }
+
+    IP1DOCXReaderDebugLog([NSString stringWithFormat:@"READER relayout begin width=%.0f min=%.0f",width,minimum]);
+    CGPoint old=_scrollView.contentOffset;
+    IP1DOCXReaderDebugLog(@"READER contentHeight begin");
+    CGFloat height=[_richView contentHeightForWidth:width];
+    IP1DOCXReaderDebugLog([NSString stringWithFormat:@"READER contentHeight end height=%.0f",height]);
+    /*
+     * iPad 1 memory rule:
+     * Keep the renderer container at viewport height.
+     * The UIScrollView owns the full document height.
+     * DocumentRichTextView has clipsToBounds=NO, so paged child views
+     * can extend through the scrollable coordinate space without
+     * creating an 85k-pixel-high parent backing store.
+     */
+    _richView.frame=CGRectMake(0,0,width,MAX(1.0f,minimum));
+    IP1DOCXReaderDebugLog([NSString stringWithFormat:@"READER richView viewport frame set %.0fx%.0f",width,minimum]);
     _scrollView.contentSize=CGSizeMake(width,MAX(height,minimum));
+    [_richView updateVisiblePagesForOffset:_scrollView.contentOffset.y
+                            viewportHeight:_scrollView.bounds.size.height];
     if(preserve) {
         CGFloat maxY=MAX(0.0f,_scrollView.contentSize.height-_scrollView.bounds.size.height);
         old.y=MIN(maxY,MAX(0.0f,old.y)); old.x=0.0f;
         _scrollView.contentOffset=old;
     } else _scrollView.contentOffset=CGPointZero;
     [_richView setNeedsDisplay];
+}
+
+- (void)scrollViewDidScroll:(UIScrollView *)scrollView {
+    if(scrollView!=_scrollView || !_richView) return;
+    [_richView updateVisiblePagesForOffset:scrollView.contentOffset.y
+                            viewportHeight:scrollView.bounds.size.height];
 }
 
 - (void)increaseFont { _fontSize=MIN(IPAD1_DOC_MAX_FONT,_fontSize+2.0f); _richView.baseFontSize=_fontSize; [self relayoutPreservingOffset:YES]; }
